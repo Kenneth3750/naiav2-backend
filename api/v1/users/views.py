@@ -4,6 +4,8 @@ from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status
 from .serializers import UserSerializer
+from django.utils.decorators import method_decorator
+from django.views.decorators.cache import cache_page
 
 class UserList(APIView):
     def __init__(self):
@@ -48,6 +50,7 @@ class UserDetail(APIView):
     def __init__(self):
         self.user_service = UserService()
 
+    @method_decorator(cache_page(60*15))
     def get(self, request, user_id):
         user = self.user_service.get_user_by_id(user_id)
         if user is None:
