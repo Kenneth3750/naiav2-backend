@@ -10,33 +10,39 @@ class UserList(APIView):
         self.user_service = UserService()
 
     def post(self, request):
-        serializer = UserSerializer(data=request.data)
-        if serializer.is_valid():
-            user = self.user_service.create_user(
-                serializer.validated_data["name"],
-                serializer.validated_data["family_name"],
-                serializer.validated_data["email"],
-                serializer.validated_data["photo_url"]
-            )
+        try:
+            serializer = UserSerializer(data=request.data)
+            if serializer.is_valid():
+                user = self.user_service.create_user(
+                    serializer.validated_data["name"],
+                    serializer.validated_data["family_name"],
+                    serializer.validated_data["email"],
+                    serializer.validated_data["photo_url"]
+                )
+                return Response(
+                    {
+                        "status": "User created successfully",
+                        "user": {
+                            "id": user.id,
+                            "name": user.name,
+                            "family_name": user.family_name,
+                            "email": user.email,
+                            "photo_url": user.photo_url,
+                            "created_at": user.created_at,
+                            "updated_at": user.updated_at
+                        }
+                    },
+                    status=status.HTTP_201_CREATED
+                )
             return Response(
-                {
-                    "status": "User created successfully",
-                    "user": {
-                        "id": user.id,
-                        "name": user.name,
-                        "family_name": user.family_name,
-                        "email": user.email,
-                        "photo_url": user.photo_url,
-                        "created_at": user.created_at,
-                        "updated_at": user.updated_at
-                    }
-                },
-                status=status.HTTP_201_CREATED
+                serializer.errors,
+                status=status.HTTP_400_BAD_REQUEST
             )
-        return Response(
-            serializer.errors,
-            status=status.HTTP_400_BAD_REQUEST
-        )
+        except Exception as e:
+            return Response(
+                {"status": str(e)},
+                status=status.HTTP_400_BAD_REQUEST
+            )
 
 class UserDetail(APIView):
     def __init__(self):
