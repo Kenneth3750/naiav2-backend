@@ -7,12 +7,62 @@ from .serializers import UserSerializer
 from django.utils.decorators import method_decorator
 from django.views.decorators.cache import cache_page
 from rest_framework.permissions import IsAuthenticated
+from drf_spectacular.utils import extend_schema, OpenApiParameter, OpenApiExample
+from drf_spectacular.types import OpenApiTypes
+from drf_spectacular.openapi import OpenApiResponse
 
 class UserList(APIView):
     permission_classes = [IsAuthenticated]  
     def __init__(self):
         self.user_service = UserService()
 
+    @extend_schema(
+        summary="Create new user",
+        description="Creates a new user with the provided information",
+        request=UserSerializer,
+        responses={
+            201: OpenApiResponse(
+                response=UserSerializer,
+                description="User created successfully",
+                examples=[
+                    OpenApiExample(
+                        "Successful Response",
+                        value={
+                            "status": "User created successfully",
+                            "user": {
+                                "id": 1,
+                                "name": "John",
+                                "family_name": "Doe",
+                                "email": "john@example.com",
+                                "photo_url": "https://example.com/photo.jpg",
+                                "created_at": "2024-01-30T12:00:00Z",
+                                "updated_at": "2024-01-30T12:00:00Z"
+                            }
+                        }
+                    )
+                ]
+            ),
+            400: OpenApiResponse(
+                description="Bad request",
+                examples=[
+                    OpenApiExample(
+                        "Validation Error",
+                        value={
+                            "email": ["Enter a valid email address."],
+                            "name": ["This field is required."]
+                        }
+                    ),
+                    OpenApiExample(
+                        "Service Error",
+                        value={
+                            "status": "User with this email already exists"
+                        }
+                    )
+                ]
+            )
+        },
+        tags=["Users"]
+    )
     def post(self, request):
         try:
             serializer = UserSerializer(data=request.data)
@@ -53,6 +103,50 @@ class UserDetail(APIView):
     def __init__(self):
         self.user_service = UserService()
 
+
+    @extend_schema(
+        summary="Get user by ID",
+        description="Returns the user with the provided ID",
+        parameters=[
+            OpenApiParameter(
+                name="user_id",
+                description="The ID of the user",
+                required=True,
+                type=OpenApiTypes.INT,
+                location=OpenApiParameter.PATH
+            )
+        ],
+        responses={
+            200: OpenApiResponse(
+                response=UserSerializer,
+                description="User found",
+                examples=[
+                    OpenApiExample(
+                        "Successful Response",
+                        value={
+                            "id": 1,
+                            "name": "John",
+                            "family_name": "Doe",
+                            "email": "john@example.com",
+                            "photo_url": "https://example.com/photo.jpg",
+                            "created_at": "2024-01-30T12:00:00Z",
+                            "updated_at": "2024-01-30T12:00:00Z"
+                        }
+                    )
+                ]
+            ),
+            404: OpenApiResponse(
+                description="User not found",
+                examples=[
+                    OpenApiExample(
+                        "Not Found",
+                        value={"status": "Not Found"}
+                    )
+                ]
+            )
+        },
+        tags=["Users"]
+    )
     @method_decorator(cache_page(60*15))
     def get(self, request, user_id):
         user = self.user_service.get_user_by_id(user_id)
