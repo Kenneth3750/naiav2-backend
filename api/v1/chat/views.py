@@ -10,12 +10,16 @@ from drf_spectacular.utils import extend_schema, OpenApiParameter, OpenApiExampl
 from drf_spectacular.types import OpenApiTypes
 from drf_spectacular.openapi import OpenApiResponse
 from .serializers import ChatSerializer
+from dotenv import load_dotenv
+import os
+load_dotenv()
 
 
 class Chat(APIView):
     permission_classes = [IsAuthenticated]  
     def __init__(self):
         self.chat_service = ChatService()
+        self.image_url = os.getenv("bucket_url")
 
 
     def post(self, request):
@@ -31,7 +35,7 @@ class Chat(APIView):
                     messages=None,
                     username="John Doe",
                     user_input=user_input,
-                    image_url="https://f005.backblazeb2.com/file/prueba-2/current/foto.jpg",
+                    image_url=f"{self.image_url}/current/user_{user_id}.jpg",
                     thread_id=thread_id,
                     assistant_id=assistant_id
                 )
