@@ -29,12 +29,14 @@ class Chat(APIView):
 
                 response = self.chat_service.generate_response(
                     messages=None,
-                    username=user_id,
+                    username="John Doe",
                     user_input=user_input,
                     image_url="https://f005.backblazeb2.com/file/prueba-2/current/foto.jpg",
                     thread_id=thread_id,
                     assistant_id=assistant_id
                 )
-            return Response(response, status=status.HTTP_200_OK)
+                return Response(response, status=status.HTTP_200_OK)
+            else:
+                return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
         except Exception as e:
             return Response(str(e), status=status.HTTP_500_INTERNAL_SERVER_ERROR)

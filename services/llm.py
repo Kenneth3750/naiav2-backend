@@ -64,9 +64,12 @@ class LLMService:
             assistant_id=self.assistant_id
         )
         if run.status == 'completed':
-            return self.client.beta.threads.messages.list(
+            message_response = self.client.beta.threads.messages.list(
                 thread_id=thread.id
             )
+            print(message_response)
+        else:
+            print(run.status)
         if run.required_action is not None:
             tool_outputs = []
             for tool in run.required_action.submit_tool_outputs.tool_calls:
@@ -103,28 +106,37 @@ class LLMService:
             else:
                 print(run.status)
         
-            messages = []
-            for msg in message_response.data:
-                if msg.role == "assistant" and hasattr(msg, "tool_calls"):
-                    messages.append({
-                        "role": msg.role,
-                        "content": " ".join(content.text.value for content in msg.content if hasattr(content, "text")),
-                        "tool_calls": [
-                            {
-                                "function_name": tool.function.name,
-                                "arguments": tool.function.arguments,
-                                "tool_call_id": tool.id
-                            } for tool in msg.tool_calls
-                        ]
-                    })
-                else:
-                    messages.append({
-                        "role": msg.role,
-                        "content": " ".join(content.text.value for content in msg.content if hasattr(content, "text"))
-                    })
-            response = messages[0]["content"]
+        messages = []
+        for msg in message_response.data:
+            if msg.role == "assistant" and hasattr(msg, "tool_calls"):
+                messages.append({
+                    "role": msg.role,
+                    "content": " ".join(content.text.value for content in msg.content if hasattr(content, "text")),
+                    "tool_calls": [
+                        {
+                            "function_name": tool.function.name,
+                            "arguments": tool.function.arguments,
+                            "tool_call_id": tool.id
+                        } for tool in msg.tool_calls
+                    ]
+                })
+            else:
+                messages.append({
+                    "role": msg.role,
+                    "content": " ".join(content.text.value for content in msg.content if hasattr(content, "text"))
+                })
+        response = messages[0]["content"]
+        print("*"*50)
+        print("message_data", response)
+        print("*"*50)
 
-            return messages, response, thread.id
+        json_response = {
+            "messages": messages,
+            "response": response,
+            "thread_id": thread.id
+        }
+
+        return json_response
 
     def delete_thread(self):
         thread = self._create_or_retrieve_thread()
