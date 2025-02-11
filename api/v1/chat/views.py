@@ -35,7 +35,7 @@ class Chat(APIView):
                     messages=None,
                     username="John Doe",
                     user_input=user_input,
-                    image_url=f"{self.image_url}/current/user_{user_id}.jpg",
+                    user_id=user_id,
                     thread_id=thread_id,
                     assistant_id=assistant_id
                 )

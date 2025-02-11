@@ -1,6 +1,7 @@
 from dotenv import load_dotenv
 from services.llm import LLMService
 import os
+from services.files import B2FileService
 
 def get_rain_probability(location):
     import random
@@ -15,7 +16,9 @@ class ChatService():
         load_dotenv()
         self.api_key = os.getenv("open_ai")
 
-    def generate_response(self, messages, username, user_input, image_url, thread_id, assistant_id):
+    def generate_response(self, messages, username, user_input, user_id, thread_id, assistant_id):
+        file_service = B2FileService()
+        image_url = file_service.get_current_file_url(user_id)
         available_tools = {
             "get_rain_probability": get_rain_probability
         }
