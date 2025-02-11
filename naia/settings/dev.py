@@ -44,6 +44,7 @@ REST_FRAMEWORK = {
         'rest_framework.renderers.JSONRenderer',
         'rest_framework.renderers.BrowsableAPIRenderer',
     ],
+    'DEFAULT_SCHEMA_CLASS': 'drf_spectacular.openapi.AutoSchema',
 }
 
 CACHES = {
@@ -79,3 +80,12 @@ INTERNAL_IPS = [
     '127.0.0.1',
     'localhost',
 ]
+
+
+SPECTACULAR_SETTINGS = {
+    'TITLE': 'NAIA V2 API',
+    'DESCRIPTION': 'API for NAIA V2',
+    'VERSION': '1.0.0',
+    'SERVE_INCLUDE_SCHEMA': False,
+    'SCHEMA_PATH_FORMAT': '/{path}/',
+}
