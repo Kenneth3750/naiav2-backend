@@ -37,6 +37,7 @@ INSTALLED_APPS = [
     'apps.users',
     'rest_framework_simplejwt.token_blacklist',
     'corsheaders',
+    'drf_spectacular',
 ]
 
 
