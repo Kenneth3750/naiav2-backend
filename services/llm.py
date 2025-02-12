@@ -1,33 +1,57 @@
 from openai import OpenAI
+import openai
 import json
-
-
+from dotenv import load_dotenv
+import os
 class LLMService:
-    def __init__(self, api_key, available_tools, thread_id, assistant_id):
+    def __init__(self, available_tools, thread_id, assistant_id):
+        load_dotenv()
         self.assistant_id = assistant_id
-        self.client = OpenAI(api_key=api_key)
+        self.client = OpenAI(api_key=os.getenv("open_ai"))
         self.available_tools = available_tools
         self.thread_id = thread_id
 
-    def init_conversation(self, messages, username):
-        if messages:
-            messages_array = json.loads(messages)
-            messages_array.insert(0, {
-                "role": "user",
-                "content": f"This is just an info message. From now on you will address me as {username}. If you used to call me by another name, do not use it cause this is a different person using this app."
-            })
+    def _init_conversation(self, messages, username, user_input, image_url):
+        if not self.thread_id:
+            if messages:
+                messages_array = json.loads(messages)
+                messages_array.insert(0, {
+                    "role": "user",
+                    "content": f"This is just an info message. From now on you will address me as {username}. If you used to call me by another name, do not use it cause this is a different person using this app."
+                })
+            else:
+                messages_array = [{
+                    "role": "user",
+                    "content": f"This is just an info message. From now on you will address me as {username}."
+                }]
+            messages_array.insert(0, self._create_message_input(user_input, image_url))
+            thread = self.client.beta.threads.create()
+            for msg in reversed(messages_array):  
+                self.client.beta.threads.messages.create(
+                    thread_id=thread.id,
+                    role=msg["role"],
+                    content=msg["content"]
+                )
         else:
-            messages_array = [{
-                "role": "user",
-                "content": f"This is just an info message. From now on you will address me as {username}."
-            }]
-        self.messages_array = messages_array
+            print("Recuperando el thread existente...")
+            try:
+                thread = self.client.beta.threads.retrieve(self.thread_id)
+                print("Thread recuperado con id: ", thread.id)
+            except Exception as e:
+                raise Exception("Failed to retrieve thread:", e)
+            self.client.beta.threads.messages.create(
+                thread_id=thread.id,
+                role="user",
+                content=f"This is just an info message. From now on you will address me as {username}. If you used to call me by another name, do not use it cause this is a different person using this app."
+            )
+            new_input = self._create_message_input(user_input, image_url)
+            self.client.beta.threads.messages.create(
+                thread_id=thread.id,
+                role="user",
+                content=new_input["content"]
+            )
+        return thread
     
-    def _create_or_retrieve_thread(self):
-        if self.thread_id:
-            return self.client.beta.threads.retrieve(self.thread_id)
-        return self.client.beta.threads.create()
-
     def _create_message_input(self, user_input, image_url):
         return {
                 "role": "user", 
@@ -46,19 +70,12 @@ class LLMService:
                 ],
             }
     
-    def _create_message_array(self):
-        thread = self._create_or_retrieve_thread()
-        for msg in reversed(self.messages_array):  
-            self.client.beta.threads.messages.create(
-                thread_id=thread.id,
-                role=msg["role"],
-                content=msg["content"]
-            )
-        return thread
+    def retrieve_thread_messages(self):
+        return self.client.beta.threads.messages.list(thread_id=self.thread_id)
+
     
-    def generate_response(self, user_input, image_url):
-        self.messages_array.insert(0, self._create_message_input(user_input, image_url))
-        thread = self._create_message_array()
+    def generate_response(self, user_input, image_url, username, messages):
+        thread = self._init_conversation(messages, username, user_input, image_url)
         run = self.client.beta.threads.runs.create_and_poll(
             thread_id=thread.id,
             assistant_id=self.assistant_id
@@ -137,9 +154,13 @@ class LLMService:
         }
 
         return json_response
-
-    def delete_thread(self):
-        thread = self._create_or_retrieve_thread()
-        self.client.beta.threads.delete(thread_id=thread.id)
-        return "Thread deleted successfully." 
-
+    
+    @staticmethod
+    def delete_thread(thread_id):
+        client = OpenAI(api_key=os.getenv("open_ai"))
+        try:
+            client.beta.threads.delete(thread_id)
+        except Exception as e:
+            print("Failed to delete thread:", e)
+        else:
+            print("Thread deleted successfully.")
