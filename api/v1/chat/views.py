@@ -32,7 +32,6 @@ class Chat(APIView):
                 assistant_id = serializer.validated_data['assistant_id']
 
                 response = self.chat_service.generate_response(
-                    messages=None,
                     username="John Doe",
                     user_input=user_input,
                     user_id=user_id,
@@ -42,5 +41,16 @@ class Chat(APIView):
                 return Response(response, status=status.HTTP_200_OK)
             else:
                 return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        except Exception as e:
+            return Response(str(e), status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+            
+    def delete(self, request):
+        try:
+            thread_id = request.query_params.get('thread_id')
+            if not thread_id:
+                return Response({"error": "Thread ID is required"}, status=status.HTTP_400_BAD_REQUEST)
+            
+            self.chat_service.delete_current_thread(thread_id)
+            return Response("Thread deleted successfully", status=status.HTTP_200_OK)
         except Exception as e:
             return Response(str(e), status=status.HTTP_500_INTERNAL_SERVER_ERROR)
