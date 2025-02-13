@@ -73,8 +73,14 @@ class LLMService:
                 ],
             }
     
-    def retrieve_thread_messages(self):
-        return self.client.beta.threads.messages.list(thread_id=self.thread_id)
+    @staticmethod
+    def retrieve_thread_messages(thread_id):
+        load_dotenv()
+        client = OpenAI(api_key=os.getenv("open_ai"))
+        try:
+            return client.beta.threads.messages.list(thread_id=thread_id)
+        except Exception as e:
+            raise Exception("Failed to retrieve thread messages:", e)
 
     
     def generate_response(self, user_input, image_url, username, messages):
@@ -165,6 +171,7 @@ class LLMService:
     
     @staticmethod
     def delete_thread(thread_id):
+        load_dotenv()
         client = OpenAI(api_key=os.getenv("open_ai"))
         try:
             client.beta.threads.delete(thread_id)
