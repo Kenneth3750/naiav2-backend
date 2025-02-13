@@ -5,11 +5,11 @@ from django.utils import timezone
 
 class ChatRepository:
     @staticmethod
-    def get_last_conversation(user):
-        return Chat.objects.filter(user_id=user).order_by('-created_at').first()
+    def get_last_conversation(user, role_id):
+        return Chat.objects.filter(user_id=user, rol=role_id).order_by('-created_at').first()
     
     @staticmethod
-    def get_or_create_today_conversation(user, message_data, rol):
+    def update_or_create_today_conversation(user, message_data, rol):
         today = timezone.now().date()
         last_chat= ChatRepository.get_last_conversation(user)
         
@@ -19,7 +19,6 @@ class ChatRepository:
             last_chat.save()
             return last_chat, False
         
-        #create new conversation
         return Chat.objects.create(
             user_id=user,
             message=message_data,
