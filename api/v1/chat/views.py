@@ -36,7 +36,7 @@ class Chat(APIView):
                     user_input=user_input,
                     user_id=user_id,
                     thread_id=thread_id,
-                    assistant_id=assistant_id
+                    assistant_id=assistant_id,
                 )
                 return Response(response, status=status.HTTP_200_OK)
             else:

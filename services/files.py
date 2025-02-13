@@ -18,11 +18,11 @@ class B2FileService:
         return b2_api
     
     def _get_download_token(self, flag):
-        b2api = self._get_b2_api()
-        bucket = b2.Bucket(b2api, self.bucket_id, name=self.bucket_name)
+        b2_api = self._get_b2_api()
+        bucket = b2.Bucket(b2_api, self.bucket_id, name=self.bucket_name) 
         if flag == "image":
-            token = bucket.get_download_authorization(self.image_prefix, valid_duration_in_seconds=180)
-        return token, b2api
+            token = bucket.get_download_authorization(self.image_prefix, valid_duration_in_seconds=86400)
+        return token, b2_api
     
     def get_current_file_url(self, user_id):
         token, b2_api = self._get_download_token("image")

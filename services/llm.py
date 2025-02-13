@@ -45,6 +45,9 @@ class LLMService:
                 content=f"This is just an info message. From now on you will address me as {username}. If you used to call me by another name, do not use it cause this is a different person using this app."
             )
             new_input = self._create_message_input(user_input, image_url)
+            print("Creando nuevo mensaje...")
+            print(new_input)
+            print("*"*50)
             self.client.beta.threads.messages.create(
                 thread_id=thread.id,
                 role="user",
@@ -85,8 +88,13 @@ class LLMService:
                 thread_id=thread.id
             )
             print(message_response)
+
         else:
             print(run.status)
+
+        if run.status == "failed":
+            print(run)
+            raise Exception("Failed to run model")
         if run.required_action is not None:
             tool_outputs = []
             for tool in run.required_action.submit_tool_outputs.tool_calls:
@@ -161,6 +169,4 @@ class LLMService:
         try:
             client.beta.threads.delete(thread_id)
         except Exception as e:
-            print("Failed to delete thread:", e)
-        else:
-            print("Thread deleted successfully.")
+            raise Exception("Failed to delete thread:", e)
