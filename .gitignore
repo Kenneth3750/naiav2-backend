@@ -4,7 +4,8 @@ naia/settings/local.py
 db.sqlite3
 __pycache__/
 venv/
-prueba.py
+
 *ipynb
 *json
 *jpg
+prueba*
