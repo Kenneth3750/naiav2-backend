@@ -22,7 +22,7 @@ class Chat(models.Model):
     updated_at = models.DateTimeField(auto_now=True)
     
     def __str__(self):
-        return self.name
+        return f"{self.user_id} - {self.rol} - {self.message}"
 
 
 
