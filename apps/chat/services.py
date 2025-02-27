@@ -1,6 +1,7 @@
 from dotenv import load_dotenv
 from services.llm import LLMService
 import os
+import json
 from services.files import B2FileService
 from .repositories import ChatRepository
 
@@ -10,21 +11,58 @@ def get_rain_probability(location):
     print("Función get_rain_probability ejecutada")
     return "The probability of rain in {} is {}%".format(location, random_temp)
 
+tools = [
+    {
+        "type": "function",
+        "function": {
+            "name": "get_rain_probability",
+            "description": "Get the probability of rain for a specific location",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "location": {
+                        "type": "string",
+                        "description": "The city and state, e.g., San Francisco, CA"
+                    }
+                },
+                "required": [
+                    "location"
+                ]
+            }
+        }
+    }
+]
+
 
 
 class ChatService():
-    def generate_response(self, username, user_input, user_id, thread_id, assistant_id, is_first_message):
-        role_id = 1
+    def generate_response(self, username, user_input, user_id, role_id):
         file_service = B2FileService()
         image_url = file_service.get_current_file_url(user_id)
-        messages = None
-        if not thread_id:
+        messages = ChatRepository.get_current_conversation(user_id, role_id)
+        if not messages:
+            print("No hay mensajes guardados en redis, buscando en la base de datos...")
             messages = ChatRepository.get_last_conversation(user_id, role_id)
+            print("mensajes", messages)
         available_tools = {
             "get_rain_probability": get_rain_probability
         }
-        llm_service = LLMService(available_tools, thread_id, assistant_id)
-        return llm_service.generate_response(user_input, image_url, username, messages)
+        system_prompt = "You are a helpful assistant. You can provide information about the weather, news, or any other topic. Be chatty and friendly. Your name is NAIA. About the images on each input you just need to say nice comments about the user clothes or the background."
+        llm_service = LLMService(available_tools, tools, system_prompt)
+        response = llm_service.generate_response(user_input, image_url, username, messages)
+        print("Guardando conversación actual...")
+        ChatRepository.save_current_conversation(user_id, role_id, json.dumps(response["messages"]))
+        return response
     
-    def delete_current_thread(self, thread_id):
-        LLMService.delete_thread(thread_id)
+    def delete_current_conversation(self, user_id, role_id):
+        ChatRepository.delete_current_conversation(user_id, role_id)
+
+    def save_current_conversation(self, user_id, role_id):
+        messages = ChatRepository.get_current_conversation(user_id, role_id)
+        ChatRepository.update_or_create_today_conversation(user_id, messages, role_id)
+
+    def get_conversation(self, user_id, role_id):
+        messages = ChatRepository.get_current_conversation(user_id, role_id)
+        if not messages:
+            messages = ChatRepository.get_last_conversation(user_id, role_id)
+        return json.loads(messages)
