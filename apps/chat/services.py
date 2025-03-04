@@ -4,6 +4,9 @@ import os
 import json
 from services.files import B2FileService
 from .repositories import ChatRepository
+from .functions import num_tokens_from_messages
+
+max_tokens = 3000
 
 def get_rain_probability(location):
     import random
@@ -47,11 +50,16 @@ class ChatService():
         available_tools = {
             "get_rain_probability": get_rain_probability
         }
+        num_tokens = num_tokens_from_messages(json.loads(messages))
         system_prompt = "You are a helpful assistant. You can provide information about the weather, news, or any other topic. Be chatty and friendly. Your name is NAIA. About the images on each input you just need to say nice comments about the user clothes or the background."
         llm_service = LLMService(available_tools, tools, system_prompt)
         response = llm_service.generate_response(user_input, image_url, username, messages)
         print("Guardando conversación actual...")
         ChatRepository.save_current_conversation(user_id, role_id, json.dumps(response["messages"]))
+        response["num_tokens"] = num_tokens
+        if num_tokens >= max_tokens:
+            response["warning"] = "The conversation has reached the maximum number of tokens. The conversation will be resumed."
+        response.pop("messages")
         return response
     
     def delete_current_conversation(self, user_id, role_id):
@@ -59,10 +67,28 @@ class ChatService():
 
     def save_current_conversation(self, user_id, role_id):
         messages = ChatRepository.get_current_conversation(user_id, role_id)
+        messages = self.make_resume(messages)
         ChatRepository.update_or_create_today_conversation(user_id, messages, role_id)
+
+    
+    def save_and_update_current_conversation(self, user_id, role_id):
+        messages = ChatRepository.get_current_conversation(user_id, role_id)
+        messages = self.make_resume(messages)
+        ChatRepository.update_or_create_today_conversation(user_id, messages, role_id)
+        ChatRepository.save_current_conversation(user_id, role_id, json.dumps(messages))
+
 
     def get_conversation(self, user_id, role_id):
         messages = ChatRepository.get_current_conversation(user_id, role_id)
         if not messages:
             messages = ChatRepository.get_last_conversation(user_id, role_id)
+        messages = self.make_resume(messages)
         return json.loads(messages)
+
+    def make_resume(self, messages):
+        num_tokens = num_tokens_from_messages(json.loads(messages))
+        if num_tokens > max_tokens:
+            new_messages = LLMService.make_resume(messages)
+            return new_messages
+        return messages
+        

@@ -4,6 +4,7 @@ from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status
 from django.utils.decorators import method_decorator
+from rest_framework.decorators import api_view, permission_classes
 from django.views.decorators.cache import cache_page
 from rest_framework.permissions import IsAuthenticated
 from drf_spectacular.utils import extend_schema, OpenApiParameter, OpenApiExample
@@ -74,3 +75,19 @@ class ChatMessages(APIView):
             return Response(messages, status=status.HTTP_200_OK)
         except Exception as e:
             return Response(str(e), status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+        
+@api_view(["POST"])
+@permission_classes([IsAuthenticated])
+def make_resume(request):
+    try:
+        serializer = ChatMessagesSerializer(data=request.data)
+        if serializer.is_valid():
+            chat = ChatService()
+            user_id = serializer.validated_data['user_id']
+            role_id = serializer.validated_data['role_id']
+            chat.save_and_update_current_conversation(user_id, role_id)
+            return Response({"message": "Conversación guardada"}, status=status.HTTP_200_OK)
+        else:
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+    except Exception as e:
+        return Response(str(e), status=status.HTTP_500_INTERNAL_SERVER_ERROR)
