@@ -3,57 +3,40 @@ import openai
 import json
 from dotenv import load_dotenv
 import os
+import time
+import tiktoken
+import time
 class LLMService:
-    def __init__(self, available_tools, thread_id, assistant_id):
+    def __init__(self, available_tools, tools, system_prompt):
         load_dotenv()
-        self.assistant_id = assistant_id
+        self.system_prompt = system_prompt
         self.client = OpenAI(api_key=os.getenv("open_ai"))
         self.available_tools = available_tools
-        self.thread_id = thread_id
+        self.tools = tools
 
     def _init_conversation(self, messages, username, user_input, image_url):
-        if not self.thread_id:
-            if messages:
-                messages_array = json.loads(messages)
-                messages_array.insert(0, {
-                    "role": "user",
-                    "content": f"This is just an info message. From now on you will address me as {username}. If you used to call me by another name, do not use it cause this is a different person using this app."
-                })
-            else:
-                messages_array = [{
-                    "role": "user",
-                    "content": f"This is just an info message. From now on you will address me as {username}."
-                }]
-            messages_array.insert(0, self._create_message_input(user_input, image_url))
-            thread = self.client.beta.threads.create()
-            for msg in reversed(messages_array):  
-                self.client.beta.threads.messages.create(
-                    thread_id=thread.id,
-                    role=msg["role"],
-                    content=msg["content"]
-                )
+        if messages:
+            print("Mensajes desde la base de datos.... ")
+            messages_array = json.loads(messages)
+            messages_array.insert(0, {"role": "developer", "content": self.system_prompt})
+            messages_array.append({
+                "role": "user",
+                "content": f"This is just an info message. From now on you will address me as {username}. If you used to call me by another name, do not use it cause this is a different person using this app."
+            })
         else:
-            print("Recuperando el thread existente...")
-            try:
-                thread = self.client.beta.threads.retrieve(self.thread_id)
-                print("Thread recuperado con id: ", thread.id)
-            except Exception as e:
-                raise Exception("Failed to retrieve thread:", e)
-            self.client.beta.threads.messages.create(
-                thread_id=thread.id,
-                role="user",
-                content=f"This is just an info message. From now on you will address me as {username}. If you used to call me by another name, do not use it cause this is a different person using this app."
-            )
-            new_input = self._create_message_input(user_input, image_url)
-            print("Creando nuevo mensaje...")
-            print(new_input)
-            print("*"*50)
-            self.client.beta.threads.messages.create(
-                thread_id=thread.id,
-                role="user",
-                content=new_input["content"]
-            )
-        return thread
+            print("No hay mensajes desde la base de datos, iniciando conversación...")
+            messages_array = [{
+                "role": "developer",
+                "content": self.system_prompt
+            },
+            {
+                "role": "user",
+                "content": f"This is just an info message. From now on you will address me as {username}."
+            }]
+
+        messages_array.append(self._create_message_input(user_input, image_url))
+
+        return messages_array
     
     def _create_message_input(self, user_input, image_url):
         return {
@@ -73,6 +56,11 @@ class LLMService:
                 ],
             }
     
+    def _eliminate_image_from_message(self, messages):
+        for message in messages:
+            if isinstance(message["content"], list):
+                message["content"] = [item for item in message["content"] if item["type"] != "image_url"]
+        return messages
     @staticmethod
     def retrieve_thread_messages(thread_id):
         load_dotenv()
@@ -84,90 +72,73 @@ class LLMService:
 
     
     def generate_response(self, user_input, image_url, username, messages):
-        thread = self._init_conversation(messages, username, user_input, image_url)
-        run = self.client.beta.threads.runs.create_and_poll(
-            thread_id=thread.id,
-            assistant_id=self.assistant_id
+        messages = self._init_conversation(messages, username, user_input, image_url)
+        start_time = time.time()
+        completions = self.client.chat.completions.create(
+            model="gpt-4o-mini",  
+            messages=messages,
+            tools=self.tools
         )
-        if run.status == 'completed':
-            message_response = self.client.beta.threads.messages.list(
-                thread_id=thread.id
-            )
-            print(message_response)
-
-        else:
-            print(run.status)
-
-        if run.status == "failed":
-            print(run)
-            raise Exception("Failed to run model")
-        if run.required_action is not None:
-            tool_outputs = []
-            for tool in run.required_action.submit_tool_outputs.tool_calls:
-                if tool.function.name in self.available_tools.keys():
-                    function_to_call = self.available_tools[tool.function.name]
-                    function_args = json.loads(tool.function.arguments)
-                    tool_output = function_to_call(**function_args)
-                    tool_outputs.append(
-                        {
-                            "tool_call_id": tool.id,
-                            "output": tool_output
+        response = completions.choices[0].message
+        if response.content is not None:
+            assistant_message = {"role": "assistant", "content": response.content}
+            messages.append(assistant_message)
+            messages.pop(0)  # Remove the developer message
+            messages = self._eliminate_image_from_message(messages)
+            end_time = time.time()
+            response_time = end_time - start_time
+            json_response = {
+                "response": response.content,
+                "messages": messages,
+                "response_time": response_time
+            }
+            return json_response
+        tool_calls = response.tool_calls
+        if tool_calls:
+            assistant_message = {
+                "role": "assistant",
+                "content": None,
+                "tool_calls": [
+                    {
+                        "id": tool_call.id,
+                        "type": "function",  # Añadido el campo type
+                        "function": {
+                            "name": tool_call.function.name,
+                            "arguments": tool_call.function.arguments
                         }
-                    )
+                    } for tool_call in tool_calls
+                ]
+            }
+            messages.append(assistant_message)
+            
+            for tool_call in tool_calls:
+                if tool_call.function.name in self.available_tools.keys():
+                    function_to_call = self.available_tools[tool_call.function.name]
+                    function_args = json.loads(tool_call.function.arguments)
+                    tool_output = function_to_call(**function_args)
+                    messages.append({
+                        "role": "tool",
+                        "tool_call_id": tool_call.id,
+                        "content": str(tool_output)
+                    })
 
-            if tool_outputs:
-                try:
-                    run = self.client.beta.threads.runs.submit_tool_outputs_and_poll(
-                    thread_id=thread.id,
-                    run_id=run.id,
-                    tool_outputs=tool_outputs
-                    )
-                    print("Tool outputs submitted successfully.")
-                except Exception as e:
-                    print("Failed to submit tool outputs:", e)
-                else:
-                    print("No tool outputs to submit.")
+            second_response = self.client.chat.completions.create(
+                model="gpt-4o-mini",
+                messages=messages,
+                tools=self.tools,
+            )
 
-
-            if run.status == 'completed':
-                message_response = self.client.beta.threads.messages.list(
-                    thread_id=thread.id
-                )
-                print(message_response)
-            else:
-                print(run.status)
-        
-        messages = []
-        for msg in message_response.data:
-            if msg.role == "assistant" and hasattr(msg, "tool_calls"):
-                messages.append({
-                    "role": msg.role,
-                    "content": " ".join(content.text.value for content in msg.content if hasattr(content, "text")),
-                    "tool_calls": [
-                        {
-                            "function_name": tool.function.name,
-                            "arguments": tool.function.arguments,
-                            "tool_call_id": tool.id
-                        } for tool in msg.tool_calls
-                    ]
-                })
-            else:
-                messages.append({
-                    "role": msg.role,
-                    "content": " ".join(content.text.value for content in msg.content if hasattr(content, "text"))
-                })
-        response = messages[0]["content"]
-        print("*"*50)
-        print("message_data", response)
-        print("*"*50)
-
-        json_response = {
-            "messages": messages,
-            "response": response,
-            "thread_id": thread.id
-        }
-
-        return json_response
+            final_message = {"role": "assistant", "content": second_response.choices[0].message.content}
+            messages.append(final_message)
+            messages.pop(0)
+            messages = self._eliminate_image_from_message(messages)  
+            end_time = time.time()
+            json_response = {
+                "response": second_response.choices[0].message.content,
+                "messages": messages,
+                "response_time": end_time - start_time
+            }
+            return json_response
     
     @staticmethod
     def delete_thread(thread_id):
@@ -177,3 +148,43 @@ class LLMService:
             client.beta.threads.delete(thread_id)
         except Exception as e:
             raise Exception("Failed to delete thread:", e)
+        
+
+    @staticmethod 
+    def make_resume(messages):
+        try:
+            client = OpenAI(api_key=os.getenv("open_ai"))
+            model = "gpt-4o-mini"
+
+            messages = json.loads(messages)
+
+            resume_prompt = """This conversation is near to exceed the context window of an AI model.
+            Your task is to summarize the json in a way that the AI can understand the context of the conversation 
+            and have a strong memory of the user's preferences.
+            You must respond with only a text message that summarizes the json. 
+            You must start the message with the words "Summary of last conversation:".
+            Do not add any other information to the response. Do not greet the user or ask questions. 
+            Do not add anything different from the summary.
+            Make sure to add on the resume specific details that the AI should remember about the user and the conversation. 
+            Details like specific names, dates, places, numbers, and any othe relevant information."""
+
+            messages.append({
+                "role": "developer",
+                "content": resume_prompt
+            })
+
+            completion = client.chat.completions.create(
+                model=model,
+                messages=messages
+            )
+            resume_text = completion.choices[0].message.content
+    
+            # Crear nuevos mensajes con el resumen
+            new_messages = [
+                {"role": "user", "content": resume_text}
+            ]
+
+            return new_messages
+        except Exception as e:
+            raise Exception("Failed to make resume:", e)
+
