@@ -39,6 +39,8 @@ INSTALLED_APPS = [
     'rest_framework_simplejwt.token_blacklist',
     'corsheaders',
     'drf_spectacular',
+    'apps.roles',
+    'apps.researcher',
 ]
 
 
