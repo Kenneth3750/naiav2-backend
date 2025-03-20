@@ -91,3 +91,25 @@ def make_resume(request):
             return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
     except Exception as e:
         return Response(str(e), status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+    
+@api_view(["POST"])
+@permission_classes([IsAuthenticated])
+def upload_current_image(request):
+    try:
+        user_id = request.data.get('user_id')
+        image = request.FILES.get('image')
+        
+        if not user_id or not image:
+            return Response({"error": "user_id y image son requeridos"}, status=status.HTTP_400_BAD_REQUEST)
+        
+        if not image.content_type.startswith('image/'):
+            return Response({"error": "El archivo debe ser una imagen"}, status=status.HTTP_400_BAD_REQUEST)
+
+        chat = ChatService()
+        result = chat.upload_image(user_id, image)
+        
+        return Response({"message": "Imagen subida"}, status=status.HTTP_200_OK)
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)

@@ -28,3 +28,34 @@ class B2FileService:
         token, b2_api = self._get_download_token("image")
         download_url = b2_api.account_info.get_download_url()
         return f"{download_url}/file/{self.bucket_name}/{self.image_prefix}/user_{user_id}.jpg?Authorization={token}"
+    
+    def upload_image(self, user_id, image):
+        b2_api = self._get_b2_api()
+        bucket = b2.Bucket(b2_api, self.bucket_id, name=self.bucket_name)
+
+        if hasattr(image, 'read'):
+            image_data = image.read()
+        else:
+            image_data = image
+        filename = f"{self.image_prefix}/user_{user_id}.jpg"
+
+        try:
+            # Buscamos el archivo existente
+            file_versions = bucket.list_file_versions(filename)
+            for file_version in file_versions:
+                if file_version.file_name == filename:
+                    bucket.delete_file_version(file_version.id_, filename)
+                    print(f"Archivo anterior eliminado: {filename}")
+                    break
+        except Exception as e:
+            print(f"Advertencia al intentar eliminar archivo anterior: {str(e)}")
+        
+        content_type = getattr(image, 'content_type', 'image/jpeg')
+        
+        file_info = bucket.upload_bytes(
+            data_bytes=image_data,
+            file_name=filename,
+            content_type=content_type
+        )
+
+        return True

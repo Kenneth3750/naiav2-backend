@@ -181,7 +181,7 @@ class LLMService:
     
             # Crear nuevos mensajes con el resumen
             new_messages = [
-                {"role": "user", "content": resume_text}
+                {"role": "developer", "content": resume_text}
             ]
 
             return new_messages

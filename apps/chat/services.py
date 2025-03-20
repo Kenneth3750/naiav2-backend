@@ -9,6 +9,9 @@ from apps.roles.services import RoleService
 
 max_tokens = 3000
 
+def read_json_transcript(json_file_path):
+    with open(json_file_path, "r") as json_file:
+        return json.load(json_file)
 
 class ChatService():
     def generate_response(self, username, user_input, user_id, role_id):
@@ -24,9 +27,11 @@ class ChatService():
         response = llm_service.generate_response(user_input, image_url, username, messages)
         ChatRepository.save_current_conversation(user_id, role_id, json.dumps(response["messages"]))
         response["num_tokens"] = num_tokens
+        response["response"] = json.loads(response["response"])
         if num_tokens >= max_tokens:
             response["warning"] = "The conversation has reached the maximum number of tokens. The conversation will be resumed."
         response.pop("messages")
+        # response['lipsync'] = read_json_transcript("default.json")
         return response
     
     def delete_current_conversation(self, user_id, role_id):
@@ -50,7 +55,15 @@ class ChatService():
         if not messages:
             messages = ChatRepository.get_last_conversation(user_id, role_id)
         messages = self.make_resume(messages)
-        return json.loads(messages)
+        messages = json.loads(messages)
+        for message in messages:
+            if message["role"] == "assistant":
+                if isinstance(message["content"], str):
+                    try:
+                        message["content"] = json.loads(message["content"])
+                    except json.JSONDecodeError:
+                        pass
+        return messages
 
     def make_resume(self, messages):
         num_tokens = num_tokens_from_messages(json.loads(messages))
@@ -58,4 +71,10 @@ class ChatService():
             new_messages = LLMService.make_resume(messages)
             return new_messages
         return messages
-        
+    
+    def upload_image(self, user_id, image):
+        file_service = B2FileService()
+        is_uploaded = file_service.upload_image(user_id, image)
+        if not is_uploaded:
+            raise Exception("The image could not be uploaded. Check the B2 service.")
+        pass        
