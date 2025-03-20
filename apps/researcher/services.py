@@ -1,4 +1,4 @@
-
+from .functions import scholar_search
 
 class ResearcherService:
     def retrieve_tools(self):
@@ -6,18 +6,23 @@ class ResearcherService:
                     {
                         "type": "function",
                         "function": {
-                            "name": "get_rain_probability",
-                            "description": "Get the probability of rain for a specific location",
+                            "name": "scholar_search",
+                            "description": "Search for reaserch papers on Google Scholar",
                             "parameters": {
                                 "type": "object",
                                 "properties": {
-                                    "location": {
+                                    "query": {
                                         "type": "string",
-                                        "description": "The city and state, e.g., San Francisco, CA"
-                                    }
+                                        "description": "The search query"
+                                    },
+                                    "num_results": {
+                                        "type": "integer",
+                                        "description": "The number of results to return"
+                                    },
                                 },
                                 "required": [
-                                    "location"
+                                    "query",
+                                    "num_results"
                                 ]
                             }
                         }
@@ -25,7 +30,7 @@ class ResearcherService:
                 ]
         
         available_functions = {
-            "get_rain_probability": get_rain_probability
+            "scholar_search": scholar_search
         }
 
         system_prompt = """ You are a virtual avatar with voice named NAIA. You will always reply with only a JSON array of messages. Without a maximun number of messages, but preferibly not more than 7 messages per response. Do not add more text different from the JSON array of messages.
@@ -39,11 +44,5 @@ class ResearcherService:
         Your role is an assistant that relies on writing and research support for a researcher, be always polite and professional. If the user asks for a tasks that you are not aimed to do, you must tell him/her that you are not able to do it."""
 
         return tools, available_functions, system_prompt
-            
 
-def get_rain_probability(location):
-    import random
-    random_temp = random.randint(0, 100)
-    print("Función get_rain_probability ejecutada")
-    return "The probability of rain in {} is {}%".format(location, random_temp)
 
