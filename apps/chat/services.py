@@ -14,7 +14,7 @@ def read_json_transcript(json_file_path):
         return json.load(json_file)
 
 class ChatService():
-    def generate_response(self, username, user_input, user_id, role_id):
+    def generate_response(self, user_input, user_id, role_id):
         file_service = B2FileService()
         role = RoleService(role_id)
         tools, available_tools, system_prompt = role.get_role()
@@ -24,7 +24,7 @@ class ChatService():
             messages = ChatRepository.get_last_conversation(user_id, role_id)
         num_tokens = num_tokens_from_messages(json.loads(messages)) if messages else 0
         llm_service = LLMService(available_tools, tools, system_prompt)
-        response = llm_service.generate_response(user_input, image_url, username, messages)
+        response = llm_service.generate_response(user_input, image_url, messages)
         ChatRepository.save_current_conversation(user_id, role_id, json.dumps(response["messages"]))
         response["num_tokens"] = num_tokens
         response["response"] = json.loads(response["response"])

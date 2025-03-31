@@ -32,7 +32,6 @@ class Chat(APIView):
                 role_id = serializer.validated_data['role_id']
                 start_time = time.time()
                 response = self.chat_service.generate_response(
-                    username="John Doe",
                     user_input=user_input,
                     user_id=user_id,
                     role_id=role_id,
