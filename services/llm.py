@@ -79,6 +79,7 @@ class LLMService:
             messages=messages,
             tools=self.tools
         )
+        function_results = []
         response = completions.choices[0].message
         if response.content is not None:
             assistant_message = {"role": "assistant", "content": response.content}
@@ -90,10 +91,12 @@ class LLMService:
             json_response = {
                 "response": response.content,
                 "messages": messages,
-                "response_time": response_time
+                "response_time": response_time,
+                "function_results": function_results
             }
             return json_response
         tool_calls = response.tool_calls
+
         if tool_calls:
             assistant_message = {
                 "role": "assistant",
@@ -122,6 +125,16 @@ class LLMService:
                         "content": str(tool_output)
                     })
 
+                    try:
+                        tool_output_json = json.loads(tool_output)
+                        if isinstance(tool_output_json, dict) and "display" in tool_output_json:
+                            function_results.append({
+                                "tool_call_id": tool_call.id,
+                                "display": tool_output_json["display"]
+                            })
+                    except json.JSONDecodeError:
+                        pass  
+
             second_response = self.client.chat.completions.create(
                 model="gpt-4o-mini",
                 messages=messages,
@@ -136,7 +149,8 @@ class LLMService:
             json_response = {
                 "response": second_response.choices[0].message.content,
                 "messages": messages,
-                "response_time": end_time - start_time
+                "response_time": end_time - start_time,
+                "function_results": function_results
             }
             return json_response
     
