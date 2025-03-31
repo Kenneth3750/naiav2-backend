@@ -14,24 +14,16 @@ class LLMService:
         self.available_tools = available_tools
         self.tools = tools
 
-    def _init_conversation(self, messages, username, user_input, image_url):
+    def _init_conversation(self, messages, user_input, image_url):
         if messages:
             print("Mensajes desde la base de datos.... ")
             messages_array = json.loads(messages)
             messages_array.insert(0, {"role": "developer", "content": self.system_prompt})
-            messages_array.append({
-                "role": "user",
-                "content": f"This is just an info message. From now on you will address me as {username}. If you used to call me by another name, do not use it cause this is a different person using this app."
-            })
         else:
             print("No hay mensajes desde la base de datos, iniciando conversación...")
             messages_array = [{
                 "role": "developer",
                 "content": self.system_prompt
-            },
-            {
-                "role": "user",
-                "content": f"This is just an info message. From now on you will address me as {username}."
             }]
 
         messages_array.append(self._create_message_input(user_input, image_url))
@@ -71,8 +63,8 @@ class LLMService:
             raise Exception("Failed to retrieve thread messages:", e)
 
     
-    def generate_response(self, user_input, image_url, username, messages):
-        messages = self._init_conversation(messages, username, user_input, image_url)
+    def generate_response(self, user_input, image_url, messages):
+        messages = self._init_conversation(messages, user_input, image_url)
         start_time = time.time()
         completions = self.client.chat.completions.create(
             model="gpt-4o-mini",  
