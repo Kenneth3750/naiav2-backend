@@ -1,6 +1,10 @@
 from serpapi import GoogleSearch
 from dotenv import load_dotenv
 import os
+from openai import OpenAI
+import uuid 
+import json 
+from fpdf import FPDF
 
 def scholar_search(query="machine learning healthcare", num_results=3):
     
@@ -101,3 +105,4 @@ def convert_to_html(search_result):
     </style>
     """
     return {"display": html}
+

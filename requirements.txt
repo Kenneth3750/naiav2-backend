@@ -13,3 +13,6 @@ sqlparse==0.5.3
 tzdata==2025.1
 wheel==0.44.0
 google-search-results
+openai
+tiktoken
+fpdf2
