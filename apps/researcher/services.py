@@ -1,4 +1,4 @@
-from .functions import scholar_search
+from .functions import scholar_search, write_document
 
 class ResearcherService:
     def retrieve_tools(self):
@@ -26,11 +26,40 @@ class ResearcherService:
                                 ]
                             }
                         }
+                    },
+                    {
+                        "type": "function",
+                        "function": {
+                            "name": "write_document",
+                            "description": "Write a document based on the provided content",
+                            "parameters": {
+                                "type": "object",
+                                "properties": {
+                                    "query": {
+                                        "type": "string",
+                                        "description": "The content to write about"
+                                    },
+                                    "context": {
+                                        "type": "string",
+                                        "description": "The context or background information for the document, for default it is empty"
+                                    },
+                                },
+                                "required": [
+                                    "query"
+                                    
+                                ]
+                            }
+                        }
                     }
+
+
+
+
                 ]
         
         available_functions = {
-            "scholar_search": scholar_search
+            "scholar_search": scholar_search,
+            "write_document": write_document
         }
 
         system_prompt = """ You are a virtual avatar with voice named NAIA. You will always reply with only a JSON array of messages. Without a maximun number of messages, but preferibly not more than 7 messages per response. Do not add more text different from the JSON array of messages.

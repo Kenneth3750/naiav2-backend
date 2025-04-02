@@ -1,6 +1,10 @@
 from serpapi import GoogleSearch
 from dotenv import load_dotenv
 import os
+from openai import OpenAI
+import uuid 
+import json 
+from fpdf import FPDF
 
 def scholar_search(query="machine learning healthcare", num_results=3):
     
@@ -101,3 +105,30 @@ def convert_to_html(search_result):
     </style>
     """
     return {"display": html}
+
+
+def write_document(query, context=""):
+  load_dotenv()
+  client = OpenAI(
+      api_key= os.getenv("open_ai")
+  )
+
+  '''
+  This feature is responsible for generating specific documents based on the topic the user is consulting.
+  '''
+
+  messages = [{"role": "system", "content": f"You are an expert creating scientific documents. Generate comprehensive, well-structured academic content in markdown format with proper headings, citations, and detailed explanations."}]
+
+  if context:
+    messages.append({"role": "user", "content": f"here are some context about {context}"})
+
+  messages.append({"role": "user", "content": f"Generate a document based on this topic {query}"})
+
+  openai_response = client.chat.completions.create(
+      model = "gpt-4o",
+      messages = messages
+
+  )
+
+  messages.append({"role": "assistant", "content": openai_response.choices[0].message.content})
+  return openai_response.choices[0].message.content
