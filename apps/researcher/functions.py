@@ -44,7 +44,7 @@ def scholar_search(query="machine learning healthcare", num_results=3):
                 "link": result.get("link","N/A")
             }
             search_result["results"].append(research_information)
-             
+            print(f"Result {i}:")
         return convert_to_html(search_result)
         
     except Exception as e:
@@ -131,4 +131,4 @@ def write_document(query, context=""):
   )
 
   messages.append({"role": "assistant", "content": openai_response.choices[0].message.content})
-  return openai_response.choices[0].message.content
+  return {"pdf": openai_response.choices[0].message.content}
