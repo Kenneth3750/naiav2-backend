@@ -18,7 +18,6 @@ load_dotenv()
 
 
 class Chat(APIView):
-    permission_classes = [IsAuthenticated]  
     def __init__(self):
         self.chat_service = ChatService()
 
