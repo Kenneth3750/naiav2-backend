@@ -114,18 +114,10 @@ class LLMService:
                     messages.append({
                         "role": "tool",
                         "tool_call_id": tool_call.id,
-                        "content": str(tool_output)
+                        "content": str(json.dumps(tool_output))
                     })
-
-                    try:
-                        tool_output_json = json.loads(tool_output)
-                        if isinstance(tool_output_json, dict) and "display" in tool_output_json:
-                            function_results.append({
-                                "tool_call_id": tool_call.id,
-                                "display": tool_output_json["display"]
-                            })
-                    except json.JSONDecodeError:
-                        pass  
+                    function_results.append(tool_output)
+ 
 
             second_response = self.client.chat.completions.create(
                 model="gpt-4o-mini",
