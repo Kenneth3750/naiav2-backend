@@ -1,0 +1,24 @@
+name: NAIA CI/CD
+
+on:
+  push:
+    branches:
+      - [development]
+  pull_request:
+    branches:
+      - [main]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: [3.12.x]
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v2
+
+      - name: list files
+        run: |
+          echo "Listing files in the repository:"
+          ls -R
