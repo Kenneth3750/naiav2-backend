@@ -7,7 +7,7 @@ class RoleService:
             self.role = ResearcherService()
             print("RoleService Researcher")
         else:
-            raise Exception("Role not found")
+            raise Exception(f"Role {role_id} not found")
 
     def get_role(self):
         tools, available_functions, system_prompt = self.role.retrieve_tools()

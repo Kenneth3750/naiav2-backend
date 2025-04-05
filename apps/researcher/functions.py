@@ -1,13 +1,15 @@
-from serpapi import GoogleSearch
-from dotenv import load_dotenv
 import os
+
+from dotenv import load_dotenv
 from openai import OpenAI
-import uuid 
-import json 
-from fpdf import FPDF
+from serpapi import GoogleSearch
+
 
 def scholar_search(query="machine learning healthcare", num_results=3):
-    
+    """
+    This function searches for academic papers using Google Scholar API.
+    It retrieves the title, authors, snippet, and link of the papers.
+    """
     load_dotenv()
     api_key = os.getenv("SERPAPI_KEY")
 
@@ -20,35 +22,40 @@ def scholar_search(query="machine learning healthcare", num_results=3):
         "engine": "google_scholar",
         "q": query,
         "api_key": api_key,
-        "num": num_results
+        "num": num_results,
     }
 
     try:
         search = GoogleSearch(params)
         results = search.get_dict()
 
-        search_result={
-            "query": query,
-            "results":[]
-        }
-        
+        search_result = {"query": query, "results": []}
+
         print(f"\n=== Search Results for: {query} ===\n")
-        for i, result in enumerate(results.get("organic_results"),1):
+        for i, result in enumerate(results.get("organic_results"), 1):
             research_information = {
                 "result_number": i,
-                "title": result.get("title","N/A"),
-                "authors":[
-                    author.get("name","N/A") for author in result.get("publication_info", {}).get("authors", [])
+                "title": result.get("title", "N/A"),
+                "authors": [
+                    author.get("name", "N/A")
+                    for author in result.get("publication_info", {})
+                    .get("authors", [])
                 ],
-                "snippet": result.get("snippet","N/A"),
-                "link": result.get("link","N/A")
+                "snippet": result.get("snippet", "N/A"),
+                "link": result.get("link", "N/A"),
             }
             search_result["results"].append(research_information)
             print(f"Result {i}:")
         return convert_to_html(search_result)
-        
-    except Exception as e:
+
+    except (ValueError, TypeError, KeyError) as e:
         print(f"Error during search: {str(e)}")
+        raise ValueError(f"Error during search: {str(e)}") from e
+    except ConnectionError as e:
+        print(f"Connection error during search: {str(e)}")
+        error_msg = f"Connection error during search: {str(e)}"
+        raise ConnectionError(error_msg) from e
+
 
 def convert_to_html(search_result):
     """Convert search results to HTML format"""
@@ -57,8 +64,8 @@ def convert_to_html(search_result):
         <h2>Search Results for: {search_result['query']}</h2>
         <div class="results-container">
     """
-    
-    for result in search_result['results']:
+
+    for result in search_result["results"]:
         html += f"""
             <div class="result-card">
                 <h3>Result {result['result_number']}</h3>
@@ -68,7 +75,7 @@ def convert_to_html(search_result):
                 <a href="{result['link']}" target="_blank" class="read-more">Read More</a>
             </div>
         """
-    
+
     html += """
         </div>
     </div>
@@ -108,27 +115,35 @@ def convert_to_html(search_result):
 
 
 def write_document(query, context=""):
-  load_dotenv()
-  client = OpenAI(
-      api_key= os.getenv("open_ai")
-  )
+    """
+    This feature is responsible for generating specific documents 
+    based on the topic the user is consulting.
+    """
+    load_dotenv()
+    client = OpenAI(api_key=os.getenv("open_ai"))
 
-  '''
-  This feature is responsible for generating specific documents based on the topic the user is consulting.
-  '''
+    messages = [
+        {
+            "role": "system",
+            "content": "You are an expert creating scientific documents. Generate comprehensive, well-structured academic content in markdown format with proper headings, citations, and detailed explanations.",
+        }
+    ]
 
-  messages = [{"role": "system", "content": f"You are an expert creating scientific documents. Generate comprehensive, well-structured academic content in markdown format with proper headings, citations, and detailed explanations."}]
+    if context:
+        messages.append(
+            {"role": "user", "content": f"here are some context about {context}"}
+        )
 
-  if context:
-    messages.append({"role": "user", "content": f"here are some context about {context}"})
+    messages.append(
+        {"role": "user", "content": f"Generate a document based on this topic {query}"}
+    )
 
-  messages.append({"role": "user", "content": f"Generate a document based on this topic {query}"})
+    openai_response = client.chat.completions.create(
+        model="gpt-4o",
+        messages=messages
+    )
 
-  openai_response = client.chat.completions.create(
-      model = "gpt-4o",
-      messages = messages
-
-  )
-
-  messages.append({"role": "assistant", "content": openai_response.choices[0].message.content})
-  return {"pdf": openai_response.choices[0].message.content}
+    messages.append(
+        {"role": "assistant", "content": openai_response.choices[0].message.content}
+    )
+    return {"pdf": openai_response.choices[0].message.content}

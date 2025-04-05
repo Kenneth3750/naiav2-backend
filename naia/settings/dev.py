@@ -1,5 +1,6 @@
-from .base import *
 from datetime import timedelta
+from .base import *
+
 
 DEBUG = True
 
@@ -22,9 +23,6 @@ MIDDLEWARE = [
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
     'apps.users.middleware.RestrictBrowsableAPIMiddleware', 
 ]
-
-
-
 
 DATABASES = {
     'default': {
