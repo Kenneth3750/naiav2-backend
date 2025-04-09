@@ -4,8 +4,7 @@ import json
 from dotenv import load_dotenv
 import os
 import time
-import tiktoken
-import time
+
 class LLMService:
     def __init__(self, available_tools, tools, system_prompt):
         load_dotenv()

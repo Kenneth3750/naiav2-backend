@@ -1,7 +1,7 @@
 from .base import *
 import os
-from dotenv import load_dotenv
-
+from dotenv import load_dotenv 
+load_dotenv()
 DEBUG = False
 
 SECRET_KEY = os.getenv('SECRET_KEY')

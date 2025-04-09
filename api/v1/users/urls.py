@@ -1,7 +1,6 @@
-from django.contrib import admin
 from django.urls import path
 from .views import UserDetail, UserList
-from rest_framework.urlpatterns import format_suffix_patterns
+
 
 
 

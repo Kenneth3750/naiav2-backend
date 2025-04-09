@@ -1,7 +1,6 @@
 from .models import User
 from django.dispatch import receiver
 from django.db.models.signals import post_save
-from django.core.mail import send_mail
 from services.email_service import EmailService
 
 @receiver(post_save, sender=User, dispatch_uid="user_welcome_email")

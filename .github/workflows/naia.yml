@@ -1,4 +1,4 @@
-name: NAIA CI/CD
+name: NAIA CI
 
 on:
   push:
@@ -30,15 +30,3 @@ jobs:
         run: |
           flake8 . --select=F401,E722 --show-source --statistics --exclude=.git,__pycache__,*/migrations/*,venv,env
 
-  build:
-    name: Build and Test  
-    runs-on: ubuntu-latest
-    needs: lint
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v2
-
-      - name: List dirs
-        run: |
-          echo "Listing directories..."
-          ls -R .

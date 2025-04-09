@@ -1,18 +1,11 @@
 from apps.chat.services import ChatService
-from django.http import Http404
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status
-from django.utils.decorators import method_decorator
 from rest_framework.decorators import api_view, permission_classes
-from django.views.decorators.cache import cache_page
 from rest_framework.permissions import IsAuthenticated
-from drf_spectacular.utils import extend_schema, OpenApiParameter, OpenApiExample
-from drf_spectacular.types import OpenApiTypes
-from drf_spectacular.openapi import OpenApiResponse
 from .serializers import ChatSerializer, ChatMessagesSerializer
 from dotenv import load_dotenv
-import os
 import time
 load_dotenv()
 

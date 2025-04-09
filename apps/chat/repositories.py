@@ -1,4 +1,3 @@
-from django.db import models
 from apps.users.models import User
 from apps.chat.models import Roles
 from .models import Chat

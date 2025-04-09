@@ -1,6 +1,4 @@
-from dotenv import load_dotenv
 from services.llm import LLMService
-import os
 import json
 from services.files import B2FileService
 from .repositories import ChatRepository
