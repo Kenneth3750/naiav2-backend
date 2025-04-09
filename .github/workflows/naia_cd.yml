@@ -1,0 +1,35 @@
+name: NAIA Deployment 
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    types: [closed]
+    branches:
+      - main
+
+jobs:
+  deploy:
+    if: github,event_name == 'push' || (github.event_name == 'pull_request' && github.event.pull_request.merged == true)
+    name: Deploy to VM
+    runs-on: ubuntu-latest
+    steps:
+      - name: Install sshpass
+        run: sudo apt-get install sshpass
+
+      - name: Deploy to VM (basic git pull for now....)
+        env:
+          VM_HOST: ${{ secrets.VM_HOST }}
+          VM_USER: ${{ secrets.VM_USER }}
+          VM_PASSWORD: ${{ secrets.VM_PASSWORD }}
+          REPO_PATH: ${{ secrets.REPO_PATH }}
+        run: |
+          echo "Connecting to VM..."	
+          sshpass -p "$VM_PASSWORD" ssh -o StrictHostKeyChecking=no $VM_USER@$VM_HOST "
+            echo 'Pulling latest code...'
+            cd $REPO_PATH
+            git pull origin main
+            echo "Code pulled successfully!"
+
+      

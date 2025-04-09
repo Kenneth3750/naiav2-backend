@@ -1,0 +1,32 @@
+name: NAIA CI
+
+on:
+  push:
+    branches:
+      - development
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  lint:
+    name: Simple Linting
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v2
+
+      - name: Set up Python 3.12
+        uses: actions/setup-python@v2
+        with:
+          python-version: 3.12
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install flake8
+
+      - name: Check unused imports and bare exceptions
+        run: |
+          flake8 . --select=F401,E722 --show-source --statistics --exclude=.git,__pycache__,*/migrations/*,venv,env
+
