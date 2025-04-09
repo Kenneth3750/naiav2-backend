@@ -1,6 +1,5 @@
-from django.urls import path, include
+from django.urls import path
 from .views import Chat, ChatMessages, make_resume, upload_current_image
-from rest_framework_simplejwt.views import TokenRefreshView
 
 urlpatterns = [
     path('', Chat.as_view(), name='chat'),
