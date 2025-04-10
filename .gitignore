@@ -16,3 +16,5 @@ prueba*
 pruebas/
 *html
 .vscode
+
+deploy_server.py
