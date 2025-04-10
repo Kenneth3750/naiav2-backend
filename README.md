@@ -9,6 +9,6 @@
 
 # Import commnads
 
-shy linting = flake8 . --select=F401,E722 --exclude=.git,__pycache__,*/migrations/*,venv,env
+shy linting = flake8 . --select=F401,E722 --exclude=.git,__pycache__,*/migrations/*,venv,env,deploy_server.py
 clean requirements.txt = python clean.py
     
