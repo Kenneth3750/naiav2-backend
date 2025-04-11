@@ -13,17 +13,26 @@ on:
 jobs:
   deploy:
     if: github.event_name == 'push' || (github.event_name == 'pull_request' && github.event.pull_request.merged == true) || github.event_name == 'workflow_dispatch'
-    name: Deploy to VM
+    name: Deploy via Webhook
     runs-on: ubuntu-latest
     steps:
       - name: Call Deployment Webhook
+        id: webhook
         run: |
-          curl -X POST \
+          RESPONSE=$(curl -s -X POST \
             -H "Content-Type: application/json" \
             -d '{"token": "${{ secrets.DEPLOY_TOKEN }}"}' \
-            ${{ secrets.WEBHOOK_URL }}
-      
-      - name: Verify Deployment Status
-        run: |
-          echo "Solicitud de despliegue enviada"
-          echo "Verifica el estado en tu servidor de despliegue"
+            -w "\n\nHTTP Status Code: %{http_code}" \
+            ${{ secrets.WEBHOOK_URL }})
+          
+          # Mostrar la respuesta completa
+          echo "Respuesta del servidor:"
+          echo "$RESPONSE"
+          
+          # Verificar si la respuesta contiene un código de éxito (200)
+          if [[ "$RESPONSE" == *"HTTP Status Code: 200"* ]]; then
+            echo "✅ Solicitud de despliegue procesada exitosamente"
+          else
+            echo "⚠️ La solicitud no retornó un código 200. Verifica el estado del servidor"
+            echo "Detalles en los logs de GitHub Actions"
+          fi
