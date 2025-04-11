@@ -11,6 +11,7 @@ class B2FileService:
         self.bucket_name = os.getenv("b2_bucket_name")
         self.bucket_id = os.getenv("b2_bucket_id")
         self.image_prefix = os.getenv("b2_image_prefix")
+        self.document_prefix = os.getenv("b2_document_prefix")
 
     def _get_b2_api(self):
         b2_api = b2.B2Api()
@@ -59,3 +60,42 @@ class B2FileService:
         )
 
         return True
+    
+
+    def upload_document(self, user_id, document):
+        b2_api = self._get_b2_api()
+        bucket = b2.Bucket(b2_api, self.bucket_id, name=self.bucket_name)
+
+        if hasattr(document, 'read'):
+            document_data = document.read()
+        else:
+            document_data = document
+        filename = f"{self.document_prefix}/user_{user_id}/{document.name}"
+
+        try:
+            file_versions = bucket.list_file_versions(filename)
+            for file_version in file_versions:
+                if file_version.file_name == filename:
+                    bucket.delete_file_version(file_version.id_, filename)
+                    print(f"Archivo anterior eliminado: {filename}")
+                    break
+        except Exception as e:
+            print(f"Advertencia al intentar eliminar archivo anterior: {str(e)}")
+        
+        content_type = getattr(document, 'content_type', 'application/pdf')
+        
+        file_info = bucket.upload_bytes(
+            data_bytes=document_data,
+            file_name=filename,
+            content_type=content_type
+        )
+
+        serializable_info = {
+            "file_id": file_info.id_,
+            "file_name": file_info.file_name,
+            "size": file_info.size,
+            "upload_timestamp": file_info.upload_timestamp,
+            "content_type": getattr(file_info, 'content_type', content_type),
+        }
+
+        return serializable_info

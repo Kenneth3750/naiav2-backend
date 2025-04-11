@@ -1,5 +1,5 @@
 from .functions import scholar_search, write_document
-
+from services.files import B2FileService
 class ResearcherService:
     def retrieve_tools(self):
         tools = [
@@ -77,5 +77,17 @@ class ResearcherService:
         \t- Write documents based on provided instruccions and content. The function will generate a markdown string that will be send to the frontend in order to be converted in a pdf file, so do not add the text on your response, just tell him that the document was generated and ii is available for download.\n"""
 
         return tools, available_functions, system_prompt
+    
+
+class DocumentService:
+    def __init__(self):
+        self.document_service = B2FileService()
+
+    def upload_document(self, user_id, document):
+        file_info = self.document_service.upload_document(user_id, document)
+        if not file_info:
+            raise Exception("Error uploading document")
+        return file_info
+
 
 
