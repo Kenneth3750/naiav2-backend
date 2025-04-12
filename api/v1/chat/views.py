@@ -38,7 +38,6 @@ class Chat(APIView):
             
 
 class ChatMessages(APIView):
-    permission_classes = [IsAuthenticated]
     def __init__(self):
         self.chat_service = ChatService()
 
@@ -68,7 +67,6 @@ class ChatMessages(APIView):
             return Response(str(e), status=status.HTTP_500_INTERNAL_SERVER_ERROR)
         
 @api_view(["POST"])
-@permission_classes([IsAuthenticated])
 def make_resume(request):
     try:
         serializer = ChatMessagesSerializer(data=request.data)
@@ -84,7 +82,6 @@ def make_resume(request):
         return Response(str(e), status=status.HTTP_500_INTERNAL_SERVER_ERROR)
     
 @api_view(["POST"])
-@permission_classes([IsAuthenticated])
 def upload_current_image(request):
     try:
         user_id = request.data.get('user_id')
