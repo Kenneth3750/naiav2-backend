@@ -1,5 +1,7 @@
 from .functions import scholar_search, write_document
 from services.files import B2FileService
+from django.core.cache import cache
+
 class ResearcherService:
     def retrieve_tools(self):
         tools = [
@@ -88,6 +90,26 @@ class DocumentService:
         if not file_info:
             raise Exception("Error uploading document")
         return file_info
+    
+    def user_documents_list(self, user_id):
+        documents = self.document_service.retrieve_all_user_documents(user_id)
+        if not documents:
+            raise Exception("The user has no documents uploaded yet")
+        return documents
+    def delete_document_by_id(self, document_id, file_name, user_id):
+        result = self.document_service.delete_document_by_id(document_id, file_name, user_id)
+        if not result:
+            raise Exception("Error deleting document")
+        return result
+    
+    def invalidate_cache(self, user_id):
+        cache_key = f'user_documents_{user_id}'
+        cached_response = cache.get(cache_key)
+        if cached_response:
+            cache.delete(cache_key)
+            print(f"Cache found for user {user_id}: {cached_response}")
+        else:
+            print(f"No cache found for user {user_id}")
 
 
 
