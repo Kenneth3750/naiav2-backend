@@ -146,7 +146,7 @@ class UserDetail(APIView):
         },
         tags=["Users"]
     )
-    @method_decorator(cache_page(60*15))
+    @method_decorator(cache_page(60*15, key_prefix="user"))
     def get(self, request, user_id):
         user = self.user_service.get_user_by_id(user_id)
         if user is None:

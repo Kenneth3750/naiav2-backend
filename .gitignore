@@ -18,3 +18,5 @@ pruebas/
 .vscode
 
 deploy_server.py
+
+chromadb_user/

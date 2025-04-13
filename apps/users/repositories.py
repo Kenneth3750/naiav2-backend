@@ -11,3 +11,4 @@ class UserRepository:
             return User.objects.create(name=name, family_name=family_name, email=email, photo_url=photo_url)
         except IntegrityError:
             raise Exception(f"User with email {email} already exists")
+    
