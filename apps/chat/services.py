@@ -15,7 +15,7 @@ class ChatService():
     def generate_response(self, user_input, user_id, role_id):
         file_service = B2FileService()
         role = RoleService(role_id)
-        tools, available_tools, system_prompt = role.get_role()
+        tools, available_tools, system_prompt = role.get_role(user_id)
         image_url = file_service.get_current_file_url(user_id)
         messages = ChatRepository.get_current_conversation(user_id, role_id)
         if not messages:

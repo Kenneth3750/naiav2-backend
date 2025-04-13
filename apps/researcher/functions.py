@@ -222,7 +222,7 @@ def save_user_document_for_rag(pdf_files: List[bytes], user_id:int):
 
 
 
-def retrieve_user_document_for_rag(user_id: int, pregunta: str, k: int = 3) -> str:
+def answer_from_user_rag(user_id: int, pregunta: str, k: int = 3) -> str:
     """
     Consulta la información almacenada en el vectorstore del usuario y genera una respuesta.
     """
@@ -247,6 +247,7 @@ def retrieve_user_document_for_rag(user_id: int, pregunta: str, k: int = 3) -> s
             rag_results.append(f"Documento {i}: {doc.page_content}")
 
         result_text = "\n\n".join(rag_results)
+        print(f"Resultados de RAG: {result_text}")
         return {"resolved_rag": result_text}
     except Exception as e:
         print(f"Error al recuperar documentos: {str(e)}")

@@ -1,9 +1,13 @@
-from .functions import scholar_search, write_document, retrieve_user_document_for_rag
+from .functions import scholar_search, write_document, answer_from_user_rag
 from services.files import B2FileService
 from django.core.cache import cache
 
 class ResearcherService:
-    def retrieve_tools(self):
+    def __init__(self):
+        self.document_service = B2FileService()
+
+    def retrieve_tools(self, user_id):
+        list_documents = self.document_service.retrieve_all_user_documents(user_id)
         tools = [
                     {
                         "type": "function",
@@ -57,7 +61,7 @@ class ResearcherService:
                     {
                         "type": "function",
                         "function": {
-                            "name": "retrieve_user_document_for_rag",
+                            "name": "answer_from_user_rag",
                             "description": "Retrieves information from the vector database, call this function when the user is asking about something related to the documents, you will have the name of the documents, so when the user asks something or mention anything related to those documents please call this function",
                             "parameters": {
                                 "type": "object",
@@ -88,10 +92,10 @@ class ResearcherService:
         available_functions = {
             "scholar_search": scholar_search,
             "write_document": write_document,
-            "retrieve_user_document_for_rag": retrieve_user_document_for_rag
+            "answer_from_user_rag": answer_from_user_rag
         }
 
-        system_prompt = """ You are a virtual avatar with voice named NAIA. You will always reply with only a JSON array of messages. Without a maximun number of messages, but preferibly not more than 7 messages per response. Do not add more text different from the JSON array of messages.
+        system_prompt = f""" You are a virtual avatar with voice named NAIA. You will always reply with only a JSON array of messages. Without a maximun number of messages, but preferibly not more than 7 messages per response. Do not add more text different from the JSON array of messages.
         Each message has a text, facialExpression, animation property and language property.\n
         Keep the text shorts and concise. Do not use more than 3 sentences and use the same language as the user. It is preferible to divide the text in different messages, cause these text will be converted through a text-to-speech system and it is better to have short messages to reduce the time of response.\n
         The different facial expressions are: smile, sad, angry and default.\n
@@ -103,7 +107,12 @@ class ResearcherService:
         You have the function calling activated, so you can call the functions that are available for you. All functions return a dictionary with a key, these are the list of possible keys and how you must manage your response according to the key:\n
         \t- "display": This key is used to display the results on the screen You must not put this function result on your response, just tell the user that the results are on the screen. However you have the result on your chat history in order to make a better conversation.\n
         \t- Serch academic papers using SerpAPI, which is powered by Google Scholar. It is not neccesary to mention the references on the response. The app will display the results on screen, just tell the user to look at the screen.\n
-        \t- Write documents based on provided instruccions and content. The function will generate a markdown string that will be send to the frontend in order to be converted in a pdf file, so do not add the text on your response, just tell him that the document was generated and ii is available for download.\n"""
+        \t- Write documents based on provided instruccions and content. The function will generate a markdown string that will be send to the frontend in order to be converted in a pdf file, so do not add the text on your response, just tell him that the document was generated and ii is available for download.\n
+        \t- Answer questions based on the documents that the user uploaded. You must give an answer of the user based on the results of the function called "answer_from_user_rag". This function must be called everytime the user asks about something related to the documents, whether it is a question or a comment where the user mentions the documents or a topic related to the documents.\n
+        The current document of the user are:\n
+        \t{list_documents}.\n
+        \t- You are currently talking to the user with id {user_id}, this must be the parameter of the function "answer_from_user_rag".\n
+        """
 
         return tools, available_functions, system_prompt
     
