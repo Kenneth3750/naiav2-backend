@@ -66,6 +66,10 @@ class B2FileService:
         b2_api = self._get_b2_api()
         bucket = b2.Bucket(b2_api, self.bucket_id, name=self.bucket_name)
 
+        # list_documents = self.retrieve_all_user_documents(user_id)
+        # if len(list_documents) > 5:
+        #     raise Exception("User has reached the maximum number of documents (5)")
+        
         if hasattr(document, 'read'):
             document_data = document.read()
         else:
@@ -99,3 +103,67 @@ class B2FileService:
         }
 
         return serializable_info
+    
+    def retrieve_all_user_documents(self, user_id):
+        b2_api = self._get_b2_api()
+        bucket = b2.Bucket(b2_api, self.bucket_id, name=self.bucket_name)
+        prefix = f"{self.document_prefix}/user_{user_id}/"
+        files = bucket.ls(folder_to_list=prefix, recursive=False)
+        documents = []
+        for file_info, file_metadata in files:
+            full_name = file_info.file_name
+            file_name = full_name.split('/')[-1]
+        
+            document_info = {
+            "file_id": file_info.id_,
+            "file_name": file_name,  
+            "size": file_info.size,
+            "upload_timestamp": file_info.upload_timestamp,
+            "content_type": getattr(file_info, 'content_type', None),
+            }
+            documents.append(document_info)
+        print("Retrieved from bucket")
+        
+        return documents
+    
+
+    def delete_document_by_id(self, file_id, file_name, user_id):
+        b2_api = self._get_b2_api()
+        bucket = b2.Bucket(b2_api, self.bucket_id, name=self.bucket_name)
+        try:
+            bucket.delete_file_version(file_id, file_name=f"{self.document_prefix}/user_{user_id}/{file_name}")
+            return True
+        except Exception as e:
+            print(f"Error deleting file: {str(e)}")
+            return False
+        
+    def download_user_documents(self, user_id):
+        import tempfile
+        import os
+        
+        b2_api = self._get_b2_api()
+        bucket = b2.Bucket(b2_api, self.bucket_id, name=self.bucket_name)
+        prefix = f"{self.document_prefix}/user_{user_id}/"
+        files = bucket.ls(folder_to_list=prefix, recursive=False)
+        documents = []
+        
+        for file_info, file_metadata in files:
+            if file_info.file_name.lower().endswith('.pdf'):
+                try:
+                    with tempfile.NamedTemporaryFile(delete=False) as temp_file:
+                        temp_path = temp_file.name
+                    
+                    downloaded_file = b2_api.download_file_by_id(file_info.id_)
+                    downloaded_file.save_to(temp_path)
+                    
+                    with open(temp_path, 'rb') as f:
+                        file_bytes = f.read()
+                        documents.append(file_bytes)
+                    
+                    os.unlink(temp_path)
+                    
+                    print(f"Archivo descargado: {file_info.file_name}")
+                except Exception as e:
+                    print(f"Error al descargar el archivo {file_info.file_name}: {str(e)}")
+        
+        return documents
