@@ -30,22 +30,33 @@ class LLMService:
         return messages_array
     
     def _create_message_input(self, user_input, image_url):
-        return {
-                "role": "user", 
+        if image_url is None:
+            return {
+                "role": "user",
                 "content": [
                     {
                         "type": "text",
                         "text": user_input
-                    },
-                    {
-                        "type": "image_url",
-                        "image_url": {
-                            "url": image_url,
-                            "detail": "low"
-                        }
-                    },
+                    }
                 ],
             }
+        else:
+            return {
+                    "role": "user", 
+                    "content": [
+                        {
+                            "type": "text",
+                            "text": user_input
+                        },
+                        {
+                            "type": "image_url",
+                            "image_url": {
+                                "url": image_url,
+                                "detail": "low"
+                            }
+                        },
+                    ],
+                }
     
     def _eliminate_image_from_message(self, messages):
         for message in messages:
