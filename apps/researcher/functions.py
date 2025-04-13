@@ -135,33 +135,37 @@ def write_document(query, context=""):
     """
     load_dotenv()
     client = OpenAI(api_key=os.getenv("open_ai"))
+    try:
 
-    messages = [
-        {
-            "role": "system",
-            "content": "You are an expert creating scientific documents. Generate comprehensive, well-structured academic content in markdown format with proper headings, citations, and detailed explanations.",
-        }
-    ]
+        messages = [
+            {
+                "role": "system",
+                "content": "You are an expert creating scientific documents. Generate comprehensive, well-structured academic content in markdown format with proper headings, citations, and detailed explanations.",
+            }
+        ]
 
-    if context:
+        if context:
+            messages.append(
+                {"role": "user", "content": f"here are some context about {context}"}
+            )
+
         messages.append(
-            {"role": "user", "content": f"here are some context about {context}"}
+            {"role": "user", "content": f"Generate a document based on this topic {query}"}
         )
 
-    messages.append(
-        {"role": "user", "content": f"Generate a document based on this topic {query}"}
-    )
+        openai_response = client.chat.completions.create(
+            model="gpt-4o",
+            messages=messages
+        )
 
-    openai_response = client.chat.completions.create(
-        model="gpt-4o",
-        messages=messages
-    )
-
-    messages.append(
-        {"role": "assistant", "content": openai_response.choices[0].message.content}
-    )
-    return {"pdf": openai_response.choices[0].message.content}
-
+        messages.append(
+            {"role": "assistant", "content": openai_response.choices[0].message.content}
+        )
+        return {"pdf": openai_response.choices[0].message.content}
+    except Exception as e:
+        print(f"Error generating document: {str(e)}")
+        return {"error": str(e)}
+    
 
 # Rag function 
 
@@ -217,33 +221,36 @@ def save_user_document_for_rag(pdf_files: List[bytes], user_id:int):
 
 
 
-# retrieve information
 
 def retrieve_user_document_for_rag(user_id: int, pregunta: str, k: int = 3) -> str:
     """
     Consulta la información almacenada en el vectorstore del usuario y genera una respuesta.
     """
-    persist_dir = f"./chromadb_user/{user_id}"
+    try:
+        persist_dir = f"./chromadb_user/{user_id}"
 
-    if not os.path.exists(persist_dir):
-        raise FileNotFoundError(f"No existe información para el usuario: {user_id}")
+        if not os.path.exists(persist_dir):
+            raise FileNotFoundError(f"No existe información para el usuario: {user_id}")
 
-    embeddings = OpenAIEmbeddings(api_key=openai_api_key,
-                                  model="text-embedding-3-large")
-    
-    vector_store = Chroma(persist_directory=persist_dir, embedding_function=embeddings)
+        embeddings = OpenAIEmbeddings(api_key=openai_api_key,
+                                    model="text-embedding-3-large")
+        
+        vector_store = Chroma(persist_directory=persist_dir, embedding_function=embeddings)
 
-    resultados = vector_store.similarity_search(pregunta, k=k)
+        resultados = vector_store.similarity_search(pregunta, k=k)
 
-    if not resultados:
-        return "No se encontraron documentos relevantes para tu pregunta."
-    
-    rag_results = []
-    for i, doc in enumerate(resultados, 1):
-        rag_results.append(f"Documento {i}: {doc.page_content}")
+        if not resultados:
+            return "No se encontraron documentos relevantes para tu pregunta."
+        
+        rag_results = []
+        for i, doc in enumerate(resultados, 1):
+            rag_results.append(f"Documento {i}: {doc.page_content}")
 
-    result_text = "\n\n".join(rag_results)
-    return {"resolved_rag": result_text}
+        result_text = "\n\n".join(rag_results)
+        return {"resolved_rag": result_text}
+    except Exception as e:
+        print(f"Error al recuperar documentos: {str(e)}")
+        return {"error": str(e)}
 
 
 

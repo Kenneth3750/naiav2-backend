@@ -1,7 +1,8 @@
 from django.urls import path
-from .views import upload_research_document
+from .views import ResearchDocumentView, save_document_changes
 
 
 urlpatterns = [
-    path('document/', upload_research_document, name='upload-research-document'),
+    path('document/', ResearchDocumentView.as_view(), name='research-document'),
+    path('document/save_changes/', save_document_changes, name='save-document-changes'),
 ]

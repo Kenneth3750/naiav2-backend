@@ -138,5 +138,11 @@ class DocumentService:
         else:
             print(f"No cache found for user {user_id}")
 
+    def retrieve_user_document_for_rag(self, user_id):
+        documents = self.document_service.download_user_documents(user_id)
+        if not documents:
+            raise Exception("The user has no documents uploaded yet")
+        return documents
+
 
 
