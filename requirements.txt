@@ -72,7 +72,7 @@ nbconvert==7.16.6
 nbformat==5.10.4
 nest_asyncio
 nodeenv==1.9.1
-numpy==2.2.3
+numpy>=1.26.2
 openai==1.70.0
 openpyxl==3.1.5
 packaging
@@ -133,3 +133,9 @@ webencodings==0.5.1
 wheel==0.44.0
 yarg==0.1.9
 zipp
+langchain==0.3.23
+langchain-chroma==0.2.2
+langchain-community==0.3.21
+langchain-text-splitters==0.3.8
+langchain-openai==0.3.12
+pypdf

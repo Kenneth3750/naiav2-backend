@@ -4,6 +4,20 @@ from dotenv import load_dotenv
 from openai import OpenAI
 from serpapi import GoogleSearch
 
+from typing import List
+from langchain_community.document_loaders import PyPDFLoader
+from langchain_community.vectorstores import Chroma
+from langchain_text_splitters import CharacterTextSplitter
+from langchain_openai import OpenAIEmbeddings
+import tempfile
+
+load_dotenv()
+
+openai_api_key = os.getenv("open_ai")
+
+client = OpenAI(
+    api_key= openai_api_key
+)
 
 def scholar_search(query="machine learning healthcare", num_results=3):
     """
@@ -147,3 +161,89 @@ def write_document(query, context=""):
         {"role": "assistant", "content": openai_response.choices[0].message.content}
     )
     return {"pdf": openai_response.choices[0].message.content}
+
+
+# Rag function 
+
+def save_user_document_for_rag(pdf_files: List[bytes], user_id:int):
+    """
+    this function is to save the user pdf file into their own vector database
+    pdf_file: list of file in byte format (max 5)
+    user_id: 
+    """
+    if len(pdf_files) > 5 :
+        raise ValueError("Maximo se permiten 5 archivos PDF.")
+    
+    all_documents = []
+
+    for file_bytes in pdf_files:
+        with tempfile.NamedTemporaryFile(delete=False, suffix=".pdf") as tmp_file:
+            tmp_file.write(file_bytes)
+            tmp_file_path = tmp_file.name
+        
+        loader = PyPDFLoader(tmp_file_path)
+        docs = loader.load()
+        all_documents.extend(docs)
+
+    if not all_documents:
+        raise ValueError("No se pudieron extraer textos de los PDFs-")
+    
+    # Limpieza del archivo temporal
+        os.unlink(tmp_file_path)
+    
+    # split
+    text_splitter = CharacterTextSplitter.from_tiktoken_encoder(
+        encoding_name="cl100k_base",
+        chunk_size=100,
+        chunk_overlap=50
+    )
+
+    chunks = text_splitter.split_documents(all_documents)
+
+
+    # store
+    persist_dir = f"./chromadb_user/{user_id}"
+    os.makedirs(persist_dir, exist_ok=True)
+
+    embeddings = OpenAIEmbeddings(api_key=openai_api_key,
+                                  model="text-embedding-3-large")
+
+    vector_store = Chroma(persist_directory=persist_dir, embedding_function=embeddings)
+    vector_store.add_documents(chunks)
+
+    vector_store.persist()
+
+    return f"Documents from user {user_id} were correctly saved"
+
+
+
+# retrieve information
+
+def retrieve_user_document_for_rag(user_id: int, pregunta: str, k: int = 3) -> str:
+    """
+    Consulta la información almacenada en el vectorstore del usuario y genera una respuesta.
+    """
+    persist_dir = f"./chromadb_user/{user_id}"
+
+    if not os.path.exists(persist_dir):
+        raise FileNotFoundError(f"No existe información para el usuario: {user_id}")
+
+    embeddings = OpenAIEmbeddings(api_key=openai_api_key,
+                                  model="text-embedding-3-large")
+    
+    vector_store = Chroma(persist_directory=persist_dir, embedding_function=embeddings)
+
+    resultados = vector_store.similarity_search(pregunta, k=k)
+
+    if not resultados:
+        return "No se encontraron documentos relevantes para tu pregunta."
+    
+    rag_results = []
+    for i, doc in enumerate(resultados, 1):
+        rag_results.append(f"Documento {i}: {doc.page_content}")
+
+    result_text = "\n\n".join(rag_results)
+    return {"resolved_rag": result_text}
+
+
+

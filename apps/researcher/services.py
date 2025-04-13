@@ -1,4 +1,4 @@
-from .functions import scholar_search, write_document
+from .functions import scholar_search, write_document, retrieve_user_document_for_rag
 from services.files import B2FileService
 from django.core.cache import cache
 
@@ -52,16 +52,43 @@ class ResearcherService:
                                 ]
                             }
                         }
+                    },
+
+                    {
+                        "type": "function",
+                        "function": {
+                            "name": "retrieve_user_document_for_rag",
+                            "description": "Retrieves information from the vector database, call this function when the user is asking about something related to the documents, you will have the name of the documents, so when the user asks something or mention anything related to those documents please call this function",
+                            "parameters": {
+                                "type": "object",
+                                "properties": {
+                                    "user_id": {
+                                        "type": "string",
+                                        "description": "The ID of the user whose documents to search"
+                                    },
+                                    "pregunta": {
+                                        "type": "string",
+                                        "description": "The question to search for in the user's documents"
+                                    },
+                                    "k": {
+                                        "type": "integer",
+                                        "description": "The number of most relevant results to return (default: 3)"
+                                    }
+                                },
+                                "required": [
+                                    "user_id",
+                                    "pregunta"
+                                ]
+                            }
+                        }
                     }
-
-
-
 
                 ]
         
         available_functions = {
             "scholar_search": scholar_search,
-            "write_document": write_document
+            "write_document": write_document,
+            "retrieve_user_document_for_rag": retrieve_user_document_for_rag
         }
 
         system_prompt = """ You are a virtual avatar with voice named NAIA. You will always reply with only a JSON array of messages. Without a maximun number of messages, but preferibly not more than 7 messages per response. Do not add more text different from the JSON array of messages.
