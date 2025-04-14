@@ -29,6 +29,7 @@ class Chat(APIView):
                 )
                 end_time = time.time()
                 print("Tiempo de respuesta: ", end_time - start_time)
+                response["time"] = end_time - start_time
                 return Response(response, status=status.HTTP_200_OK)
             else:
                 return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)

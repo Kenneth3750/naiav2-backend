@@ -88,12 +88,9 @@ class LLMService:
             messages.append(assistant_message)
             messages.pop(0)  # Remove the developer message
             messages = self._eliminate_image_from_message(messages)
-            end_time = time.time()
-            response_time = end_time - start_time
             json_response = {
                 "response": response.content,
                 "messages": messages,
-                "response_time": response_time,
                 "function_results": function_results
             }
             return json_response
@@ -143,7 +140,6 @@ class LLMService:
             json_response = {
                 "response": second_response.choices[0].message.content,
                 "messages": messages,
-                "response_time": end_time - start_time,
                 "function_results": function_results
             }
             return json_response

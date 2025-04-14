@@ -1,13 +1,27 @@
 from .functions import scholar_search, write_document, answer_from_user_rag
 from services.files import B2FileService
 from django.core.cache import cache
-
 class ResearcherService:
     def __init__(self):
         self.document_service = B2FileService()
 
+
+    def list_user_documents(self, user_id):
+        cache_key = f'user_documents_{user_id}'
+        cached_response = cache.get(cache_key)
+        if cached_response:
+            cache.set(cache_key, cached_response, timeout=60*60*24)  
+            return cached_response
+        else:
+            documents = self.document_service.retrieve_all_user_documents(user_id)
+            if not documents:
+                return "The user has no documents uploaded yet"
+            cache.set(cache_key, documents, timeout=60*60*24)
+            return documents
+
+
     def retrieve_tools(self, user_id):
-        list_documents = self.document_service.retrieve_all_user_documents(user_id)
+        list_documents = self.list_user_documents(user_id)
         tools = [
                     {
                         "type": "function",
