@@ -49,7 +49,7 @@ class ChatMessages(APIView):
                 role_id = serializer.validated_data['role_id']
                 self.chat_service.save_current_conversation(user_id, role_id)
                 self.chat_service.delete_current_conversation(user_id, role_id)
-                return Response({"message": "Conversación guardada"}, status=status.HTTP_200_OK)
+                return Response({"message": "Conversation saved"}, status=status.HTTP_200_OK)
             else:
                 return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
         except Exception as e:

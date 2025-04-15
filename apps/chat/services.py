@@ -20,12 +20,13 @@ class ChatService():
         messages = ChatRepository.get_current_conversation(user_id, role_id)
         if not messages:
             messages = ChatRepository.get_last_conversation(user_id, role_id)
-        num_tokens = num_tokens_from_messages(json.loads(messages)) if messages else 0
+            # messages = json.loads(messages) if isinstance(messages, str) else messages
+        num_tokens = num_tokens_from_messages(messages) if messages else 0
+        print("num_tokens", num_tokens)
         llm_service = LLMService(available_tools, tools, system_prompt)
         response = llm_service.generate_response(user_input, image_url, messages)
         ChatRepository.save_current_conversation(user_id, role_id, json.dumps(response["messages"]))
         response["num_tokens"] = num_tokens
-        response["response"] = json.loads(response["response"])
         if num_tokens >= max_tokens:
             response["warning"] = "The conversation has reached the maximum number of tokens. The conversation will be resumed."
         response.pop("messages")
@@ -64,7 +65,7 @@ class ChatService():
         return messages
 
     def make_resume(self, messages):
-        num_tokens = num_tokens_from_messages(json.loads(messages))
+        num_tokens = num_tokens_from_messages(json.loads(messages) if isinstance(messages, str) else messages)
         if num_tokens > max_tokens:
             new_messages = LLMService.make_resume(messages)
             return new_messages

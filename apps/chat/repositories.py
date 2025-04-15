@@ -5,6 +5,7 @@ from django.utils import timezone
 import redis
 from dotenv import load_dotenv
 import os
+import json
 class ChatRepository:
     @staticmethod
     def get_last_conversation(user, role_id):
@@ -59,5 +60,4 @@ class ChatRepository:
         r = redis.Redis(host=os.getenv("redis_host"), port=os.getenv("redis_port"),  db=os.getenv("redis_db"))
         conversation = r.get(f"current_conversation_{user_id}_{role_id}")
         r.close()
-        return conversation
-
+        return json.loads(conversation) if conversation else None

@@ -16,7 +16,7 @@ class LLMService:
     def _init_conversation(self, messages, user_input, image_url):
         if messages:
             print("Mensajes desde la base de datos.... ")
-            messages_array = json.loads(messages)
+            messages_array = messages
             messages_array.insert(0, {"role": "developer", "content": self.system_prompt})
         else:
             print("No hay mensajes desde la base de datos, iniciando conversación...")
@@ -26,7 +26,6 @@ class LLMService:
             }]
 
         messages_array.append(self._create_message_input(user_input, image_url))
-
         return messages_array
     
     def _create_message_input(self, user_input, image_url):
@@ -71,13 +70,26 @@ class LLMService:
             return client.beta.threads.messages.list(thread_id=thread_id)
         except Exception as e:
             raise Exception("Failed to retrieve thread messages:", e)
+        
+    def _clean_json_response(self, content):
+        """
+        Limpia el contenido de la respuesta para extraer el JSON literal si está envuelto
+        en comillas invertidas y la palabra json.
+        """
+        if content.startswith("```json"):
+            content = content.replace("```json", "").replace("```", "").strip()
+        try:
+            return json.loads(content)
+        except json.JSONDecodeError as e:
+            raise Exception(f"Failed to parse JSON response: {content}") from e
+
 
     
     def generate_response(self, user_input, image_url, messages):
         messages = self._init_conversation(messages, user_input, image_url)
         start_time = time.time()
         completions = self.client.chat.completions.create(
-            model="gpt-4o-mini",  
+            model="gpt-4.1-nano",  
             messages=messages,
             tools=self.tools
         )
@@ -88,13 +100,15 @@ class LLMService:
             messages.append(assistant_message)
             messages.pop(0)  # Remove the developer message
             messages = self._eliminate_image_from_message(messages)
+            print("llm response: ", response.content)
             json_response = {
-                "response": response.content,
+                "response": self._clean_json_response(response.content),
                 "messages": messages,
                 "function_results": function_results
             }
             return json_response
         tool_calls = response.tool_calls
+        print("tool_calls: \n", tool_calls)
 
         if tool_calls:
             assistant_message = {
@@ -127,7 +141,7 @@ class LLMService:
  
 
             second_response = self.client.chat.completions.create(
-                model="gpt-4o-mini",
+                model="gpt-4.1-nano",
                 messages=messages,
                 tools=self.tools,
             )
@@ -138,7 +152,7 @@ class LLMService:
             messages = self._eliminate_image_from_message(messages)  
             end_time = time.time()
             json_response = {
-                "response": second_response.choices[0].message.content,
+                "response": self._clean_json_response(second_response.choices[0].message.content),
                 "messages": messages,
                 "function_results": function_results
             }
@@ -158,7 +172,7 @@ class LLMService:
     def make_resume(messages):
         try:
             client = OpenAI(api_key=os.getenv("open_ai"))
-            model = "gpt-4o-mini"
+            model = "gpt-4.1-nano"
 
             messages = json.loads(messages)
 
