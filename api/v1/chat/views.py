@@ -17,6 +17,7 @@ class Chat(APIView):
     def post(self, request):
         try:
             serializer = ChatSerializer(data=request.data)
+            print("Datos recibidos: ", request.data)
             if serializer.is_valid():
                 user_id = serializer.validated_data['user_id']
                 user_input = serializer.validated_data['user_input']
@@ -34,6 +35,7 @@ class Chat(APIView):
             else:
                 return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
         except Exception as e:
+            print("Error en la vista Chat: ", str(e))
             return Response(str(e), status=status.HTTP_500_INTERNAL_SERVER_ERROR)
             
 
@@ -84,9 +86,16 @@ def make_resume(request):
 @api_view(["POST"])
 def upload_current_image(request):
     try:
+        import os
         user_id = request.data.get('user_id')
         image = request.FILES.get('image')
         
+        with open('media/chat_image.jpg', 'wb+') as destination:
+            for chunk in image.chunks():
+                destination.write(chunk)
+        
+        
+
         if not user_id or not image:
             return Response({"error": "user_id y image son requeridos"}, status=status.HTTP_400_BAD_REQUEST)
         
