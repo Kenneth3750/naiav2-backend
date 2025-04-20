@@ -174,7 +174,8 @@ class LLMService:
             client = OpenAI(api_key=os.getenv("open_ai"))
             model = "gpt-4.1-nano"
 
-            messages = json.loads(messages)
+            if isinstance(messages, str):
+                messages = json.loads(messages)
 
             resume_prompt = """This conversation is near to exceed the context window of an AI model.
             Your task is to summarize the json in a way that the AI can understand the context of the conversation 

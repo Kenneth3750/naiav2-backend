@@ -54,7 +54,10 @@ class ChatService():
         if not messages:
             messages = ChatRepository.get_last_conversation(user_id, role_id)
         messages = self.make_resume(messages)
-        messages = json.loads(messages)
+        if isinstance(messages, str):
+            messages = json.loads(messages)
+        elif isinstance(messages, list):
+            messages = [json.loads(message) if isinstance(message, str) else message for message in messages]
         for message in messages:
             if message["role"] == "assistant":
                 if isinstance(message["content"], str):

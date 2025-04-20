@@ -81,6 +81,7 @@ def make_resume(request):
         else:
             return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
     except Exception as e:
+        print("Error en la vista make_resume: ", str(e))
         return Response(str(e), status=status.HTTP_500_INTERNAL_SERVER_ERROR)
     
 @api_view(["POST"])
