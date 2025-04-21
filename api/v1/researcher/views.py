@@ -46,7 +46,6 @@ class ResearchDocumentView(APIView):
             cache.set(cache_key, {"documents": documents}, timeout=60*60)
 
             response = Response({"documents": documents}, status=status.HTTP_200_OK)
-            patch_response_headers(response, cache_timeout=60*60)
             
             return response
             
