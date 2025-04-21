@@ -3,7 +3,7 @@ import os
 from dotenv import load_dotenv
 from openai import OpenAI
 from serpapi import GoogleSearch
-
+from ..status.services import set_status
 from typing import List
 from langchain_community.document_loaders import PyPDFLoader
 from langchain_community.vectorstores import Chroma
@@ -19,11 +19,12 @@ client = OpenAI(
     api_key= openai_api_key
 )
 
-def scholar_search(query="machine learning healthcare", num_results=3):
+def scholar_search(query="machine learning healthcare", num_results=3, status="", user_id=0):
     """
     This function searches for academic papers using Google Scholar API.
     It retrieves the title, authors, snippet, and link of the papers.
     """
+    set_status(user_id, status, 1)
     load_dotenv()
     api_key = os.getenv("SERPAPI_KEY")
 
@@ -128,12 +129,13 @@ def convert_to_html(search_result):
     return {"display": html}
 
 
-def write_document(query, context=""):
+def write_document(query, context="", user_id=0, status="", role_id=0):
     """
     This feature is responsible for generating specific documents 
     based on the topic the user is consulting.
     """
     load_dotenv()
+    set_status(user_id, status, 1)
     client = OpenAI(api_key=os.getenv("open_ai"))
     try:
 
@@ -193,7 +195,7 @@ def save_user_document_for_rag(pdf_files: List[bytes], user_id:int):
         raise ValueError("No se pudieron extraer textos de los PDFs-")
     
     # Limpieza del archivo temporal
-        os.unlink(tmp_file_path)
+    os.unlink(tmp_file_path)
     
     # split
     text_splitter = CharacterTextSplitter.from_tiktoken_encoder(
@@ -222,11 +224,12 @@ def save_user_document_for_rag(pdf_files: List[bytes], user_id:int):
 
 
 
-def answer_from_user_rag(user_id: int, pregunta: str, k: int = 3) -> str:
+def answer_from_user_rag(user_id: int, pregunta: str, k: int = 3, status:str = "", role_id: int = 0) -> dict:
     """
     Consulta la información almacenada en el vectorstore del usuario y genera una respuesta.
     """
     try:
+        set_status(user_id, status, 1)
         persist_dir = f"./chromadb_user/{user_id}"
 
         if not os.path.exists(persist_dir):

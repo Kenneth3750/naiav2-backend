@@ -1,4 +1,5 @@
 from .functions import scholar_search, write_document, answer_from_user_rag
+from ..status.services import set_status
 from services.files import B2FileService
 from django.core.cache import cache
 class ResearcherService:
@@ -39,10 +40,20 @@ class ResearcherService:
                                         "type": "integer",
                                         "description": "The number of results to return"
                                     },
+                                    "status": {
+                                        "type": "string",
+                                        "description": "A concise description description of the task to be performed"
+                                    },
+                                    "user_id": {
+                                        "type": "string",
+                                        "description": "The ID of the user who is performing the search. Look at the first developer prompt to get the user_id"
+                                    }
                                 },
                                 "required": [
                                     "query",
-                                    "num_results"
+                                    "num_results",
+                                    "status",
+                                    "user_id"
                                 ]
                             }
                         }
@@ -63,10 +74,19 @@ class ResearcherService:
                                         "type": "string",
                                         "description": "The context or background information for the document, for default it is empty"
                                     },
+                                    "user_id": {
+                                        "type": "string",
+                                        "description": "The ID of the user who is writing the document. Look at the first developer prompt to get the user_id"
+                                    },
+                                    "status": {
+                                        "type": "string",
+                                        "description": "A concise description of the task to be performed"
+                                    },
                                 },
                                 "required": [
-                                    "query"
-                                    
+                                    "query",
+                                    "user_id",
+                                    "status"
                                 ]
                             }
                         }
@@ -91,11 +111,20 @@ class ResearcherService:
                                     "k": {
                                         "type": "integer",
                                         "description": "The number of most relevant results to return (default: 3)"
+                                    },
+                                    "status": {
+                                        "type": "string",
+                                        "description": "A concise description of the task to be performed"
+                                    },
+                                    "user_id": {
+                                        "type": "string",
+                                        "description": "The ID of the user who is asking the question. Look at the first developer prompt to get the user_id"
                                     }
                                 },
                                 "required": [
                                     "user_id",
-                                    "pregunta"
+                                    "pregunta",
+                                    "status",
                                 ]
                             }
                         }
@@ -123,9 +152,10 @@ class ResearcherService:
         \t- Serch academic papers using SerpAPI, which is powered by Google Scholar. It is not neccesary to mention the references on the response. The app will display the results on screen, just tell the user to look at the screen.\n
         \t- Write documents based on provided instruccions and content. The function will generate a markdown string that will be send to the frontend in order to be converted in a pdf file, so do not add the text on your response, just tell him that the document was generated and ii is available for download.\n
         \t- Answer questions based on the documents that the user uploaded. You must give an answer of the user based on the results of the function called "answer_from_user_rag". This function must be called everytime the user asks about something related to the documents, whether it is a question or a comment where the user mentions the documents or a topic related to the documents.\n
-        The current document of the user are:\n
+        \t - It is important for you to always use set_status function before calling any other function, this will help to keep track of the operation status of the user. The status must be a description of the next function you are going to use in a concise and descriptive way in order to be able to show it to the user.\n
+        \t - All functions have a status parameter, this is the description of the task to be performed. You must use this parameter to set the status of the operation in order to give the frontend what are you doing while he/she is waiting for an answer. You must know that without this the user has no clue of what you are doing.\n
         \t{list_documents}.\n
-        \t- You are currently talking to the user with id {user_id}, this must be the parameter of the function "answer_from_user_rag".\n
+        \t- You are currently talking to the user with id {user_id}, this must a parameter for all functions that you call.\n
         """
 
         return tools, available_functions, system_prompt
