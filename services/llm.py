@@ -5,6 +5,8 @@ from dotenv import load_dotenv
 import os
 import time
 import logging
+
+logger = logging.getLogger(__name__)
 class LLMService:
     def __init__(self, available_tools, tools, system_prompt):
         load_dotenv()
@@ -100,7 +102,7 @@ class LLMService:
             messages.append(assistant_message)
             messages.pop(0)  # Remove the developer message
             messages = self._eliminate_image_from_message(messages)
-            logging.info(f"llm response: {response.content}")
+            logger.info("Messages after removing image: %s", messages)
             print("llm response: ", response.content)
             json_response = {
                 "response": self._clean_json_response(response.content),

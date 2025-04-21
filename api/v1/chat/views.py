@@ -8,7 +8,7 @@ from dotenv import load_dotenv
 import time
 import logging
 load_dotenv()
-
+logger = logging.getLogger(__name__)
 
 class Chat(APIView):
     def __init__(self):
@@ -37,7 +37,7 @@ class Chat(APIView):
                 return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
         except Exception as e:
             print("Error en la vista Chat: ", str(e))
-            logging.error(f"Error en la vista Chat: {str(e)}")
+            logger.error(f"Error en la vista Chat: {str(e)}")
             return Response(str(e), status=status.HTTP_500_INTERNAL_SERVER_ERROR)
             
 
@@ -70,7 +70,7 @@ class ChatMessages(APIView):
             return Response(messages, status=status.HTTP_200_OK)
         except Exception as e:
             print("Error en la vista ChatMessages GET: ", str(e))
-            logging.error(f"Error en la vista ChatMessages GET: {str(e)}")
+            logger.error(f"Error en la vista ChatMessages GET: {str(e)}")
             return Response(str(e), status=status.HTTP_500_INTERNAL_SERVER_ERROR)
         
 @api_view(["POST"])
@@ -87,7 +87,7 @@ def make_resume(request):
             return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
     except Exception as e:
         print("Error en la vista make_resume: ", str(e))
-        logging.error(f"Error en la vista make_resume: {str(e)}")
+        logger.error(f"Error en la vista make_resume: {str(e)}")
         return Response(str(e), status=status.HTTP_500_INTERNAL_SERVER_ERROR)
     
 @api_view(["POST"])
@@ -111,5 +111,5 @@ def upload_current_image(request):
     except Exception as e:
         import traceback
         traceback.print_exc()
-        logging.error(f"Error en la vista upload_current_image: {str(e)}")
+        logger.error(f"Error en la vista upload_current_image: {str(e)}")
         return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
