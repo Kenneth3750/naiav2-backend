@@ -5,6 +5,7 @@
 # Keys for the function response: 
     "display": if the response will be desplayed.
     "pdf": if the response will geneate a pdf
+    "resolved_rag": If the response comes from the rag 
 
 
 # Import commnads
