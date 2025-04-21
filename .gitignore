@@ -21,3 +21,4 @@ deploy_server.py
 
 chromadb_user/
 media/
+logs/
