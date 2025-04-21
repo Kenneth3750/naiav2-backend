@@ -91,11 +91,6 @@ def upload_current_image(request):
         user_id = request.data.get('user_id')
         image = request.FILES.get('image')
         
-        with open('media/chat_image.jpg', 'wb+') as destination:
-            for chunk in image.chunks():
-                destination.write(chunk)
-        
-        
 
         if not user_id or not image:
             return Response({"error": "user_id y image son requeridos"}, status=status.HTTP_400_BAD_REQUEST)
