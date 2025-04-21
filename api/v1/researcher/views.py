@@ -2,7 +2,6 @@ from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status
 from apps.researcher.services import DocumentService
-from django.utils.cache import patch_response_headers
 from django.core.cache import cache
 from rest_framework.decorators import api_view
 from apps.researcher.functions import save_user_document_for_rag
