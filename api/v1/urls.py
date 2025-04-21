@@ -7,6 +7,7 @@ urlpatterns = [
     path('users/', include('api.v1.users.urls')),
     path('token/', include('api.v1.token.urls')),
     path('chat/', include('api.v1.chat.urls')),
+    path('status/', include('api.v1.status.urls')),
     path('researcher/', include('api.v1.researcher.urls')),
     path('api-auth/', include('rest_framework.urls')), 
     path('schema/', SpectacularAPIView.as_view(), name='schema'),
