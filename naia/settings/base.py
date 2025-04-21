@@ -40,6 +40,7 @@ INSTALLED_APPS = [
     'corsheaders',
     'drf_spectacular',
     'apps.roles',
+    'apps.status',
     'apps.researcher',
 ]
 
