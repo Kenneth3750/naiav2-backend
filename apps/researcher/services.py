@@ -1,5 +1,4 @@
 from .functions import scholar_search, write_document, answer_from_user_rag
-from ..status.services import set_status
 from services.files import B2FileService
 from django.core.cache import cache
 class ResearcherService:

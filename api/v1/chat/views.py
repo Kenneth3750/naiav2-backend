@@ -93,7 +93,6 @@ def make_resume(request):
 @api_view(["POST"])
 def upload_current_image(request):
     try:
-        import os
         user_id = request.data.get('user_id')
         image = request.FILES.get('image')
         

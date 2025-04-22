@@ -46,35 +46,40 @@ class B2FileService:
             return None
     
     def upload_image(self, user_id, image):
-        b2_api = self._get_b2_api()
-        bucket = b2.Bucket(b2_api, self.bucket_id, name=self.bucket_name)
+        try: 
+            b2_api = self._get_b2_api()
+            bucket = b2.Bucket(b2_api, self.bucket_id, name=self.bucket_name)
 
-        if hasattr(image, 'read'):
-            image_data = image.read()
-        else:
-            image_data = image
-        filename = f"{self.image_prefix}/user_{user_id}.jpg"
+            if hasattr(image, 'read'):
+                image_data = image.read()
+            else:
+                image_data = image
+            filename = f"{self.image_prefix}/user_{user_id}.jpg"
 
-        try:
-            # Buscamos el archivo existente
-            file_versions = bucket.list_file_versions(filename)
-            for file_version in file_versions:
-                if file_version.file_name == filename:
-                    bucket.delete_file_version(file_version.id_, filename)
-                    print(f"Archivo anterior eliminado: {filename}")
-                    break
+            try:
+                # Buscamos el archivo existente
+                file_versions = bucket.list_file_versions(filename)
+                for file_version in file_versions:
+                    if file_version.file_name == filename:
+                        bucket.delete_file_version(file_version.id_, filename)
+                        print(f"Archivo anterior eliminado: {filename}")
+                        break
+            except Exception as e:
+                print(f"Advertencia al intentar eliminar archivo anterior: {str(e)}")
+                return False
+            
+            content_type = getattr(image, 'content_type', 'image/jpeg')
+            
+            file_info = bucket.upload_bytes(
+                data_bytes=image_data,
+                file_name=filename,
+                content_type=content_type
+            )
+
+            return True
         except Exception as e:
-            print(f"Advertencia al intentar eliminar archivo anterior: {str(e)}")
-        
-        content_type = getattr(image, 'content_type', 'image/jpeg')
-        
-        file_info = bucket.upload_bytes(
-            data_bytes=image_data,
-            file_name=filename,
-            content_type=content_type
-        )
-
-        return True
+            print(f"Error uploading image: {str(e)}")
+            raise Exception(f"The image could not be uploaded. Check the B2 service. Error: {str(e)}")
     
 
     def upload_document(self, user_id, document):

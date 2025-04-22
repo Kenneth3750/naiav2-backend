@@ -1,5 +1,5 @@
 from redis import Redis
-from typing import List, Dict, Any
+from typing import Dict
 import os
 from dotenv import load_dotenv
 
