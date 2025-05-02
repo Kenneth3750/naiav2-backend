@@ -1,4 +1,4 @@
-from .functions import scholar_search, write_document, answer_from_user_rag, create_graph
+from .functions import scholar_search, write_document, answer_from_user_rag, create_graph, internet_search
 from services.files import B2FileService
 from django.core.cache import cache
 class ResearcherService:
@@ -164,6 +164,25 @@ class ResearcherService:
                     {
                         "type": "function",
                         "function": {
+                            "name": "internet_search",
+                            "description": "The specific query to search for on the internet. Be precise and include relevant keywords to get the best results.",
+                            "parameters": {
+                                "type": "object",
+                                "properties": {
+                                    "consulta": {
+                                        "type": "string",
+                                        "description": "The query the user is asking to search"
+                                    }
+                                },
+                                "required": [
+                                    "consulta",
+                                ]
+                            }
+                        }
+                    },
+                    {
+                        "type": "function",
+                        "function": {
                             "name": "create_graph",
                             "description": "Create a visual graph or chart based on real data provided by the user. Any graph like bars, timelines, pie charts, etc. Use this function when the user wants to visualize data or see information represented graphically.",
                             "parameters": {
@@ -205,12 +224,16 @@ class ResearcherService:
                             }
                         }
                     }
+
+
+
                 ]
         
         available_functions = {
             "scholar_search": scholar_search,
             "write_document": write_document,
             "answer_from_user_rag": answer_from_user_rag,
+            "internet_search": internet_search,
             "create_graph": create_graph
         }
 
