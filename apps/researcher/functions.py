@@ -19,12 +19,11 @@ client = OpenAI(
     api_key= openai_api_key
 )
 
-def scholar_search(query="machine learning healthcare", num_results=3, status="", user_id=0):
+def get_references(query="", num_results=5, language="en"):
     """
     This function searches for academic papers using Google Scholar API.
     It retrieves the title, authors, snippet, and link of the papers.
     """
-    set_status(user_id, status, 1)
     load_dotenv()
     api_key = os.getenv("SERPAPI_KEY")
 
@@ -38,6 +37,7 @@ def scholar_search(query="machine learning healthcare", num_results=3, status=""
         "q": query,
         "api_key": api_key,
         "num": num_results,
+        "hl": language,
     }
 
     try:
@@ -61,7 +61,99 @@ def scholar_search(query="machine learning healthcare", num_results=3, status=""
             }
             search_result["results"].append(research_information)
             print(f"Result {i}:")
-        return convert_to_html(search_result)
+        return search_result
+    except (ValueError, TypeError, KeyError) as e:
+        print(f"Error during search: {str(e)}")
+        return {"error": str(e),
+                "action": "Do not put references on the text"}
+    except ConnectionError as e:
+        print(f"Connection error during search: {str(e)}")
+        error_msg = f"Connection error during search: {str(e)}"
+        return {"error": str(e),
+        "action": "Do not put references on the text"}
+
+
+def scholar_search(query="", query_2 = "", num_results=3, status="", user_id=0, language1="", language2="en"):
+    """
+    This function searches for academic papers using Google Scholar API.
+    It retrieves the title, authors, snippet, and link of the papers.
+    """
+    set_status(user_id, status, 1)
+    load_dotenv()
+    api_key = os.getenv("SERPAPI_KEY")
+
+    if not api_key:
+        print("Error: SERPAPI_KEY not found in .env file")
+        return
+
+    # Configure search parameters
+    params_1 = {
+        "engine": "google_scholar",
+        "q": query,
+        "api_key": api_key,
+        "num": num_results,
+        "hl": language1,
+    }
+    
+    params_2 = {
+        "engine": "google_scholar",
+        "q": query_2,
+        "api_key": api_key, 
+        "num": num_results,
+        "hl": language2,
+    }
+
+    try:
+        # Combined search result object
+        combined_results = {"query": f"{query} & {query_2}", "results": []}
+        
+        # First query
+        if query:
+            search1 = GoogleSearch(params_1)
+            results1 = search1.get_dict()
+            
+            print(f"\n=== Search Results for: {query} ===\n")
+            for i, result in enumerate(results1.get("organic_results", []), 1):
+                research_information = {
+                    "result_number": i,
+                    "query_source": "query_1",
+                    "title": result.get("title", "N/A"),
+                    "authors": [
+                        author.get("name", "N/A")
+                        for author in result.get("publication_info", {})
+                        .get("authors", [])
+                    ],
+                    "snippet": result.get("snippet", "N/A"),
+                    "link": result.get("link", "N/A"),
+                }
+                combined_results["results"].append(research_information)
+                print(f"Result {i} from query 1")
+                print(f"Title: {result.get('title', 'N/A')}")
+        
+        if query_2:
+            search2 = GoogleSearch(params_2)
+            results2 = search2.get_dict()
+            
+            print(f"\n=== Search Results for: {query_2} ===\n")
+            offset = len(combined_results["results"])
+            for i, result in enumerate(results2.get("organic_results", []), 1):
+                research_information = {
+                    "result_number": i + offset,
+                    "query_source": "query_2",
+                    "title": result.get("title", "N/A"),
+                    "authors": [
+                        author.get("name", "N/A")
+                        for author in result.get("publication_info", {})
+                        .get("authors", [])
+                    ],
+                    "snippet": result.get("snippet", "N/A"),
+                    "link": result.get("link", "N/A"),
+                }
+                combined_results["results"].append(research_information)
+                print(f"Result {i} from query 2")
+                print(f"Title: {result.get('title', 'N/A')}")
+                
+        return convert_to_html(combined_results)
 
     except (ValueError, TypeError, KeyError) as e:
         print(f"Error during search: {str(e)}")
@@ -129,30 +221,73 @@ def convert_to_html(search_result):
     return {"display": html}
 
 
-def write_document(query, context="", user_id=0, status="", role_id=0):
+def write_document(query, context="", user_id=0, status="", query_for_references=None, language_for_references="en", num_results=5):
     """
     This feature is responsible for generating specific documents 
     based on the topic the user is consulting.
     """
     load_dotenv()
     set_status(user_id, status, 1)
+    if query:
+        references = get_references(query_for_references, num_results, language_for_references)
+
     client = OpenAI(api_key=os.getenv("open_ai"))
     try:
 
         messages = [
             {
                 "role": "system",
-                "content": "You are an expert creating scientific documents. Generate comprehensive, well-structured academic content in markdown format with proper headings, citations, and detailed explanations.",
+                "content": """You are an expert academic writer specializing in creating high-quality research documents for Universidad del Norte in Barranquilla, Colombia. Your task is to generate comprehensive, well-structured academic content in markdown format that meets university standards.
+
+IMPORTANT REFERENCE GUIDELINES:
+- You must ONLY use references explicitly provided in the context. Never invent or fabricate citations.
+- If no references are provided, acknowledge this limitation and create content based on general knowledge only.
+- Format all citations consistently using APA 7th edition style.
+- Include a properly formatted reference list at the end of the document.
+
+DOCUMENT STRUCTURE:
+1. Title: Create a descriptive, academic title relevant to the topic
+2. Abstract: A concise summary (100-150 words) of the document's purpose and findings
+3. Introduction: Present the topic, its relevance, and outline the document's structure
+4. Main Body: Organized into logical sections with clear headings and subheadings
+   - Use H2 (##) for main sections and H3 (###) for subsections
+   - Support claims with evidence from provided references
+   - Include relevant data, examples, or case studies when appropriate
+   - Define specialized terminology when first introduced
+5. Discussion/Analysis: Interpret findings, address implications, and consider limitations
+6. Conclusion: Summarize key points and suggest areas for further research
+7. References: List all cited works in APA format, alphabetically by author
+
+WRITING STYLE:
+- Maintain formal, objective academic tone throughout
+- Use precise, discipline-appropriate terminology
+- Write in third person (avoid "I", "we", "you")
+- Use active voice where possible for clarity
+- Ensure logical flow between paragraphs and sections
+- Balance depth with accessibility for university-level readers
+- Avoid unsupported claims, exaggerations, or speculation
+
+FORMATTING:
+- Use proper markdown syntax for all elements
+- Use bullet points or numbered lists for series of related items
+- Format tables using markdown table syntax where appropriate
+- Describe any necessary figures or diagrams in markdown
+- Use emphasis (italic, bold) sparingly and only when needed for clarity
+- Keep paragraphs focused and reasonably sized (4-6 sentences typical)
+
+Your document should demonstrate scholarly rigor while remaining accessible to academic readers. Focus on creating content that would be valuable for research, teaching, or academic reference at Universidad del Norte.""",
             }
         ]
 
-        if context:
+        if context or references:
             messages.append(
-                {"role": "user", "content": f"here are some context about {context}"}
+                {"role": "user", "content": f"""Use these references and information as the basis for your document: {context}\n
+                Use this real referencess: {references}\n
+                If the content of the references is a json with an error as a key, do not use it as a reference."""}
             )
 
         messages.append(
-            {"role": "user", "content": f"Generate a document based on this topic {query}"}
+            {"role": "user", "content": f"Generate a well-structured academic document in markdown format based on this topic: {query}\n Do not create references or citations if the were not provided by me before.\n\n\n"}
         )
 
         openai_response = client.chat.completions.create(
@@ -167,7 +302,6 @@ def write_document(query, context="", user_id=0, status="", role_id=0):
     except Exception as e:
         print(f"Error generating document: {str(e)}")
         return {"error": str(e)}
-    
 
 # Rag function 
 
@@ -224,7 +358,7 @@ def save_user_document_for_rag(pdf_files: List[bytes], user_id:int):
 
 
 
-def answer_from_user_rag(user_id: int, pregunta: str, k: int = 3, status:str = "", role_id: int = 0) -> dict:
+def answer_from_user_rag(user_id: int, pregunta: str, k: int = 3, status:str = "") -> dict:
     """
     Consulta la información almacenada en el vectorstore del usuario y genera una respuesta.
     """
