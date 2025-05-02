@@ -257,4 +257,30 @@ def answer_from_user_rag(user_id: int, pregunta: str, k: int = 3, status:str = "
         return {"error": str(e)}
 
 
+def internet_search(consulta: str):
 
+    """
+    Esta función realiza la búsqueda por internet. retorna 
+
+    Args_
+    consulta: es la query para buscar en internet
+
+    """
+    try:
+        completion = client.chat.completions.create(
+            model="gpt-4o-search-preview",
+            web_search_options={},
+            messages=[
+        {
+            "role": "user",
+            "content": f"Vas a buscar en internet la siguiente información {consulta}, la respuesta la darás en un json de la siguiente manera la primera key es 'html' y la segunda key es 'info'. el valor de 'info' quiero que sea completo y denso. y el value de html quiero que sea sobre las referencias donde encontraste la información.",
+        }
+    ], )
+
+        respuesta_json = completion.choices[0].message.content
+        return respuesta_json
+
+
+    except Exception as e:
+        print(f"Error al buscar en internet {str(e)}")
+        return {"error": str(e)}

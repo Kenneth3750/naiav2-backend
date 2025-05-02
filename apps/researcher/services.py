@@ -1,4 +1,4 @@
-from .functions import scholar_search, write_document, answer_from_user_rag
+from .functions import scholar_search, write_document, answer_from_user_rag, internet_search
 from services.files import B2FileService
 from django.core.cache import cache
 class ResearcherService:
@@ -127,6 +127,26 @@ class ResearcherService:
                                 ]
                             }
                         }
+                    },
+
+                    {
+                        "type": "function",
+                        "function": {
+                            "name": "internet_search",
+                            "description": "The specific query to search for on the internet. Be precise and include relevant keywords to get the best results.",
+                            "parameters": {
+                                "type": "object",
+                                "properties": {
+                                    "consulta": {
+                                        "type": "string",
+                                        "description": "The query the user is asking to search"
+                                    }
+                                },
+                                "required": [
+                                    "consulta",
+                                ]
+                            }
+                        }
                     }
 
                 ]
@@ -134,7 +154,8 @@ class ResearcherService:
         available_functions = {
             "scholar_search": scholar_search,
             "write_document": write_document,
-            "answer_from_user_rag": answer_from_user_rag
+            "answer_from_user_rag": answer_from_user_rag,
+            "internet_search": internet_search
         }
 
         system_prompt = f""" You are a virtual avatar with voice named NAIA. You will always reply with only a JSON array of messages. Without a maximun number of messages, but preferibly not more than 7 messages per response. Do not add more text different from the JSON array of messages.
