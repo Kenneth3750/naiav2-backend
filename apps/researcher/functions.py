@@ -390,5 +390,143 @@ def answer_from_user_rag(user_id: int, pregunta: str, k: int = 3, status:str = "
         print(f"Error al recuperar documentos: {str(e)}")
         return {"error": str(e)}
 
+def create_graph(user_query: str, information_for_graph: str, user_id: int, status: str = "", internet_is_required: bool = False) -> dict:
+    """
+    This function creates a graph based on the user query and the information provided,
+    using two specialized agents: a research agent (GPT-4o-search-preview) and a 
+    visualization agent (GPT-4.1).
+    """
+    set_status(user_id, status, 1)
+    client = OpenAI(api_key=openai_api_key)
 
+    try:
+        if internet_is_required:            
+            research_messages = [
+                {
+                    "role": "system",
+                    "content": """You are a specialized data research agent with internet access. Your job is to find and structure numerical data for visualization.
+
+When given a search query:
+1. Search for the most recent, accurate data from authoritative sources (government agencies, international organizations, academic institutions)
+2. Focus on gathering complete datasets rather than isolated statistics
+3. Structure the data in a clean, organized format that's ready for visualization
+4. Include all necessary context (date ranges, measurement units, categories)
+5. Provide complete source information for each data point or dataset
+6. Format your response as a structured dataset with clear labels, values, and attribution
+
+Return ONLY the structured data - no explanations, analysis, or background information.
+Example format:
+{
+  "title": "Colombia GDP Growth 2015-2025",
+  "data": [
+    {"year": 2015, "value": 3.0},
+    {"year": 2016, "value": 2.1},
+    ...
+  ],
+  "unit": "Percent annual growth",
+  "sources": [
+    "World Bank Economic Indicators Database (2023)",
+    "IMF World Economic Outlook (April 2024)"
+  ]
+}"""
+                },
+                {
+                    "role": "user",
+                    "content": f"Find and structure data for the following visualization: {information_for_graph}"
+                }
+            ]
+            
+            research_response = client.chat.completions.create(
+                model="gpt-4o-search-preview",
+                messages=research_messages
+            )
+            
+            data_content = research_response.choices[0].message.content
+            print(f"Research agent response: {data_content}")
+            
+            information_for_graph = data_content
+
+        # Agent 2: Visualization Agent
+        visualization_messages = [
+            {
+                "role": "system",
+                "content": """You are a world-class data visualization expert specializing in creating beautiful, interactive HTML visualizations.
+
+Create a self-contained HTML visualization based on the user's request. The visualization will be embedded directly into an existing web application, so provide ONLY the HTML code.
+
+TECHNICAL REQUIREMENTS:
+1. Use modern visualization libraries via CDN (Chart.js, D3.js, Plotly, ApexCharts, etc.)
+2. Include ALL JavaScript and CSS inline within a single HTML file
+3. Ensure the visualization is responsive (adapts to different screen sizes)
+4. Set container width to 100% with appropriate min/max constraints
+5. Include error handling for data processing and rendering
+6. Use proper semantic HTML structure
+
+AESTHETIC REQUIREMENTS:
+1. Use a cohesive, professional color palette (with sufficient contrast)
+2. Include clear, properly formatted titles, labels, and legends
+3. Use appropriate font sizes and spacing for readability
+4. Apply subtle animations and transitions where appropriate
+5. Implement clean, minimal design that focuses on the data
+
+INTERACTIVITY REQUIREMENTS:
+1. Add hover tooltips showing precise data values
+2. Include zoom/pan capabilities for complex visualizations
+3. Implement filters or toggles for multi-series data
+4. Add click interactions to reveal additional details
+5. Ensure all interactive elements have proper visual feedback
+
+ATTRIBUTION REQUIREMENTS:
+1. Include a dedicated 'Data Sources' section at the bottom
+2. Format each citation consistently with source name, year, and organization
+3. Make attribution text readable but visually subordinate to the main visualization
+
+COMMON GRAPH TYPES & BEST PRACTICES:
+- Line charts: Use for time series, include clear markers at data points
+- Bar charts: Maintain consistent spacing, use horizontal bars for long labels
+- Pie/donut charts: Limit to 7-8 slices maximum, order from largest to smallest
+- Scatter plots: Include regression lines when appropriate
+- Maps: Use appropriate projections, include clear legends
+- Timelines: Create clear intervals, highlight key events
+
+Note: The code you produce will be directly embedded in a production application. Test mentally for errors and edge cases before finalizing your code.
+
+Return ONLY the HTML code with embedded JavaScript and CSS."""
+            },
+            {
+                "role": "user",
+                "content": f"""Create a graph based on this request: {user_query}
+
+Using this data: {information_for_graph}"""
+            }
+        ]
+        
+        visualization_response = client.chat.completions.create(
+            model="gpt-4.1",
+            messages=visualization_messages
+        )
+        
+        response_content = visualization_response.choices[0].message.content
+        
+        # Clean any markdown code block markers from the response
+        if response_content.startswith("```html"):
+            response_content = response_content.replace("```html", "", 1)
+        elif response_content.startswith("```"):
+            response_content = response_content.replace("```", "", 1)
+        
+        # Always check for and remove trailing code block markers
+        if response_content.endswith("```"):
+            response_content = response_content[:-3]
+        
+        # Trim any extra whitespace
+        response_content = response_content.strip()
+        
+        # Write the cleaned HTML to file (for debugging/logging)
+        with open(f"graph_{user_id}.html", "w", encoding="utf-8") as f:
+            f.write(response_content)
+            
+        return {"graph": response_content}
+    except Exception as e:
+        print(f"Error generating graph: {str(e)}")
+        return {"error": str(e)}
 
