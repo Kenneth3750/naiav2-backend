@@ -170,9 +170,17 @@ class ResearcherService:
                                     "query": {
                                         "type": "string",
                                         "description": "The complete search query with all necessary details. All search parameters must be included in this single string."
-                                    }
+                                    },
+                                    "user_id": {
+                                        "type": "string",
+                                        "description": "The ID of the user who is performing the search. Look at the first developer prompt to get the user_id"
+                                    },
+                                    "status": {
+                                        "type": "string",
+                                        "description": "A concise description of the task to be performed, in the language of the user"
+                                    },
                                 },
-                                "required": ["query"]
+                                "required": ["query", "user_id", "status"]
                             }
                         }
                     },

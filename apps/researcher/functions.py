@@ -389,7 +389,7 @@ def answer_from_user_rag(user_id: int, pregunta: str, k: int = 3, status:str = "
     except Exception as e:
         print(f"Error al recuperar documentos: {str(e)}")
         return {"error": str(e)}
-
+    
 def create_graph(user_query: str, information_for_graph: str, user_id: int, status: str = "", internet_is_required: bool = False) -> dict:
     """
     This function creates a graph based on the user query and the information provided,
@@ -455,10 +455,12 @@ Create a clean, publication-ready HTML visualization that can be easily converte
 TECHNICAL REQUIREMENTS:
 1. Use D3.js or Chart.js via CDN (preferred libraries for static visualization)
 2. Include ALL JavaScript and CSS inline within a single HTML file
-3. Use a fixed width and height (preferably 800px x 600px) for consistent image export
-4. Avoid complex animations or transitions that won't translate to static images
-5. Use a white background to ensure compatibility with print publications
-6. Ensure all text is readable when converted to an image (appropriate font sizes)
+3. Maximize space usage - the visualization should fill the entire available area with minimal margins
+4. Set both HTML and BODY elements to 100% width and height with margin and padding set to 0
+5. Set the chart container to 100% width and height with position:absolute and top/right/bottom/left set to 0
+6. Avoid complex animations or transitions that won't translate to static images
+7. Use a white background to ensure compatibility with print publications
+8. Ensure all text is readable when converted to an image (appropriate font sizes)
 
 ACADEMIC STYLE REQUIREMENTS:
 1. Use a simple, professional color palette appropriate for academic journals
@@ -481,6 +483,12 @@ ATTRIBUTION REQUIREMENTS:
 2. Format citations according to academic standards (APA, MLA, etc.)
 3. Include all data sources with complete citation information
 
+IMPORTANT SPACE USAGE NOTES:
+- The chart should take up the ENTIRE viewable area, with minimal padding/margins
+- Position the chart to fill the entire document without scrollbars appearing
+- Ensure the chart will not have empty space when converted to PNG/JPG
+- If using a library like Chart.js, be sure to set maintainAspectRatio: false
+
 Return ONLY the HTML code with embedded JavaScript and CSS. The code should render a visualization that looks good as a static image without interactive elements."""
             },
             {
@@ -489,7 +497,7 @@ Return ONLY the HTML code with embedded JavaScript and CSS. The code should rend
 
 Using this data: {information_for_graph}
 
-The graph should be simple, clear, and suitable for converting to a static image format (PNG/JPG) for inclusion in an academic paper."""
+The graph should be simple, clear, and suitable for converting to a static image format (PNG/JPG) for inclusion in an academic paper. MAKE SURE the graph fills the entire available space with no excess whitespace or margins, as it will be directly converted to an image."""
             }
         ]
         
@@ -521,29 +529,166 @@ The graph should be simple, clear, and suitable for converting to a static image
     except Exception as e:
         print(f"Error generating graph: {str(e)}")
         return {"error": str(e)}
-
-def factual_web_query(query: str):
+    
+def factual_web_query(query: str, status: str = "", user_id: int = 0) -> dict:
     """
-    This function searches the internet for information using the GPT-4o-search-preview model.
+    This function searches the internet for information using the SerpAPI.
 
     Args_
         query (str): The search query.
 
     """
     try:
-        completion = client.chat.completions.create(
-            model="gpt-4o-search-preview",
-            web_search_options={},
-            messages=[
-                {
-                "role": "user",
-                "content": f"Search the internet for the following information: {query}. Provide your response in a JSON format with two keys: 'display' and 'info'. The value of 'info' should be comprehensive and detailed. The value of 'html' should contain information about the references where you found the information.",
-                }
-            ], 
-        )
-
-        respuesta_json = completion.choices[0].message.content
-        return json.loads(respuesta_json)
+        api_key = os.getenv("SERPAPI_KEY")
+        if not api_key:
+            raise ValueError("SERPAPI_KEY not found in .env file")
+        params = {
+            "engine": "google",
+            "q": query,
+            "api_key": api_key,
+            "outpuyt": "json",
+        }
+        set_status(user_id, status, 1)
+        search = GoogleSearch(params)
+        results = search.get_dict()
+        organic_results = results.get("organic_results", [])
+        
+        html_output = """
+        <div class="naia-search-container">
+            <h2 class="search-title">Research Results</h2>
+            <div class="search-query-box">
+            <span class="search-icon">🔍</span>
+            <span class="query-text">{}</span>
+            </div>
+            <div class="results-container">
+        """.format(query)
+        
+        for i, result in enumerate(organic_results[:10], 1):
+            title = result.get("title", "No Title Available")
+            link = result.get("link", "#")
+            snippet = result.get("snippet", "No description available.")
+            
+            html_output += f"""
+            <div class="result-card">
+                <div class="result-number">{i}</div>
+                <div class="result-content">
+                <a href="{link}" class="result-title" target="_blank">{title}</a>
+                <div class="result-url">{link}</div>
+                <p class="result-snippet">{snippet}</p>
+                </div>
+            </div>
+            """
+        
+        html_output += """
+            </div>
+        </div>
+        <style>
+            .naia-search-container {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            max-width: 900px;
+            margin: 0 auto;
+            padding: 25px;
+            background: linear-gradient(145deg, #f9f9f9, #ffffff);
+            border-radius: 15px;
+            box-shadow: 0 8px 32px rgba(31, 38, 135, 0.1);
+            }
+            .search-title {
+            color: #4a4a8c;
+            font-size: 28px;
+            margin-bottom: 20px;
+            text-align: center;
+            font-weight: 600;
+            letter-spacing: 0.5px;
+            }
+            .search-query-box {
+            background: #f0f4ff;
+            padding: 15px 20px;
+            border-radius: 10px;
+            margin-bottom: 25px;
+            display: flex;
+            align-items: center;
+            border-left: 5px solid #6d7fcc;
+            }
+            .search-icon {
+            font-size: 22px;
+            margin-right: 15px;
+            }
+            .query-text {
+            font-size: 18px;
+            color: #333;
+            font-weight: 500;
+            }
+            .results-container {
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+            }
+            .result-card {
+            display: flex;
+            background: white;
+            border-radius: 10px;
+            padding: 16px;
+            box-shadow: 0 3px 12px rgba(0,0,0,0.05);
+            transition: transform 0.2s, box-shadow 0.2s;
+            position: relative;
+            overflow: hidden;
+            }
+            .result-card:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 6px 16px rgba(0,0,0,0.1);
+            border-color: #6d7fcc;
+            }
+            .result-number {
+            background: #6d7fcc;
+            color: white;
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            margin-right: 16px;
+            flex-shrink: 0;
+            }
+            .result-content {
+            flex-grow: 1;
+            }
+            .result-title {
+            font-size: 18px;
+            color: #4a4a8c;
+            text-decoration: none;
+            font-weight: 600;
+            margin-bottom: 6px;
+            display: block;
+            line-height: 1.4;
+            }
+            .result-title:hover {
+            text-decoration: underline;
+            }
+            .result-url {
+            font-size: 14px;
+            color: #6d7fcc;
+            margin-bottom: 8px;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            }
+            .result-snippet {
+            font-size: 15px;
+            color: #555;
+            line-height: 1.5;
+            margin: 0;
+            }
+        </style>
+        """
+        with open(f"search_results_{user_id}.html", "w", encoding="utf-8") as f:
+            f.write(html_output)
+        
+        return {"search_results": html_output}
     except Exception as e:
-        print(f"Error al buscar en internet {str(e)}")
+        print(f"Error during search: {str(e)}")
         return {"error": str(e)}
+
+
+        
