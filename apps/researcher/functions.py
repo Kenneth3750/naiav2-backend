@@ -445,63 +445,56 @@ Example format:
             
             information_for_graph = data_content
 
-        # Agent 2: Visualization Agent
         visualization_messages = [
             {
                 "role": "system",
-                "content": """You are a world-class data visualization expert specializing in creating beautiful, interactive HTML visualizations.
+                "content": """You are a data visualization expert specializing in creating clear, professional charts for academic publications.
 
-Create a self-contained HTML visualization based on the user's request. The visualization will be embedded directly into an existing web application, so provide ONLY the HTML code.
+Create a clean, publication-ready HTML visualization that can be easily converted to static PNG/JPG images for academic articles. The visualization should focus on clarity and academic style rather than interactivity.
 
 TECHNICAL REQUIREMENTS:
-1. Use modern visualization libraries via CDN (Chart.js, D3.js, Plotly, ApexCharts, etc.)
+1. Use D3.js or Chart.js via CDN (preferred libraries for static visualization)
 2. Include ALL JavaScript and CSS inline within a single HTML file
-3. Ensure the visualization is responsive (adapts to different screen sizes)
-4. Set container width to 100% with appropriate min/max constraints
-5. Include error handling for data processing and rendering
-6. Use proper semantic HTML structure
+3. Use a fixed width and height (preferably 800px x 600px) for consistent image export
+4. Avoid complex animations or transitions that won't translate to static images
+5. Use a white background to ensure compatibility with print publications
+6. Ensure all text is readable when converted to an image (appropriate font sizes)
 
-AESTHETIC REQUIREMENTS:
-1. Use a cohesive, professional color palette (with sufficient contrast)
-2. Include clear, properly formatted titles, labels, and legends
-3. Use appropriate font sizes and spacing for readability
-4. Apply subtle animations and transitions where appropriate
-5. Implement clean, minimal design that focuses on the data
+ACADEMIC STYLE REQUIREMENTS:
+1. Use a simple, professional color palette appropriate for academic journals
+2. Include clear, properly formatted titles, axis labels, and legends
+3. Use serif fonts for better readability in print (Times New Roman or similar)
+4. Add appropriate grid lines where they enhance readability
+5. Format numbers with appropriate precision and thousand separators
+6. Include error bars or confidence intervals where applicable
 
-INTERACTIVITY REQUIREMENTS:
-1. Add hover tooltips showing precise data values
-2. Include zoom/pan capabilities for complex visualizations
-3. Implement filters or toggles for multi-series data
-4. Add click interactions to reveal additional details
-5. Ensure all interactive elements have proper visual feedback
+DATA PRESENTATION BEST PRACTICES:
+1. Start numeric axes at zero when appropriate for accurate visual comparison
+2. Use consistent scales across related charts
+3. Clearly indicate units of measurement on axes
+4. Limit the number of data series to prevent visual clutter
+5. Order categorical data in a meaningful way (e.g., chronological, ascending/descending values)
+6. Use appropriate chart types for the data relationships being shown
 
 ATTRIBUTION REQUIREMENTS:
-1. Include a dedicated 'Data Sources' section at the bottom
-2. Format each citation consistently with source name, year, and organization
-3. Make attribution text readable but visually subordinate to the main visualization
+1. Include a simple, clean caption below the visualization
+2. Format citations according to academic standards (APA, MLA, etc.)
+3. Include all data sources with complete citation information
 
-COMMON GRAPH TYPES & BEST PRACTICES:
-- Line charts: Use for time series, include clear markers at data points
-- Bar charts: Maintain consistent spacing, use horizontal bars for long labels
-- Pie/donut charts: Limit to 7-8 slices maximum, order from largest to smallest
-- Scatter plots: Include regression lines when appropriate
-- Maps: Use appropriate projections, include clear legends
-- Timelines: Create clear intervals, highlight key events
-
-Note: The code you produce will be directly embedded in a production application. Test mentally for errors and edge cases before finalizing your code.
-
-Return ONLY the HTML code with embedded JavaScript and CSS."""
+Return ONLY the HTML code with embedded JavaScript and CSS. The code should render a visualization that looks good as a static image without interactive elements."""
             },
             {
                 "role": "user",
-                "content": f"""Create a graph based on this request: {user_query}
+                "content": f"""Create a publication-ready graph for an academic article based on this request: {user_query}
 
-Using this data: {information_for_graph}"""
+Using this data: {information_for_graph}
+
+The graph should be simple, clear, and suitable for converting to a static image format (PNG/JPG) for inclusion in an academic paper."""
             }
         ]
         
         visualization_response = client.chat.completions.create(
-            model="gpt-4.1",
+            model="gpt-4.1-mini",
             messages=visualization_messages
         )
         
@@ -530,13 +523,11 @@ Using this data: {information_for_graph}"""
         return {"error": str(e)}
 
 def internet_search(consulta: str):
-
-
     """
-    Esta función realiza la búsqueda por internet. retorna 
+    This function searches the internet for information using the GPT-4o-search-preview model.
 
     Args_
-    consulta: es la query para buscar en internet
+        consulta (str): The search query.
 
     """
     try:
@@ -544,11 +535,12 @@ def internet_search(consulta: str):
             model="gpt-4o-search-preview",
             web_search_options={},
             messages=[
-        {
-            "role": "user",
-            "content": f"Vas a buscar en internet la siguiente información {consulta}, la respuesta la darás en un json de la siguiente manera la primera key es 'html' y la segunda key es 'info'. el valor de 'info' quiero que sea completo y denso. y el value de html quiero que sea sobre las referencias donde encontraste la información.",
-        }
-    ], )
+                {
+                "role": "user",
+                "content": f"Search the internet for the following information: {consulta}. Provide your response in a JSON format with two keys: 'html' and 'info'. The value of 'info' should be comprehensive and detailed. The value of 'html' should contain information about the references where you found the information.",
+                }
+            ], 
+        )
 
         respuesta_json = completion.choices[0].message.content
         return respuesta_json

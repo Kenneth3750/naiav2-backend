@@ -17,6 +17,7 @@ class ChatService():
         role = RoleService(role_id)
         tools, available_tools, system_prompt = role.get_role(user_id)
         image_url = file_service.get_current_file_url(user_id)
+        print("image_url", image_url)
         messages = ChatRepository.get_current_conversation(user_id, role_id)
         if not messages:
             messages = ChatRepository.get_last_conversation(user_id, role_id)

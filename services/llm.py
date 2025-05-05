@@ -32,6 +32,7 @@ class LLMService:
     
     def _create_message_input(self, user_input, image_url):
         if image_url is None:
+            print("No se ha añadido una imagen a la conversación")
             return {
                 "role": "user",
                 "content": [
@@ -88,10 +89,11 @@ class LLMService:
 
     
     def generate_response(self, user_input, image_url, messages):
+        model = "gpt-4.1-mini"
         messages = self._init_conversation(messages, user_input, image_url)
         start_time = time.time()
         completions = self.client.chat.completions.create(
-            model="gpt-4.1-nano",  
+            model=model,
             messages=messages,
             tools=self.tools
         )
@@ -143,7 +145,7 @@ class LLMService:
  
 
             second_response = self.client.chat.completions.create(
-                model="gpt-4.1-nano",
+                model=model,
                 messages=messages,
                 tools=self.tools,
             )
@@ -158,6 +160,7 @@ class LLMService:
                 "messages": messages,
                 "function_results": function_results
             }
+            print("second_response: ", second_response.choices[0].message.content)
             return json_response
     
     @staticmethod
@@ -174,7 +177,7 @@ class LLMService:
     def make_resume(messages):
         try:
             client = OpenAI(api_key=os.getenv("open_ai"))
-            model = "gpt-4.1-nano"
+            model = "gpt-4.1-mini"
 
             if isinstance(messages, str):
                 messages = json.loads(messages)
