@@ -10,7 +10,7 @@ from langchain_community.vectorstores import Chroma
 from langchain_text_splitters import CharacterTextSplitter
 from langchain_openai import OpenAIEmbeddings
 import tempfile
-
+import json
 load_dotenv()
 
 openai_api_key = os.getenv("open_ai")
@@ -360,7 +360,7 @@ def save_user_document_for_rag(pdf_files: List[bytes], user_id:int):
 
 def answer_from_user_rag(user_id: int, pregunta: str, k: int = 3, status:str = "") -> dict:
     """
-    Consulta la información almacenada en el vectorstore del usuario y genera una respuesta.
+    query la información almacenada en el vectorstore del usuario y genera una respuesta.
     """
     try:
         set_status(user_id, status, 1)
@@ -522,12 +522,12 @@ The graph should be simple, clear, and suitable for converting to a static image
         print(f"Error generating graph: {str(e)}")
         return {"error": str(e)}
 
-def internet_search(consulta: str):
+def factual_web_query(query: str):
     """
     This function searches the internet for information using the GPT-4o-search-preview model.
 
     Args_
-        consulta (str): The search query.
+        query (str): The search query.
 
     """
     try:
@@ -537,15 +537,13 @@ def internet_search(consulta: str):
             messages=[
                 {
                 "role": "user",
-                "content": f"Search the internet for the following information: {consulta}. Provide your response in a JSON format with two keys: 'html' and 'info'. The value of 'info' should be comprehensive and detailed. The value of 'html' should contain information about the references where you found the information.",
+                "content": f"Search the internet for the following information: {query}. Provide your response in a JSON format with two keys: 'display' and 'info'. The value of 'info' should be comprehensive and detailed. The value of 'html' should contain information about the references where you found the information.",
                 }
             ], 
         )
 
         respuesta_json = completion.choices[0].message.content
-        return respuesta_json
-
-
+        return json.loads(respuesta_json)
     except Exception as e:
         print(f"Error al buscar en internet {str(e)}")
         return {"error": str(e)}
