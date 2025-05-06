@@ -1,4 +1,4 @@
-from .repositories import update_operation_status, get_operation_status
+from .repositories import update_operation_status, get_operation_status, delete_operation_status
 from typing import Dict, Any
 
 def set_status(user_id: int, status: str, role_id: int) -> Dict[str, Any]:
@@ -39,4 +39,4 @@ def delete_status(user_id: int, role_id: int) -> None:
     Returns:
         None
     """
-    return update_operation_status(user_id, role_id)
+    return delete_operation_status(user_id, role_id)
