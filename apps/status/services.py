@@ -39,4 +39,4 @@ def delete_status(user_id: int, role_id: int) -> None:
     Returns:
         None
     """
-    return update_operation_status(user_id, "deleted", role_id)
+    return update_operation_status(user_id, role_id)
