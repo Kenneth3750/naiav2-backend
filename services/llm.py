@@ -89,7 +89,7 @@ class LLMService:
 
     
     def generate_response(self, user_input, image_url, messages):
-        model = "gpt-4.1-nano"
+        model = "gpt-4.1-mini"
         messages = self._init_conversation(messages, user_input, image_url)
         start_time = time.time()
         completions = self.client.chat.completions.create(

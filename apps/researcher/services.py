@@ -231,7 +231,7 @@ class ResearcherService:
                         "type": "function",
                         "function": {
                             "name": "deep_content_analysis_for_specific_information",
-                            "description": "Performs deep content analysis on the user's documents to extract specific information. This function is used for detailed analysis and extraction of relevant data from the user's uploaded documents.",
+                            "description": "Performs deep content analysis on the user's documents to extract specific information. This function is used for user query detailed analysis and also for deep content analysis of a specific web page.",
                             "parameters": {
                                 "type": "object",
                                 "properties": {
