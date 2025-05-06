@@ -179,7 +179,7 @@ def convert_to_html(search_result):
                 <h4 class="title">{result['title']}</h4>
                 <p class="authors"><strong>Authors:</strong> {', '.join(result['authors'])}</p>
                 <p class="snippet">{result['snippet']}</p>
-                <a href="{result['link']}" target="_blank" class="read-more">Read More</a>
+                <a href="{result['link']}" class="read-more" target="_blank">Read More</a>
             </div>
         """
 
@@ -188,7 +188,7 @@ def convert_to_html(search_result):
     </div>
     <style>
         .search-results {
-            font-family: Arial, sans-serif;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
             max-width: 800px;
             margin: 0 auto;
             padding: 20px;
@@ -201,20 +201,44 @@ def convert_to_html(search_result):
             box-shadow: 0 2px 4px rgba(0,0,0,0.1);
         }
         .title {
-            color: #1a0dab;
+            color: #0B3954;
             margin: 10px 0;
         }
         .authors {
             color: #006621;
         }
         .read-more {
-            display: inline-block;
-            color: white;
-            background: #1a73e8;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            color: #0B3954;
+            background-color: rgba(11, 57, 84, 0.1);
             padding: 8px 16px;
             text-decoration: none;
-            border-radius: 4px;
-            margin-top: 10px;
+            border-radius: 6px;
+            border: 1px solid #0B3954;
+            margin-top: 12px;
+            font-family: inherit;
+            font-size: 14px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .read-more:hover {
+            background-color: rgba(11, 57, 84, 0.2);
+        }
+        .read-more:active {
+            background-color: rgba(11, 57, 84, 0.3);
+        }
+        .read-more::before {
+            content: '';
+            display: inline-block;
+            width: 18px;
+            height: 18px;
+            margin-right: 8px;
+            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%230B3954' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4'/%3E%3Cpolyline points='7 10 12 15 17 10'/%3E%3Cline x1='12' y1='15' x2='12' y2='3'/%3E%3C/svg%3E");
+            background-size: cover;
+            background-repeat: no-repeat;
+            background-position: center;
         }
     </style>
     """
