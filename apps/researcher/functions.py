@@ -445,6 +445,7 @@ Example format:
             
             information_for_graph = data_content
 
+            
         visualization_messages = [
             {
                 "role": "system",
@@ -455,12 +456,13 @@ Create a clean, publication-ready HTML visualization that can be easily converte
 TECHNICAL REQUIREMENTS:
 1. Use D3.js or Chart.js via CDN (preferred libraries for static visualization)
 2. Include ALL JavaScript and CSS inline within a single HTML file
-3. Maximize space usage - the visualization should fill the entire available area with minimal margins
-4. Set both HTML and BODY elements to 100% width and height with margin and padding set to 0
-5. Set the chart container to 100% width and height with position:absolute and top/right/bottom/left set to 0
+3. Set a FIXED WIDTH of 600px and appropriate height (typically 400-450px) for the chart
+4. Set both HTML and BODY elements to have no margin and padding
+5. The chart container should have width:600px and appropriate height with no excess margins
 6. Avoid complex animations or transitions that won't translate to static images
 7. Use a white background to ensure compatibility with print publications
 8. Ensure all text is readable when converted to an image (appropriate font sizes)
+9. Add a download button that allows saving the chart as a PNG image
 
 ACADEMIC STYLE REQUIREMENTS:
 1. Use a simple, professional color palette appropriate for academic journals
@@ -483,11 +485,11 @@ ATTRIBUTION REQUIREMENTS:
 2. Format citations according to academic standards (APA, MLA, etc.)
 3. Include all data sources with complete citation information
 
-IMPORTANT SPACE USAGE NOTES:
-- The chart should take up the ENTIRE viewable area, with minimal padding/margins
-- Position the chart to fill the entire document without scrollbars appearing
-- Ensure the chart will not have empty space when converted to PNG/JPG
-- If using a library like Chart.js, be sure to set maintainAspectRatio: false
+DOWNLOAD FEATURE:
+1. Include a simple download button with text "Download as PNG"
+2. Use html2canvas or similar library to capture the chart as an image
+3. Implement the download functionality with proper error handling
+4. Position the button below the chart in a non-intrusive way
 
 Return ONLY the HTML code with embedded JavaScript and CSS. The code should render a visualization that looks good as a static image without interactive elements."""
             },
@@ -497,7 +499,11 @@ Return ONLY the HTML code with embedded JavaScript and CSS. The code should rend
 
 Using this data: {information_for_graph}
 
-The graph should be simple, clear, and suitable for converting to a static image format (PNG/JPG) for inclusion in an academic paper. MAKE SURE the graph fills the entire available space with no excess whitespace or margins, as it will be directly converted to an image."""
+Requirements:
+1. The graph MUST have a fixed width of exactly 600px (this is critical for our frontend)
+2. The visualization should be simple, clear, and suitable for converting to a static image format (PNG/JPG)
+3. Include a download button that allows users to save the chart as a PNG
+4. The graph should have appropriate proportions (not look squished or stretched)"""
             }
         ]
         
