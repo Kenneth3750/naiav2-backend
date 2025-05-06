@@ -31,20 +31,19 @@ class B2FileService:
             bucket = b2.Bucket(b2_api, self.bucket_id, name=self.bucket_name)
             filename = f"{self.image_prefix}/user_{user_id}.jpg"
 
-            file_exists = False
-            for file_info, _ in bucket.ls(folder_to_list=self.image_prefix, recursive=False, latest_only=True):
-                if file_info.file_name == filename:
-                    file_exists = True
-                    break
-
-            if not file_exists:
+            # Get direct file info instead of iterating through all files
+            try:
+                file_info = bucket.get_file_info_by_name(filename)
+                token, _ = self._get_download_token("image")
+                download_url = b2_api.account_info.get_download_url()
+                return f"{download_url}/file/{self.bucket_name}/{filename}?Authorization={token}"
+            except Exception as e:
+                print(f"File not found or not accessible: {filename}, Error: {str(e)}")
                 return None
-            token, b2_api = self._get_download_token("image")
-            download_url = b2_api.account_info.get_download_url()
-            return f"{download_url}/file/{self.bucket_name}/{filename}?Authorization={token}"
         except Exception as e:
-            print(f"Error checking file existence: {str(e)}")
+            print(f"Error generating file URL: {str(e)}")
             return None
+        
     def upload_image(self, user_id, image):
         try: 
             b2_api = self._get_b2_api()

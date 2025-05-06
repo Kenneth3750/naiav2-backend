@@ -92,77 +92,104 @@ class LLMService:
         model = "gpt-4.1-mini"
         messages = self._init_conversation(messages, user_input, image_url)
         start_time = time.time()
+        function_results = []
+        
+        # Maximum number of sequential function calls to prevent infinite loops
+        max_function_chain_length = 5
+        current_chain_length = 0
+        
+        # Process the initial request
         completions = self.client.chat.completions.create(
             model=model,
             messages=messages,
             tools=self.tools
         )
-        function_results = []
         response = completions.choices[0].message
-        if response.content is not None:
-            assistant_message = {"role": "assistant", "content": response.content}
-            messages.append(assistant_message)
-            messages.pop(0)  # Remove the developer message
-            messages = self._eliminate_image_from_message(messages)
-            print("llm response: ", response.content)
-            json_response = {
-                "response": self._clean_json_response(response.content),
-                "messages": messages,
-                "function_results": function_results
-            }
-            return json_response
-        tool_calls = response.tool_calls
-        print("tool_calls: \n", tool_calls)
+        print(f"Initial response type: {'content' if response.content else 'tool_call'}")
+        # Process function calls until we get a text response or hit max chain length
+        while response.content is None and response.tool_calls and current_chain_length < max_function_chain_length:
+            current_chain_length += 1
+            print(f"Processing function call {current_chain_length} of max {max_function_chain_length}")
 
-        if tool_calls:
+            # Add assistant's function call message
             assistant_message = {
                 "role": "assistant",
                 "content": None,
                 "tool_calls": [
                     {
                         "id": tool_call.id,
-                        "type": "function",  # Añadido el campo type
+                        "type": "function",
                         "function": {
                             "name": tool_call.function.name,
                             "arguments": tool_call.function.arguments
                         }
-                    } for tool_call in tool_calls
+                    } for tool_call in response.tool_calls
                 ]
             }
             messages.append(assistant_message)
             
-            for tool_call in tool_calls:
+            # Execute each tool call
+            for tool_call in response.tool_calls:
                 if tool_call.function.name in self.available_tools.keys():
                     function_to_call = self.available_tools[tool_call.function.name]
                     function_args = json.loads(tool_call.function.arguments)
+                    
+                    print(f"Executing function: {tool_call.function.name}")
                     tool_output = function_to_call(**function_args)
+                    
+                    # Add function result to message history
                     messages.append({
                         "role": "tool",
                         "tool_call_id": tool_call.id,
                         "content": str(json.dumps(tool_output))
                     })
+                    
+                    # Track all function results for the final response
                     function_results.append(tool_output)
- 
-
-            second_response = self.client.chat.completions.create(
+            
+            # Get the next response based on the function results
+            completions = self.client.chat.completions.create(
                 model=model,
                 messages=messages,
                 tools=self.tools,
             )
-            print("second_response: ", second_response.choices[0].message)
-            print("second_response_content: ", second_response.choices[0].message.content)
-            final_message = {"role": "assistant", "content": second_response.choices[0].message.content}
-            messages.append(final_message)
-            messages.pop(0)
-            messages = self._eliminate_image_from_message(messages)  
-            end_time = time.time()
-            json_response = {
-                "response": self._clean_json_response(second_response.choices[0].message.content),
-                "messages": messages,
-                "function_results": function_results
-            }
-            print("second_response: ", second_response.choices[0].message.content)
-            return json_response
+            response = completions.choices[0].message
+            print(f"Next response type: {'content' if response.content else 'tool_call'}")
+        
+        # If we got a text response or hit the max chain length
+        if response.content is not None:
+            # Add the final text response
+            assistant_message = {"role": "assistant", "content": response.content}
+            messages.append(assistant_message)
+        elif current_chain_length >= max_function_chain_length:
+            # We hit the maximum chain length without getting a text response
+            # Force a final response without tool calls
+            print("Hit maximum function chain length, forcing final response")
+            completions = self.client.chat.completions.create(
+                model=model,
+                messages=messages,
+                tools=None,  # Disable tools for final response
+            )
+            final_content = completions.choices[0].message.content
+            messages.append({"role": "assistant", "content": final_content})
+        
+        # Final processing
+        messages.pop(0)  # Remove the developer message
+        messages = self._eliminate_image_from_message(messages)
+        end_time = time.time()
+        
+        # Get the final content for the response
+        final_message = messages[-1]
+        final_content = final_message.get("content", "")
+        
+        # Return the complete response
+        json_response = {
+            "response": self._clean_json_response(final_content) if final_content else {},
+            "messages": messages,
+            "function_results": function_results,
+            "processing_time": end_time - start_time
+        }
+        return json_response
     
     @staticmethod
     def delete_thread(thread_id):
