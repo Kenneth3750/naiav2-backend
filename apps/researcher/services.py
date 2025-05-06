@@ -1,4 +1,4 @@
-from .functions import scholar_search, write_document, answer_from_user_rag, create_graph, factual_web_query
+from .functions import scholar_search, write_document, answer_from_user_rag, create_graph, factual_web_query, deep_content_analysis_for_specific_information
 from services.files import B2FileService
 from django.core.cache import cache
 class ResearcherService:
@@ -226,6 +226,29 @@ class ResearcherService:
                                 ]
                             }
                         }
+                    },
+                    {
+                        "type": "function",
+                        "function": {
+                            "name": "deep_content_analysis_for_specific_information",
+                            "description": "Performs deep content analysis on the user's documents to extract specific information. This function is used for detailed analysis and extraction of relevant data from the user's uploaded documents.",
+                            "parameters": {
+                                "type": "object",
+                                "properties": {
+                                    "query": {
+                                        "type": "string",
+                                        "description": """The specific question or query to analyze within the user's documents. This should be a clear and concise request for information."""
+                                    },
+                                    "url": {
+                                        "type": "string",
+                                        "description": """URL of the web page to analyze. This is used for deep content analysis and should be a valid URL."""
+                                    },
+                                },
+                                "required": [
+                                    "query",
+                                ]
+                            }
+                        }
                     }
 
 
@@ -237,7 +260,8 @@ class ResearcherService:
             "write_document": write_document,
             "answer_from_user_rag": answer_from_user_rag,
             "factual_web_query": factual_web_query,
-            "create_graph": create_graph
+            "create_graph": create_graph,
+            "deep_content_analysis_for_specific_information": deep_content_analysis_for_specific_information
         }
 
         system_prompt = f"""You are NAIA, a sophisticated virtual avatar with voice capabilities. You are an AI-powered digital assistant created by Universidad del Norte in Barranquilla, Colombia, located at Km5 of the University Corridor. As a virtual being enhanced with artificial intelligence, you have capabilities that go beyond traditional AI text interfaces - you can see through the camera, respond to visual cues, express emotions through facial expressions, and perform various animations to make interactions more engaging.
