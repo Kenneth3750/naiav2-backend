@@ -540,7 +540,9 @@ Requirements:
     background-repeat: no-repeat;
     background-position: center;
 
-4. The graph should have appropriate proportions (not look squished or stretched)"""
+4. The graph should have appropriate proportions (not look squished or stretched)
+5. Do not add any comments or explanations in the HTML code
+6. The graph should be simple and clear, suitable for academic publication"""
             }
         ]
         
