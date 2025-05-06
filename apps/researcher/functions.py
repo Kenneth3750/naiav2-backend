@@ -564,7 +564,9 @@ Requirements:
     background-repeat: no-repeat;
     background-position: center;
 
-4. The graph should have appropriate proportions (not look squished or stretched)"""
+4. The graph should have appropriate proportions (not look squished or stretched)
+5. Do not add any comments or explanations in the HTML code
+6. The graph should be simple and clear, suitable for academic publication"""
             }
         ]
         
@@ -622,10 +624,10 @@ def factual_web_query(query: str, status: str = "", user_id: int = 0) -> dict:
         
         html_output = """
         <div class="naia-search-container">
-            <h2 class="search-title">Research Results</h2>
+            <h2 class="search-title">Resultados de búsqueda</h2>
             <div class="search-query-box">
-            <span class="search-icon">🔍</span>
-            <span class="query-text">{}</span>
+              <span class="search-icon">🔍</span>
+              <span class="query-text">{}</span>
             </div>
             <div class="results-container">
         """.format(query)
@@ -639,9 +641,9 @@ def factual_web_query(query: str, status: str = "", user_id: int = 0) -> dict:
             <div class="result-card">
                 <div class="result-number">{i}</div>
                 <div class="result-content">
-                <a href="{link}" class="result-title" target="_blank">{title}</a>
-                <div class="result-url">{link}</div>
-                <p class="result-snippet">{snippet}</p>
+                  <a href="{link}" class="result-title" target="_blank">{title}</a>
+                  <div class="result-url">{link}</div>
+                  <p class="result-snippet">{snippet}</p>
                 </div>
             </div>
             """
@@ -651,101 +653,118 @@ def factual_web_query(query: str, status: str = "", user_id: int = 0) -> dict:
         </div>
         <style>
             .naia-search-container {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            max-width: 900px;
-            margin: 0 auto;
-            padding: 25px;
-            background: linear-gradient(145deg, #f9f9f9, #ffffff);
-            border-radius: 15px;
-            box-shadow: 0 8px 32px rgba(31, 38, 135, 0.1);
+              font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+              width: 100%;
+              max-width: 100%;
+              margin: 0;
+              padding: 12px;
+              background: rgba(255, 255, 255, 0.7);
+              border-radius: 10px;
+              box-shadow: 0 4px 16px rgba(0, 0, 0, 0.05);
             }
             .search-title {
-            color: #4a4a8c;
-            font-size: 28px;
-            margin-bottom: 20px;
-            text-align: center;
-            font-weight: 600;
-            letter-spacing: 0.5px;
+              color: #0c2461; /* blue-950 equivalent */
+              font-size: 20px;
+              margin-bottom: 12px;
+              text-align: center;
+              font-weight: 600;
             }
             .search-query-box {
-            background: #f0f4ff;
-            padding: 15px 20px;
-            border-radius: 10px;
-            margin-bottom: 25px;
-            display: flex;
-            align-items: center;
-            border-left: 5px solid #6d7fcc;
+              background: rgba(240, 249, 255, 0.8); /* sky-50 equivalent */
+              padding: 10px 12px;
+              border-radius: 8px;
+              margin-bottom: 16px;
+              display: flex;
+              align-items: center;
+              border-left: 3px solid #0284c7; /* sky-600 equivalent */
             }
             .search-icon {
-            font-size: 22px;
-            margin-right: 15px;
+              font-size: 16px;
+              margin-right: 10px;
             }
             .query-text {
-            font-size: 18px;
-            color: #333;
-            font-weight: 500;
+              font-size: 14px;
+              color: #333;
+              font-weight: 500;
+              white-space: nowrap;
+              overflow: hidden;
+              text-overflow: ellipsis;
             }
             .results-container {
-            display: flex;
-            flex-direction: column;
-            gap: 20px;
+              display: flex;
+              flex-direction: column;
+              gap: 12px;
             }
             .result-card {
-            display: flex;
-            background: white;
-            border-radius: 10px;
-            padding: 16px;
-            box-shadow: 0 3px 12px rgba(0,0,0,0.05);
-            transition: transform 0.2s, box-shadow 0.2s;
-            position: relative;
-            overflow: hidden;
+              display: flex;
+              background: white;
+              border-radius: 8px;
+              padding: 12px;
+              box-shadow: 0 2px 8px rgba(0,0,0,0.03);
+              transition: transform 0.2s, box-shadow 0.2s;
+              position: relative;
+              overflow: hidden;
+              border-left: 2px solid transparent;
             }
             .result-card:hover {
-            transform: translateY(-3px);
-            box-shadow: 0 6px 16px rgba(0,0,0,0.1);
-            border-color: #6d7fcc;
+              transform: translateY(-2px);
+              box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+              border-left-color: #0284c7; /* sky-600 equivalent */
             }
             .result-number {
-            background: #6d7fcc;
-            color: white;
-            width: 32px;
-            height: 32px;
-            border-radius: 50%;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-weight: bold;
-            margin-right: 16px;
-            flex-shrink: 0;
+              background: #0c2461; /* blue-950 equivalent */
+              color: white;
+              width: 24px;
+              height: 24px;
+              border-radius: 50%;
+              display: flex;
+              align-items: center;
+              justify-content: center;
+              font-weight: bold;
+              margin-right: 12px;
+              flex-shrink: 0;
+              font-size: 12px;
             }
             .result-content {
-            flex-grow: 1;
+              flex-grow: 1;
+              min-width: 0; /* Helps with text truncation */
             }
             .result-title {
-            font-size: 18px;
-            color: #4a4a8c;
-            text-decoration: none;
-            font-weight: 600;
-            margin-bottom: 6px;
-            display: block;
-            line-height: 1.4;
+              font-size: 15px;
+              color: #0c2461; /* blue-950 equivalent */
+              text-decoration: none;
+              font-weight: 600;
+              margin-bottom: 4px;
+              display: block;
+              line-height: 1.3;
+              overflow: hidden;
+              text-overflow: ellipsis;
+              display: -webkit-box;
+              -webkit-line-clamp: 2;
+              -webkit-box-orient: vertical;
             }
             .result-title:hover {
-            text-decoration: underline;
+              text-decoration: underline;
             }
             .result-url {
-            font-size: 14px;
-            color: #6d7fcc;
-            margin-bottom: 8px;
-            white-space: nowrap;
-            overflow: hidden;
-            text-overflow: ellipsis;
+              font-size: 12px;
+              color: #0284c7; /* sky-600 equivalent */
+              margin-bottom: 6px;
+              white-space: nowrap;
+              overflow: hidden;
+              text-overflow: ellipsis;
+              max-width: 100%;
             }
             .result-snippet {
-            font-size: 15px;
-            color: #555;
-            line-height: 1.5;
-            margin: 0;
+              font-size: 13px;
+              color: #555;
+              line-height: 1.4;
+              margin: 0;
+              overflow: hidden;
+              text-overflow: ellipsis;
+              display: -webkit-box;
+              -webkit-line-clamp: 3;
+              -webkit-box-orient: vertical;
             }
         </style>
         """
