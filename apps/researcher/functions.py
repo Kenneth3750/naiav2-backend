@@ -734,4 +734,82 @@ def factual_web_query(query: str, status: str = "", user_id: int = 0) -> dict:
         return {"error": str(e)}
 
 
+def deep_content_analysis_for_specific_information(query:str, url: str = None):
+    '''
+    This function performs an in-depth search and information retrieval.
+    
+    Args:
+        query (str): The required search query
+        url (str, optional): Optional URL to focus the search. Defaults to None.
         
+    # If url is None, a general search will be performed
+    '''
+    if url is None:
+        print(f"Usando sin URL")
+        try:
+            completion = client.chat.completions.create(
+                model="gpt-4o-search-preview",
+                web_search_options={},
+                messages=[
+            {   
+                "role": "system",
+                "content": """You are a specialized search agent with advanced information retrieval capabilities. Your job is to perform in-depth research on specific topics and return comprehensive, well-structured information.
+
+Your responsibilities:
+1. Search for authoritative, detailed information on the query topic
+2. Extract key facts, figures, and insights from multiple reliable sources
+3. Organize the information in a coherent, well-structured format
+4. Provide proper attribution to all sources
+5. Return ONLY a JSON response with two keys: 'info' (containing comprehensive results) and 'html' (containing reference information)
+
+Present information that is factual, balanced, and thoroughly researched. Prioritize academic sources, government databases, and reputable publications."""
+            },
+            {
+                "role": "user",
+                "content": f"Search the internet for the following information: {query}. Return your response as a JSON with two keys: 'html' and 'info'. The 'info' value should be comprehensive and detailed, containing all relevant information. The 'html' value should include references to where you found the information."
+            }
+        ], )
+
+            respuesta_json = completion.choices[0].message.content
+            return respuesta_json
+
+
+        except Exception as e:
+            print(f"Error al buscar en internet {str(e)}")
+            return {"error": str(e)}
+
+    else:
+        print(f"Usando con URL proporcionada: {url}")
+        try:
+            completion = client.chat.completions.create(
+                model="gpt-4o-search-preview",
+                web_search_options={},
+                messages=[
+            {   
+                "role": "system",
+                "content": """You are a specialized search agent with advanced information retrieval capabilities. Your job is to perform in-depth research on specific topics and return comprehensive, well-structured information.
+
+Your responsibilities:
+1. Focus your search primarily on the provided URL
+2. Extract key facts, figures, and insights from this source and related materials
+3. Organize the information in a coherent, well-structured format
+4. Provide proper attribution to all sources
+5. Return ONLY a JSON response with two keys: 'info' (containing comprehensive results) and 'html' (containing reference information)
+
+Present information that is factual, balanced, and thoroughly researched. Only search beyond the provided URL if necessary to complete the information."""
+            },
+            {
+                "role": "user",
+                "content": f"Search the internet for the following information: {query}, focusing on this URL: {url}. Return your response as a JSON with two keys: 'html' and 'info'. The 'info' value should be comprehensive and detailed, containing all relevant information. The 'html' value should include references to where you found the information."
+            }
+        ], )
+            respuesta_json = completion.choices[0].message.content
+            return respuesta_json
+
+
+        except Exception as e:
+            print(f"Error al buscar en internet {str(e)}")
+            return {"error": str(e)}
+        
+
+    
