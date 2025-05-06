@@ -149,7 +149,8 @@ class LLMService:
                 messages=messages,
                 tools=self.tools,
             )
-            print("second_response: ", second_response.choices[0].message.content)
+            print("second_response: ", second_response.choices[0].message)
+            print("second_response_content: ", second_response.choices[0].message.content)
             final_message = {"role": "assistant", "content": second_response.choices[0].message.content}
             messages.append(final_message)
             messages.pop(0)
