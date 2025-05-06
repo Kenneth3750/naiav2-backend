@@ -3,6 +3,7 @@ import json
 from services.files import B2FileService
 from .repositories import ChatRepository
 from .functions import num_tokens_from_messages
+from apps.status.services import delete_status
 from apps.roles.services import RoleService
 
 max_tokens = 3000
@@ -15,6 +16,7 @@ class ChatService():
     def generate_response(self, user_input, user_id, role_id):
         file_service = B2FileService()
         role = RoleService(role_id)
+        delete_status(user_id, role_id)
         tools, available_tools, system_prompt = role.get_role(user_id)
         image_url = file_service.get_current_file_url(user_id)
         print("image_url", image_url)

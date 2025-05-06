@@ -502,7 +502,44 @@ Using this data: {information_for_graph}
 Requirements:
 1. The graph MUST have a fixed width of exactly 600px (this is critical for our frontend)
 2. The visualization should be simple, clear, and suitable for converting to a static image format (PNG/JPG)
-3. Include a download button that allows users to save the chart as a PNG
+3. Include a download button that allows users to save the chart as a PNG. The button should be like this:\n
+"#downloadButton, .download-button, button[id*="download"], button[class*="download"] 
+    background-color: rgba(11, 57, 84, 0.1) !important;
+    color: #0B3954 !important;
+    font-family: inherit !important;
+    font-size: 14px !important;
+    padding: 8px 16px !important;
+    border: 1px solid #0B3954 !important;
+    border-radius: 6px !important;
+    cursor: pointer !important;
+    transition: all 0.2s !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    margin-top: 12px !important;
+    margin-bottom: 15px !important;
+
+  
+  #downloadButton:hover, .download-button:hover, button[id*="download"]:hover, button[class*="download"]:hover 
+    background-color: rgba(11, 57, 84, 0.2) !important;
+
+  
+  #downloadButton:active, .download-button:active, button[id*="download"]:active, button[class*="download"]:active 
+    background-color: rgba(11, 57, 84, 0.3) !important;
+  
+  
+  /* Añadir ícono de descarga */
+  #downloadButton::before, .download-button::before, button[id*="download"]::before, button[class*="download"]::before 
+    content: '';
+    display: inline-block;
+    width: 18px;
+    height: 18px;
+    margin-right: 8px;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%230B3954' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4'/%3E%3Cpolyline points='7 10 12 15 17 10'/%3E%3Cline x1='12' y1='15' x2='12' y2='3'/%3E%3C/svg%3E");
+    background-size: cover;
+    background-repeat: no-repeat;
+    background-position: center;
+
 4. The graph should have appropriate proportions (not look squished or stretched)"""
             }
         ]

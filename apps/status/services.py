@@ -26,3 +26,17 @@ def get_status(user_id: int, role_id: int) -> str:
         str: The status of the operation.
     """
     return get_operation_status(user_id, role_id)
+
+
+def delete_status(user_id: int, role_id: int) -> None:
+    """
+    Delete the operation status for a user.
+    
+    Args:
+        user_id (int): The ID of the user.
+        role_id (int): The ID of the role.
+        
+    Returns:
+        None
+    """
+    return update_operation_status(user_id, "deleted", role_id)
