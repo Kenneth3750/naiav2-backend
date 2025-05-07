@@ -211,12 +211,12 @@ def convert_to_html(search_result):
             display: inline-flex;
             align-items: center;
             justify-content: center;
-            color: #0B3954;
-            background-color: rgba(11, 57, 84, 0.1);
+            color: #ffffff;
+            background-color: #1f2937; /* Gris 800 de Tailwind */
             padding: 8px 16px;
             text-decoration: none;
             border-radius: 6px;
-            border: 1px solid #0B3954;
+            border: none;
             margin-top: 12px;
             font-family: inherit;
             font-size: 14px;
@@ -224,22 +224,12 @@ def convert_to_html(search_result):
             transition: all 0.2s;
         }
         .read-more:hover {
-            background-color: rgba(11, 57, 84, 0.2);
+            background-color: #111827;
         }
         .read-more:active {
-            background-color: rgba(11, 57, 84, 0.3);
+            background-color: #374151
         }
-        .read-more::before {
-            content: '';
-            display: inline-block;
-            width: 18px;
-            height: 18px;
-            margin-right: 8px;
-            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%230B3954' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4'/%3E%3Cpolyline points='7 10 12 15 17 10'/%3E%3Cline x1='12' y1='15' x2='12' y2='3'/%3E%3C/svg%3E");
-            background-size: cover;
-            background-repeat: no-repeat;
-            background-position: center;
-        }
+        
     </style>
     """
     return {"display": html}
