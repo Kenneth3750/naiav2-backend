@@ -42,23 +42,8 @@ class LLMService:
                 ],
             }
         else:
-            try:
-                # Intentar verificar si la URL es accesible
-                import requests
-                response = requests.head(image_url, timeout=3)
-                if response.status_code >= 400:  
-                    print("La URL de la imagen no es accesible, usando solo texto")
-                    return {
-                        "role": "user",
-                        "content": [
-                            {
-                                "type": "text",
-                                "text": user_input
-                            }
-                        ],
-                    }
-                
-                return {
+
+            return {
                     "role": "user", 
                     "content": [
                         {
@@ -74,17 +59,7 @@ class LLMService:
                         },
                     ],
                 }
-            except Exception as e:
-                print(f"Error al acceder a la URL de la imagen: {e}")
-                return {
-                    "role": "user",
-                    "content": [
-                        {
-                            "type": "text",
-                            "text": user_input
-                        }
-                    ],
-                }
+
     
     def _eliminate_image_from_message(self, messages):
         for message in messages:
