@@ -7,10 +7,14 @@ import time
 
 
 class LLMService:
+    _client = None
+
     def __init__(self, available_tools, tools, system_prompt):
         load_dotenv()
         self.system_prompt = system_prompt
-        self.client = OpenAI(api_key=os.getenv("open_ai"))
+        if LLMService._client is None:
+            LLMService._client = OpenAI(api_key=os.getenv("open_ai"))
+        self.client = LLMService._client
         self.available_tools = available_tools
         self.tools = tools
 
@@ -42,7 +46,6 @@ class LLMService:
                 ],
             }
         else:
-
             return {
                     "role": "user", 
                     "content": [
@@ -91,7 +94,7 @@ class LLMService:
 
     
     def generate_response(self, user_input, image_url, messages):
-        model = "gpt-4o-mini"
+        model = "gpt-4.1-nano"
         messages = self._init_conversation(messages, user_input, image_url)
         start_time = time.time()
         function_results = []
@@ -184,7 +187,7 @@ class LLMService:
         final_message = messages[-1]
         final_content = final_message.get("content", "")
         
-        # Return the complete response
+        print(f"Final response content: {final_content}")
         json_response = {
             "response": self._clean_json_response(final_content) if final_content else {},
             "messages": messages,
