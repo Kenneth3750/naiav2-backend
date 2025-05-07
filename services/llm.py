@@ -1,10 +1,9 @@
 from openai import OpenAI
-# import openai 
 import json
 from dotenv import load_dotenv
 import os
 import time
-import logging
+
 
 
 class LLMService:
@@ -43,7 +42,23 @@ class LLMService:
                 ],
             }
         else:
-            return {
+            try:
+                # Intentar verificar si la URL es accesible
+                import requests
+                response = requests.head(image_url, timeout=3)
+                if response.status_code >= 400:  
+                    print("La URL de la imagen no es accesible, usando solo texto")
+                    return {
+                        "role": "user",
+                        "content": [
+                            {
+                                "type": "text",
+                                "text": user_input
+                            }
+                        ],
+                    }
+                
+                return {
                     "role": "user", 
                     "content": [
                         {
@@ -59,12 +74,24 @@ class LLMService:
                         },
                     ],
                 }
+            except Exception as e:
+                print(f"Error al acceder a la URL de la imagen: {e}")
+                return {
+                    "role": "user",
+                    "content": [
+                        {
+                            "type": "text",
+                            "text": user_input
+                        }
+                    ],
+                }
     
     def _eliminate_image_from_message(self, messages):
         for message in messages:
             if isinstance(message["content"], list):
                 message["content"] = [item for item in message["content"] if item["type"] != "image_url"]
         return messages
+        
     @staticmethod
     def retrieve_thread_messages(thread_id):
         load_dotenv()
@@ -89,12 +116,12 @@ class LLMService:
 
     
     def generate_response(self, user_input, image_url, messages):
-        model = "gpt-4.1-mini"
+        model = "gpt-4o-mini"
         messages = self._init_conversation(messages, user_input, image_url)
         start_time = time.time()
         function_results = []
         
-        # Maximum number of sequential function calls to prevent infinite loops
+     
         max_function_chain_length = 5
         current_chain_length = 0
         
@@ -106,7 +133,7 @@ class LLMService:
         )
         response = completions.choices[0].message
         print(f"Initial response type: {'content' if response.content else 'tool_call'}")
-        # Process function calls until we get a text response or hit max chain length
+        print(f"Initial response: {response.content}")
         while response.content is None and response.tool_calls and current_chain_length < max_function_chain_length:
             current_chain_length += 1
             print(f"Processing function call {current_chain_length} of max {max_function_chain_length}")
