@@ -3,7 +3,7 @@ import json
 from dotenv import load_dotenv
 import os
 import time
-
+import requests
 
 
 class LLMService:
@@ -46,22 +46,48 @@ class LLMService:
                 ],
             }
         else:
-            return {
-                    "role": "user", 
+            # Verify image URL is accessible
+            try:
+                response = requests.head(image_url, timeout=5)
+                if response.status_code < 200 or response.status_code >= 300:
+                    print(f"La imagen no es accesible. Código de estado: {response.status_code}")
+                    return {
+                        "role": "user",
+                        "content": [
+                            {
+                                "type": "text",
+                                "text": user_input
+                            }
+                        ],
+                    }
+            except Exception as e:
+                print(f"Error al verificar la URL de la imagen: {str(e)}")
+                return {
+                    "role": "user",
                     "content": [
                         {
                             "type": "text",
                             "text": user_input
-                        },
-                        {
-                            "type": "image_url",
-                            "image_url": {
-                                "url": image_url,
-                                "detail": "low"
-                            }
-                        },
+                        }
                     ],
                 }
+                
+            return {
+                "role": "user", 
+                "content": [
+                    {
+                        "type": "text",
+                        "text": user_input
+                    },
+                    {
+                        "type": "image_url",
+                        "image_url": {
+                            "url": image_url,
+                            "detail": "low"
+                        }
+                    },
+                ],
+            }
 
     
     def _eliminate_image_from_message(self, messages):
@@ -94,7 +120,7 @@ class LLMService:
 
     
     def generate_response(self, user_input, image_url, messages):
-        model = "gpt-4.1-nano"
+        model = "gpt-4.1-mini"
         messages = self._init_conversation(messages, user_input, image_url)
         start_time = time.time()
         function_results = []
@@ -110,7 +136,7 @@ class LLMService:
             tools=self.tools
         )
         response = completions.choices[0].message
-        print(f"Initial response type: {'content' if response.content else 'tool_call'}")
+        print(f"Initial response type: {'content' if response.content else response}")
         print(f"Initial response: {response.content}")
         while response.content is None and response.tool_calls and current_chain_length < max_function_chain_length:
             current_chain_length += 1
