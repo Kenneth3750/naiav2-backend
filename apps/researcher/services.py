@@ -46,7 +46,7 @@ class ResearcherService:
                                     },
                                     "status": {
                                         "type": "string",
-                                        "description": "A concise description description of the task to be performed. Write in the same language as the user is asking the question"
+                                        "description": "A concise description description of the task to be performed. Write it in the same language as the user is asking the question"
                                     },
                                     "user_id": {
                                         "type": "string",
@@ -95,7 +95,7 @@ class ResearcherService:
                                     },
                                     "status": {
                                         "type": "string",
-                                        "description": "A concise description of the task to be performed. Write in the same language as the user is asking the question"
+                                        "description": "A concise description of the task to be performed. Write it in the same language as the user is asking the question"
                                     },
                                     "query_for_references": {
                                         "type": "string",
@@ -144,7 +144,7 @@ class ResearcherService:
                                     },
                                     "status": {
                                         "type": "string",
-                                        "description": "A concise description of the task to be performed. Write in the same language as the user is asking the question"
+                                        "description": "A concise description of the task to be performed. Write it in the same language as the user is asking the question"
                                     },
                                     "user_id": {
                                         "type": "string",
@@ -177,7 +177,7 @@ class ResearcherService:
                                     },
                                     "status": {
                                         "type": "string",
-                                        "description": "A concise description of the task to be performed. Write in the same language as the user is asking the question"
+                                        "description": "A concise description of the task to be performed. Write it in the same language as the user is asking the question"
                                     },
                                 },
                                 "required": ["query", "user_id", "status"]
@@ -210,7 +210,7 @@ class ResearcherService:
                                     },
                                     "status": {
                                         "type": "string",
-                                        "description": "A concise description of the graph creation task being performed. Write in the same language as the user is asking the question"
+                                        "description": "A concise description of the graph creation task being performed. Write it in the same language as the user is asking the question"
                                     },
                                     "internet_is_required": {
                                         "type": "boolean",
@@ -249,7 +249,7 @@ class ResearcherService:
                                     },
                                     "status": {
                                         "type": "string",
-                                        "description": "A concise description of the task to be performed. Write in the same language as the user is asking the question"
+                                        "description": "A concise description of the task to be performed. Write it in the same language as the user is asking the question"
                                     }
                                 },
                                 "required": [
