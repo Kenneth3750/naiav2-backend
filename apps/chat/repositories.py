@@ -5,7 +5,7 @@ from django.utils import timezone
 import redis
 from dotenv import load_dotenv
 import os
-import json
+import orjson
 
 redis_pool = redis.ConnectionPool(
     host=os.getenv("redis_host"), 
@@ -53,6 +53,10 @@ class ChatRepository:
     @staticmethod
     def save_current_conversation(user_id, role_id, messages):
         r = redis.Redis(connection_pool=redis_pool)
+        if not isinstance(messages, (bytes, str)):
+            messages = orjson.dumps(messages)
+        if isinstance(messages, str):
+            messages = messages.encode('utf-8')
         r.set(f"current_conversation_{user_id}_{role_id}", messages)
 
     @staticmethod
@@ -64,4 +68,4 @@ class ChatRepository:
     def get_current_conversation(user_id, role_id):
         r = redis.Redis(connection_pool=redis_pool)
         conversation = r.get(f"current_conversation_{user_id}_{role_id}")
-        return json.loads(conversation) if conversation else None
+        return conversation
