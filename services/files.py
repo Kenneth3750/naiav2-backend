@@ -1,9 +1,15 @@
 import b2sdk.v2 as b2
 from dotenv import load_dotenv
 import os
-
+import time
 
 class B2FileService:
+
+    _token_cache = {}
+    _b2_api_instance = None
+    _download_url = None
+
+
     def __init__(self):
         load_dotenv()
         self.application_key_id = os.getenv("b2_application_key_id")
@@ -12,37 +18,48 @@ class B2FileService:
         self.bucket_id = os.getenv("b2_bucket_id")
         self.image_prefix = os.getenv("b2_image_prefix")
         self.document_prefix = os.getenv("b2_document_prefix")
-        self._b2_api_instance = None
+
    
    
     def _get_b2_api(self):
-        if self._b2_api_instance is None:
-            self._b2_api_instance = b2.B2Api()
-            self._b2_api_instance.authorize_account("production", self.application_key_id, self.application_key)
-        return self._b2_api_instance
+        if B2FileService._b2_api_instance is None:
+            B2FileService._b2_api_instance = b2.B2Api()
+            B2FileService._b2_api_instance.authorize_account("production", self.application_key_id, self.application_key)
+            B2FileService._download_url = B2FileService._b2_api_instance.account_info.get_download_url()
+        return B2FileService._b2_api_instance
    
     def _get_download_token(self, flag):
+        # Use class-level token cache to share across instances
+        current_time = time.time()
+        
+        # Check if we have a cached token
+        if flag in B2FileService._token_cache and (current_time - B2FileService._token_cache[flag]['time'] < 518400):  
+            return B2FileService._token_cache[flag]['token']
+            
+        # If not, get a new token
         b2_api = self._get_b2_api()
-        bucket = b2.Bucket(b2_api, self.bucket_id, name=self.bucket_name) 
+        bucket = b2.Bucket(b2_api, self.bucket_id, name=self.bucket_name)
+        
         if flag == "image":
             token = bucket.get_download_authorization(self.image_prefix, valid_duration_in_seconds=604800)
-        return token, b2_api
+            # Store it in the class-level cache
+            B2FileService._token_cache[flag] = {'token': token, 'time': current_time}
+            return token
     
     def get_current_file_url(self, user_id):
         try:
-            b2_api = self._get_b2_api()
-            bucket = b2.Bucket(b2_api, self.bucket_id, name=self.bucket_name)
+            # Simplified function that doesn't check if file exists
             filename = f"{self.image_prefix}/user_{user_id}.jpg"
-
-            # Get direct file info instead of iterating through all files
-            try:
-                file_info = bucket.get_file_info_by_name(filename)
-                token, _ = self._get_download_token("image")
-                download_url = b2_api.account_info.get_download_url()
-                return f"{download_url}/file/{self.bucket_name}/{filename}?Authorization={token}"
-            except Exception as e:
-                print(f"File not found or not accessible: {filename}, Error: {str(e)}")
-                return None
+            
+            # Get the API object to ensure we have the download URL
+            self._get_b2_api()
+            
+            # Get the token (cached if available)
+            token = self._get_download_token("image")
+            
+            # Construct URL with cached download_url
+            return f"{B2FileService._download_url}/file/{self.bucket_name}/{filename}?Authorization={token}"
+                
         except Exception as e:
             print(f"Error generating file URL: {str(e)}")
             return None
@@ -59,7 +76,6 @@ class B2FileService:
             filename = f"{self.image_prefix}/user_{user_id}.jpg"
 
             try:
-                # Buscamos el archivo existente
                 file_versions = bucket.list_file_versions(filename)
                 for file_version in file_versions:
                     if file_version.file_name == filename:
