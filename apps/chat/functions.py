@@ -1,7 +1,13 @@
 import tiktoken
 
 
-def num_tokens_from_messages(messages, model="gpt-4o-mini-2024-07-18"):
+def num_tokens_from_messages(messages):
+    total_chars = sum(len(str(m.get("content", ""))) for m in messages)
+    return total_chars // 4
+
+
+
+def num_tokens_from_messages_big(messages, model="gpt-4o-mini-2024-07-18"):
     """Return the number of tokens used by a list of messages."""
     try:
         encoding = tiktoken.encoding_for_model(model)
@@ -21,16 +27,16 @@ def num_tokens_from_messages(messages, model="gpt-4o-mini-2024-07-18"):
         tokens_per_name = 1
     elif "gpt-3.5-turbo" in model:
         print("Warning: using approximate token count for gpt-3.5-turbo")
-        return num_tokens_from_messages(messages, model="gpt-3.5-turbo-0125")
+        return num_tokens_from_messages_big(messages, model="gpt-3.5-turbo-0125")
     elif "gpt-4o-mini" in model:
         print("Warning: using approximate token count for gpt-4o-mini")
-        return num_tokens_from_messages(messages, model="gpt-4o-mini-2024-07-18")
+        return num_tokens_from_messages_big(messages, model="gpt-4o-mini-2024-07-18")
     elif "gpt-4o" in model:
         print("Warning: using approximate token count for gpt-4o")
-        return num_tokens_from_messages(messages, model="gpt-4o-2024-08-06")
+        return num_tokens_from_messages_big(messages, model="gpt-4o-2024-08-06")
     elif "gpt-4" in model:
         print("Warning: using approximate token count for gpt-4")
-        return num_tokens_from_messages(messages, model="gpt-4-0613")
+        return num_tokens_from_messages_big(messages, model="gpt-4-0613")
     else:
         raise NotImplementedError(
             f"""num_tokens_from_messages() is not implemented for model {model}."""

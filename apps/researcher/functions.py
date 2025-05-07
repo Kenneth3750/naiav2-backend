@@ -476,7 +476,7 @@ TECHNICAL REQUIREMENTS:
 6. Avoid complex animations or transitions that won't translate to static images
 7. Use a white background to ensure compatibility with print publications
 8. Ensure all text is readable when converted to an image (appropriate font sizes)
-9. Add a download button that allows saving the chart as a PNG image
+
 
 ACADEMIC STYLE REQUIREMENTS:
 1. Use a simple, professional color palette appropriate for academic journals
@@ -499,11 +499,6 @@ ATTRIBUTION REQUIREMENTS:
 2. Format citations according to academic standards (APA, MLA, etc.)
 3. Include all data sources with complete citation information
 
-DOWNLOAD FEATURE:
-1. Include a simple download button with text "Download as PNG"
-2. Use html2canvas or similar library to capture the chart as an image
-3. Implement the download functionality with proper error handling
-4. Position the button below the chart in a non-intrusive way
 
 Return ONLY the HTML code with embedded JavaScript and CSS. The code should render a visualization that looks good as a static image without interactive elements."""
             },
@@ -516,47 +511,9 @@ Using this data: {information_for_graph}
 Requirements:
 1. The graph MUST have a fixed width of exactly 600px (this is critical for our frontend)
 2. The visualization should be simple, clear, and suitable for converting to a static image format (PNG/JPG)
-3. Include a download button that allows users to save the chart as a PNG. The button should be like this:\n
-"#downloadButton, .download-button, button[id*="download"], button[class*="download"] 
-    background-color: rgba(11, 57, 84, 0.1) !important;
-    color: #0B3954 !important;
-    font-family: inherit !important;
-    font-size: 14px !important;
-    padding: 8px 16px !important;
-    border: 1px solid #0B3954 !important;
-    border-radius: 6px !important;
-    cursor: pointer !important;
-    transition: all 0.2s !important;
-    display: inline-flex !important;
-    align-items: center !important;
-    justify-content: center !important;
-    margin-top: 12px !important;
-    margin-bottom: 15px !important;
-
-  
-  #downloadButton:hover, .download-button:hover, button[id*="download"]:hover, button[class*="download"]:hover 
-    background-color: rgba(11, 57, 84, 0.2) !important;
-
-  
-  #downloadButton:active, .download-button:active, button[id*="download"]:active, button[class*="download"]:active 
-    background-color: rgba(11, 57, 84, 0.3) !important;
-  
-  
-  /* Añadir ícono de descarga */
-  #downloadButton::before, .download-button::before, button[id*="download"]::before, button[class*="download"]::before 
-    content: '';
-    display: inline-block;
-    width: 18px;
-    height: 18px;
-    margin-right: 8px;
-    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%230B3954' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4'/%3E%3Cpolyline points='7 10 12 15 17 10'/%3E%3Cline x1='12' y1='15' x2='12' y2='3'/%3E%3C/svg%3E");
-    background-size: cover;
-    background-repeat: no-repeat;
-    background-position: center;
-
-4. The graph should have appropriate proportions (not look squished or stretched)
-5. Do not add any comments or explanations in the HTML code
-6. The graph should be simple and clear, suitable for academic publication"""
+3. The graph should have appropriate proportions (not look squished or stretched)
+4. Do not add any comments or explanations in the HTML code
+5. The graph should be simple and clear, suitable for academic publication"""
             }
         ]
         
@@ -767,61 +724,35 @@ def factual_web_query(query: str, status: str = "", user_id: int = 0) -> dict:
         return {"error": str(e)}
 
 
-def deep_content_analysis_for_specific_information(query:str, url: str = None):
-    '''
-    This function performs an in-depth search and information retrieval.
+def deep_content_analysis_for_specific_information(query: str, url: str = None, user_id: int = 0, status: str = ""):
+    """
+    Performs an in-depth search and information retrieval on specific topics.
     
     Args:
         query (str): The required search query
         url (str, optional): Optional URL to focus the search. Defaults to None.
+        user_id (int, optional): User ID for status updates. Defaults to 0.
+        status (str, optional): Status message. Defaults to "".
         
-    # If url is None, a general search will be performed
-    '''
-    if url is None:
-        print(f"Usando sin URL")
-        try:
-            completion = client.chat.completions.create(
-                model="gpt-4o-search-preview",
-                web_search_options={},
-                messages=[
-            {   
-                "role": "system",
-                "content": """You are a specialized search agent with advanced information retrieval capabilities. Your job is to perform in-depth research on specific topics and return comprehensive, well-structured information.
+    Returns:
+        dict: A dictionary with search results or error information
+    """
+    try:
+        if user_id:
+            set_status(user_id, status or "Performing deep content analysis...", 1)
+        
+        load_dotenv()
+        
 
-Your responsibilities:
-1. Search for authoritative, detailed information on the query topic
-2. Extract key facts, figures, and insights from multiple reliable sources
-3. Organize the information in a coherent, well-structured format
-4. Provide proper attribution to all sources
-5. Return ONLY a JSON response with two keys: 'info' (containing comprehensive results) and 'html' (containing reference information)
-
-Present information that is factual, balanced, and thoroughly researched. Prioritize academic sources, government databases, and reputable publications."""
-            },
-            {
-                "role": "user",
-                "content": f"Search the internet for the following information: {query}. Return your response as a JSON with two keys: 'html' and 'info'. The 'info' value should be comprehensive and detailed, containing all relevant information. The 'html' value should include references to where you found the information."
-            }
-        ], )
-
-            respuesta_json = completion.choices[0].message.content
-            return respuesta_json
-
-
-        except Exception as e:
-            print(f"Error al buscar en internet {str(e)}")
-            return {"error": str(e)}
-
-    else:
-        print(f"Usando con URL proporcionada: {url}")
-        try:
-            completion = client.chat.completions.create(
-                model="gpt-4o-search-preview",
-                web_search_options={},
-                messages=[
-            {   
-                "role": "system",
-                "content": """You are a specialized search agent with advanced information retrieval capabilities. Your job is to perform in-depth research on specific topics and return comprehensive, well-structured information.
-
+        search_options = {}
+        if url:
+            search_options["url"] = url
+            print(f"Using URL for focused search: {url}")
+        else:
+            print("Performing general search without URL")
+        
+        if url:
+            system_content = """You are a specialized search agent with advanced information retrieval capabilities.
 Your responsibilities:
 1. Focus your search primarily on the provided URL
 2. Extract key facts, figures, and insights from this source and related materials
@@ -829,20 +760,41 @@ Your responsibilities:
 4. Provide proper attribution to all sources
 5. Return ONLY a JSON response with two keys: 'info' (containing comprehensive results) and 'html' (containing reference information)
 
-Present information that is factual, balanced, and thoroughly researched. Only search beyond the provided URL if necessary to complete the information."""
-            },
-            {
-                "role": "user",
-                "content": f"Search the internet for the following information: {query}, focusing on this URL: {url}. Return your response as a JSON with two keys: 'html' and 'info'. The 'info' value should be comprehensive and detailed, containing all relevant information. The 'html' value should include references to where you found the information."
-            }
-        ], )
-            respuesta_json = completion.choices[0].message.content
-            return respuesta_json
+Present information that is factual, balanced, and thoroughly researched."""
+        else:
+            system_content = """You are a specialized search agent with advanced information retrieval capabilities.
+Your responsibilities:
+1. Search for authoritative, detailed information on the query topic
+2. Extract key facts, figures, and insights from multiple reliable sources
+3. Organize the information in a coherent, well-structured format
+4. Provide proper attribution to all sources
+5. Return ONLY a JSON response with two keys: 'info' (containing comprehensive results) and 'html' (containing reference information)
 
+Present information that is factual, balanced, and thoroughly researched."""
 
-        except Exception as e:
-            print(f"Error al buscar en internet {str(e)}")
-            return {"error": str(e)}
+        # Make API call
+        completion = client.chat.completions.create(
+            model="gpt-4o-search-preview",
+            web_search_options=search_options,
+            messages=[
+                {"role": "system", "content": system_content},
+                {"role": "user", "content": f"Search for: {query}. Return your response as a JSON with two keys: 'html' and 'info'."}
+            ]
+        )
         
-
-    
+        # Extract and parse response
+        response_content = completion.choices[0].message.content
+        
+        # Attempt to parse as JSON to validate
+        try:
+            import json
+            parsed_json = json.loads(response_content)
+            return response_content
+        except json.JSONDecodeError:
+            return json.dumps({"error": "Invalid JSON response", "raw_response": response_content})
+            
+    except Exception as e:
+        import traceback
+        error_details = traceback.format_exc()
+        print(f"Error during deep content analysis: {str(e)}\n{error_details}")
+        return {"error": str(e), "details": error_details}
