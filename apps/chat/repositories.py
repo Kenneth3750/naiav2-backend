@@ -6,6 +6,13 @@ import redis
 from dotenv import load_dotenv
 import os
 import json
+
+redis_pool = redis.ConnectionPool(
+    host=os.getenv("redis_host"), 
+    port=os.getenv("redis_port"), 
+    db=os.getenv("redis_db"),
+    max_connections=10
+)
 class ChatRepository:
     @staticmethod
     def get_last_conversation(user, role_id):
@@ -35,6 +42,9 @@ class ChatRepository:
         
         ), True
     
+
+
+    
     @staticmethod
     def get_user_conversation(user):
         """Get all conversations for a user"""
@@ -42,22 +52,16 @@ class ChatRepository:
     
     @staticmethod
     def save_current_conversation(user_id, role_id, messages):
-        load_dotenv()
-        r = redis.Redis(host=os.getenv("redis_host"), port=os.getenv("redis_port"), db=os.getenv("redis_db"))
+        r = redis.Redis(connection_pool=redis_pool)
         r.set(f"current_conversation_{user_id}_{role_id}", messages)
-        r.close()
 
     @staticmethod
     def delete_current_conversation(user_id, role_id):
-        load_dotenv()
-        r = redis.Redis(host=os.getenv("redis_host"), port=os.getenv("redis_port"),  db=os.getenv("redis_db"))        
+        r = redis.Redis(connection_pool=redis_pool)
         r.delete(f"current_conversation_{user_id}_{role_id}")
-        r.close()
     
     @staticmethod
     def get_current_conversation(user_id, role_id):
-        load_dotenv()
-        r = redis.Redis(host=os.getenv("redis_host"), port=os.getenv("redis_port"),  db=os.getenv("redis_db"))
+        r = redis.Redis(connection_pool=redis_pool)
         conversation = r.get(f"current_conversation_{user_id}_{role_id}")
-        r.close()
         return json.loads(conversation) if conversation else None
