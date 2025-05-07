@@ -12,12 +12,15 @@ class B2FileService:
         self.bucket_id = os.getenv("b2_bucket_id")
         self.image_prefix = os.getenv("b2_image_prefix")
         self.document_prefix = os.getenv("b2_document_prefix")
-
+        self._b2_api_instance = None
+   
+   
     def _get_b2_api(self):
-        b2_api = b2.B2Api()
-        b2_api.authorize_account("production", self.application_key_id, self.application_key)
-        return b2_api
-    
+        if self._b2_api_instance is None:
+            self._b2_api_instance = b2.B2Api()
+            self._b2_api_instance.authorize_account("production", self.application_key_id, self.application_key)
+        return self._b2_api_instance
+   
     def _get_download_token(self, flag):
         b2_api = self._get_b2_api()
         bucket = b2.Bucket(b2_api, self.bucket_id, name=self.bucket_name) 
