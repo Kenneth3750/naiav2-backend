@@ -98,8 +98,11 @@ class ChatService():
 
     def save_current_conversation(self, user_id, role_id):
         messages = ChatRepository.get_current_conversation(user_id, role_id)
+        if not messages:
+            return "No conversation found.", False
         messages = self.make_resume(messages)
         ChatRepository.update_or_create_today_conversation(user_id, messages, role_id)
+        return "Conversation saved.", True
 
     
     def save_and_update_current_conversation(self, user_id, role_id):
