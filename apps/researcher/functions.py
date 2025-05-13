@@ -858,7 +858,6 @@ Your responsibilities:
 
 Present information that is factual, balanced, and thoroughly researched."""
 
-        # Make API call
         completion = client.chat.completions.create(
             model="gpt-4o-search-preview",
             web_search_options=search_options,

@@ -6,29 +6,45 @@ class ResearcherService:
     def __init__(self):
         self.document_service = B2FileService()
 
-
     def list_user_documents(self, user_id):
-        cache_key = f'user_documents_{user_id}'
-        cached_response = cache.get(cache_key)
-        if cached_response:
-            cache.set(cache_key, cached_response, timeout=60*60*24)  
-            # If we have cached documents, extract just the file names
-            if isinstance(cached_response, list) and len(cached_response) > 0 and isinstance(cached_response[0], dict):
-                return [doc.get('file_name', '') for doc in cached_response if 'file_name' in doc]
-            return cached_response
-        else:
-            documents = self.document_service.retrieve_all_user_documents(user_id)
-            if not documents:
-                return "The user has no documents uploaded yet"
-            cache.set(cache_key, documents, timeout=60*60*24)
-            # Extract just the file names from the documents
-            if isinstance(documents, list) and len(documents) > 0 and isinstance(documents[0], dict):
-                return [doc.get('file_name', '') for doc in documents if 'file_name' in doc]
-            return documents
+        try:
+            cache_key = f'user_documents_{user_id}'
+            cached_response = cache.get(cache_key)
+            if cached_response:
+                cache.set(cache_key, cached_response, timeout=60*60*24)  
+                # If we have cached documents, extract just the file names
+                if isinstance(cached_response, list) and len(cached_response) > 0 and isinstance(cached_response[0], dict):
+                    return [doc.get('file_name', '') for doc in cached_response if 'file_name' in doc]
 
+                return cached_response
+            else:
+                documents = self.document_service.retrieve_all_user_documents(user_id)
+                if not documents:
+                    return []  # Retornamos lista vacía en lugar de un mensaje
+                cache.set(cache_key, documents, timeout=60*60*24)
+                # Extract just the file names from the documents
+                if isinstance(documents, list) and len(documents) > 0 and isinstance(documents[0], dict):
+                    return [doc.get('file_name', '') for doc in documents if 'file_name' in doc]
+                return documents
+        except Exception as e:
+            print(f"Error getting user documents: {str(e)}")
+            return []  # En caso de error, devolvemos una lista vacía
 
     def retrieve_tools(self, user_id):
-        list_documents = self.list_user_documents(user_id)
+        list_documents_raw = self.list_user_documents(user_id)
+        print("List of documents (raw): ", list_documents_raw)
+        if isinstance(list_documents_raw, dict) and 'documents' in list_documents_raw:
+            # Si es un diccionario con clave 'documents', extraer los nombres de archivo
+            documents_list = list_documents_raw['documents']
+            list_documents = [doc.get('file_name', '') for doc in documents_list if isinstance(doc, dict) and 'file_name' in doc]
+        elif isinstance(list_documents_raw, list):
+            # Si ya es una lista, usarla directamente
+            list_documents = list_documents_raw
+        else:
+            # Para cualquier otro caso, usar lista vacía
+            list_documents = []
+        
+        print("Processed list of documents: ", list_documents)
         tools = [
                     {
                         "type": "function",
@@ -401,6 +417,11 @@ class ResearcherService:
         - You can call multiple different functions to solve a single query
         - You must identify and call ALL necessary functions to provide a complete response
 
+        CRITICAL DISTINCTION - INFORMATION RETRIEVAL vs. CONTENT CREATION:
+        When the user asks you to "tell me about X" or "explain X" or "what does my document say about X", they want INFORMATION, not a new document. For information queries:
+        - ALWAYS use answer_from_user_rag when they want information from their documents
+        - NEVER use write_document unless they EXPLICITLY ask you to create, write, generate, or prepare a document
+
         FUNCTION SELECTION GUIDELINES:
 
         1. scholar_search: 
@@ -410,36 +431,33 @@ class ResearcherService:
         - EXAMPLES: "Find papers on climate change", "Research on cognitive psychology"
 
         2. write_document:
-        - PURPOSE: Create comprehensive, high-quality documents on any topic with optional research capabilities
-        - USE WHEN: User needs any type of written content (essays, reports, summaries, creative texts)
-        - KEY ADVANTAGES: 
-        * Can search the internet directly using 'use_internet=True'
-        * Can search user's documents using 'use_rag=True'
-        * Supports multiple document formats via 'document_type' parameter
-        * Leverages GPT-4.1's expanded context window for depth and quality
-        - CRITICAL INSIGHT: This is a powerful all-in-one document creation tool that can handle its own research!
-        - EXAMPLES:
-        * Basic document: use when user provides sufficient context - "Write a summary about X based on what I told you"
-        * Internet-enhanced document: use when current information is needed - "Create a report on the latest AI models" with use_internet=True
-        * Personal document analysis: use when user needs content from their files - "Summarize my project documents" with use_rag=True
-        * Comprehensive research: use for thorough analysis - "Write an in-depth analysis of X" with both use_internet=True and use_rag=True
-
-        IMPORTANT WRITE_DOCUMENT USAGE PATTERNS:
-        - For simple writing without research needs → Basic parameters only (query, document_type)
-        - For current topics requiring up-to-date info → Add use_internet=True
-        - For personal document analysis → Add use_rag=True
-        - For comprehensive research documents → Combine use_internet=True and use_rag=True
-        - Always select appropriate document_type: 'academic', 'report', 'essay', 'brief', 'creative', 'notes', or 'presentation'
-        - DO NOT chain with factual_web_query or answer_from_user_rag - write_document can do this research internally!
-        - The document is sent from the backend to the user as a PDF file - inform them about this, that the document can be downloaded at screen, and that it is a PDF file.
-
+        - PURPOSE: Create completely NEW comprehensive documents (essays, reports, etc.)
+        - USE WHEN, AND ONLY WHEN: User EXPLICITLY asks for document creation with phrases like:
+        * "Write a document about X"
+        * "Create a report on X"
+        * "Generate an essay about X"
+        * "Prepare a written analysis of X"
+        * "Make a document summarizing X"
+        - NEVER USE FOR: Information queries like "tell me about X", "what does my document say about X", or "explain X"
+        - KEY ADVANTAGE: Can create formal outputs for download and academic use
+        - EXAMPLES OF VALID TRIGGERS:
+        * "Write a research proposal on renewable energy"
+        * "Create a literature review about cognitive psychology"
+        * "Generate a report analyzing climate change impacts"
 
         3. answer_from_user_rag: 
-        - PURPOSE: Search within user's uploaded documents
-        - USE WHEN: User mentions information that might be in their documents
+        - PURPOSE: Extract and present information from user's uploaded documents
+        - USE WHEN: 
+        * User asks what their documents contain or say about a topic
+        * User wants information that might be in their documents
+        * User mentions wanting to know about content in their files
+        - PRIMARY FUNCTION FOR DOCUMENT QUERIES: This should be your GO-TO function for ANY information request about document content
         - USER DOCUMENTS: {list_documents}
-        - IMPORTANT: Only use this if the topic likely appears in these documents based on their filenames
-        - EXAMPLES: "What does my document say about methodology?", "Find information on X in my files"
+        - EXAMPLES: 
+        * "What does my document say about methodology?"
+        * "Tell me about the conclusions in my papers"
+        * "Explain what my documents cover regarding X"
+        * "Is there anything about X in my uploaded files?"
 
         4. factual_web_query:
         - PURPOSE: Find factual information from the internet
@@ -462,6 +480,10 @@ class ResearcherService:
         - EXAMPLES: "Analyze the impact of climate change on Colombian agriculture", "Research the history of Universidad del Norte in detail"
 
         KNOWLEDGE RETRIEVAL STRATEGY:
+        - For INFORMATION REQUESTS about user documents:
+        → ALWAYS use answer_from_user_rag
+        → NEVER use write_document unless they explicitly ask for document creation
+
         - For questions about specific people (professors, researchers, etc.):
         → IMMEDIATELY use factual_web_query without hesitation
 
@@ -481,12 +503,17 @@ class ResearcherService:
         - FUNCTION NESTING: You can call up to 5 functions in sequence (Example: scholar_search → write_document)
         - For visualization requests, ALWAYS use create_graph directly (it has built-in search)
         - If multiple functions are needed, execute all of them in the optimal sequence
-        - For document creation, prefer using write_document with its built-in research capabilities (use_internet, use_rag) rather than chaining multiple search functions
         - Only chain scholar_search → write_document when academic citations are specifically needed
         - NEVER chain factual_web_query → write_document as write_document can search the internet on its own
         - NEVER chain answer_from_user_rag → write_document as write_document can search user documents on its own
         - For any document requiring current information, set use_internet=True in write_document
         - For documents that might reference user files, set use_rag=True in write_document
+
+        DOCUMENT vs. INFORMATION DISTINCTION EXAMPLES:
+        - "What does my thesis say about methodology?" → answer_from_user_rag (INFORMATION request)
+        - "Tell me about climate change based on my documents" → answer_from_user_rag (INFORMATION request)
+        - "Write a document analyzing methodology in my thesis" → write_document (EXPLICIT document creation)
+        - "Create a report about climate change" → write_document (EXPLICIT document creation)
 
         RESPONSE CREATION GUIDELINES:
         1. SYNTHESIZE information thoroughly - don't just repeat basic facts
@@ -499,7 +526,7 @@ class ResearcherService:
         RESULT INTERPRETATION:
         - "display": Content is shown on screen - briefly explain but don't repeat details
         - "pdf": Document is ready - inform about availability without repeating content
-        - "resolved_rag": Information from user documents - incorporate naturally
+        - "resolved_rag": Information from user documents - incorporate naturally into your conversational response
         - "graph": Visualization is displayed - use "one_arm_up_talking" animation and highlight insights
         - "search_results": Web results are shown - synthesize key findings and provide comprehensive information
 
@@ -531,28 +558,28 @@ class ResearcherService:
         USER CONTEXT:
         You are talking to user ID {user_id}. Include this ID in all function calls.
 
-        EXAMPLE RESPONSE FORMAT (for graph creation):
+        EXAMPLE RESPONSE FORMAT (for document information):
         [
         {{
-            "text": "I've created a graph showing Colombia's GDP evolution between 2010 and 2025, based on World Bank data and IMF projections.",
+            "text": "I found information about renewable energy in your uploaded documents. Your thesis mentions solar power efficiency improvements of 15% in the last decade.",
             "facialExpression": "smile",
             "animation": "one_arm_up_talking",
             "language": "en",
             "tts_prompt": "enthusiastic and professional tone"
         }},
         {{
-            "text": "You can observe steady growth until 2019, followed by a significant drop in 2020 due to the pandemic, and a strong recovery beginning in 2021.",
+            "text": "The methodology section describes three experimental approaches: photoelectric conversion, thermal storage, and distributed grid implementation.",
             "facialExpression": "default",
-            "animation": "raising_two_arms_talking",
-            "language": "en",
-            "tts_prompt": "analytical tone with emphasis on changes"
-        }},
-        {{
-            "text": "Projections indicate that the Colombian economy will continue its recovery, with expected annual growth between 3% and 4% until 2025, exceeding pre-pandemic levels.",
-            "facialExpression": "smile",
             "animation": "Talking_2",
             "language": "en",
-            "tts_prompt": "optimistic and confident tone"
+            "tts_prompt": "analytical tone with emphasis on technical terms"
+        }},
+        {{
+            "text": "Your conclusion suggests that hybrid solar-thermal systems show the most promise for tropical regions with a potential return on investment within 7 years.",
+            "facialExpression": "smile",
+            "animation": "Talking_0",
+            "language": "en",
+            "tts_prompt": "concluding with confident, measured tone"
         }}
         ]
 
@@ -563,6 +590,7 @@ class ResearcherService:
         - Have you included sufficient detail and context in your response?
         - Are your tts_prompts describing HOW to read (not WHAT to read)?
         - Have you included at least 3 messages to provide comprehensive information?
+        - Did you use write_document ONLY if the user EXPLICITLY requested a document?
 
         CURRENT UTC TIME: {current_utc_time}
         CRITICAL: Regardless of function output complexity, ALWAYS ensure your final response is a properly formatted JSON array with messages. NO EXCEPTIONS.
