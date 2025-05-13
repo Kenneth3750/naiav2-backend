@@ -31,7 +31,7 @@ class ChatService():
         
         # 3. Get tools and system prompt
         start_time = time.time()
-        tools, available_tools, system_prompt = role.get_role(user_id)
+        tools, available_tools, prompts = role.get_role(user_id)
         timing_info["get_tools_and_prompt"] = time.time() - start_time
         
         # 4. Get image URL
@@ -55,7 +55,7 @@ class ChatService():
         
         # 7. Initialize LLM service
         start_time = time.time()
-        llm_service = LLMService(available_tools, tools, system_prompt)
+        llm_service = LLMService(available_tools, tools, prompts)
         timing_info["llm_service_init"] = time.time() - start_time
         
         # 8. Generate LLM response (this is expected to be the longest step)
