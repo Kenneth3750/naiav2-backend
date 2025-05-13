@@ -235,86 +235,172 @@ def convert_to_html(search_result):
     return {"display": html}
 
 
-def write_document(query, context="", user_id=0, status="", query_for_references=None, language_for_references="en", num_results=5):
+def write_document(query, context="", user_id=0, status="", query_for_references=None, language_for_references="en", num_results=5, document_type="academic", use_internet=False, use_rag=False, specific_documents=None):
     """
-    This feature is responsible for generating specific documents 
-    based on the topic the user is consulting.
+    This feature is responsible for generating comprehensive documents 
+    based on the topic the user is consulting, with the ability to leverage multiple
+    information sources including internet search and user's own documents.
     """
     load_dotenv()
     set_status(user_id, status, 1)
-    if query:
-        references = get_references(query_for_references, num_results, language_for_references)
-
+    
+    # Initialize OpenAI client
     client = OpenAI(api_key=os.getenv("open_ai"))
+    
     try:
+        full_context = []
+        
+        # 1. Add explicitly provided context
+        if context:
+            full_context.append(f"### CONTEXT PROVIDED:\n{context}")
+        
+        # 2. Search for academic references if requested
+        academic_refs = ""
+        if query_for_references and query_for_references.lower() != "none":
+            try:
+                references = get_references(query_for_references, num_results, language_for_references)
+                if references and "error" not in references:
+                    academic_refs = f"### ACADEMIC REFERENCES:\n{json.dumps(references, indent=2)}"
+                    full_context.append(academic_refs)
+            except Exception as e:
+                print(f"Error searching for academic references: {str(e)}")
+        
+        # 3. Search user documents via RAG if requested
+        if use_rag:
+            try:
+                rag_results = answer_from_user_rag(
+                    user_id=user_id,
+                    pregunta=f"Find relevant information about: {query}",
+                    k=5,
+                    status=f"Searching your documents for information about {query}"
+                )
+                if rag_results and "error" not in rag_results and "resolved_rag" in rag_results:
+                    rag_content = f"### USER DOCUMENT CONTENT:\n{rag_results['resolved_rag']}"
+                    full_context.append(rag_content)
+            except Exception as e:
+                print(f"Error querying RAG: {str(e)}")
+        set_status(user_id, status, 1)
+        # 4. Perform internet search if requested
+        if use_internet:
+            try:
+                # Use GPT-4o-search-preview for comprehensive research
+                research_messages = [
+                    {
+                        "role": "system",
+                        "content": """You are a specialized research agent with internet access. Your task is to gather comprehensive, 
+                        accurate, and up-to-date information for creating an authoritative document. Follow these guidelines:
 
+                        1. Search for diverse, high-quality sources related to the topic
+                        2. Gather detailed information including key concepts, latest developments, statistics, expert opinions, and examples
+                        3. Focus on authoritative sources: academic journals, reputable news sites, official documentation, expert analyses
+                        4. Note any controversies, debates, or alternative viewpoints on the topic
+                        5. Include recent developments and cutting-edge information
+                        6. Organize the information coherently by subtopics
+                        7. Maintain scholarly neutrality while gathering comprehensive information
+                        8. Include proper attribution to sources
+                        
+                        Provide a thorough research report that would give a writer all the necessary information to create 
+                        an authoritative document on the topic. Use clear section headings to organize information by subtopics."""
+                    },
+                    {
+                        "role": "user",
+                        "content": f"Research comprehensive information for a document about: {query}"
+                    }
+                ]
+                
+                research_response = client.chat.completions.create(
+                    model="gpt-4o-search-preview",
+                    messages=research_messages
+                )
+                
+                web_research = f"### WEB RESEARCH RESULTS:\n{research_response.choices[0].message.content}"
+                full_context.append(web_research)
+                print("Web search completed")
+            except Exception as e:
+                print(f"Error in web search: {str(e)}")
+        
+        combined_context = "\n\n".join(full_context)
+        
+        document_type_guide = {
+            "academic": "a formal academic document with educational focus and conceptual rigor",
+            "report": "a clear, direct business or technical report focused on data and analysis",
+            "essay": "a reflective essay with coherent idea development and argumentation",
+            "brief": "a concise, brief document presenting only essential information",
+            "creative": "a creative text with narrative or expressive style",
+            "notes": "organized study notes to facilitate learning and reference",
+            "presentation": "content for a visual presentation with clear and concise points"
+        }
+        
+        type_description = document_type_guide.get(document_type.lower(), "a well-structured document")
+        
+        info_sources = []
+        if academic_refs:
+            info_sources.append("academic references")
+        if use_rag and any("USER DOCUMENT CONTENT" in ctx for ctx in full_context):
+            info_sources.append("your personal documents")
+        if use_internet and any("WEB RESEARCH RESULTS" in ctx for ctx in full_context):
+            info_sources.append("current internet sources")
+        
+        info_sources_text = ", ".join(info_sources) if info_sources else "available information"
+        
         messages = [
             {
                 "role": "system",
-                "content": """You are an expert academic writer specializing in creating high-quality research documents for Universidad del Norte in Barranquilla, Colombia. Your task is to generate comprehensive, well-structured academic content in markdown format that meets university standards.
+                "content": f"""You are an expert writer specializing in creating {type_description}. 
+                Your task is to generate high-quality content on the requested topic.
+                
+                IMPORTANT FORMATTING INSTRUCTIONS:
+                1. DO use Markdown for document structure:
+                - Use # for main titles (H1)
+                - Use ## for section headings (H2)
+                - Use ### for subheadings (H3)
+                2. DO NOT use Markdown inside paragraphs:
+                - DO NOT use asterisks for bold or italic text within paragraphs
+                - Instead of **bold** text, use ALL CAPS or "quotation marks" for emphasis
+                - Instead of *italic* text, use 'single quotes' or underscores_around_words
+                3. For lists:
+                - Use proper Markdown numbered lists (1., 2., etc.)
+                - Use proper Markdown bullet lists (-, *, etc.)
+                4. Use blank lines between paragraphs and sections
+                5. For tables, use proper Markdown table format
+                
+                CONTENT GUIDELINES:
+                - Be creative and flexible in structure according to document type and topic
+                - Organize information logically and coherently
+                - Adapt tone and style to the document's purpose
+                - Include relevant and up-to-date information
+                - Properly cite sources when appropriate
+                
+                You have creative freedom to structure the document in the most effective way for its purpose."""
+            },
+            {
+                "role": "user",
+                "content": f"""Based on {info_sources_text}, generate {type_description} on the following topic: {query}
 
-IMPORTANT REFERENCE GUIDELINES:
-- You must ONLY use references explicitly provided in the context. Never invent or fabricate citations.
-- If no references are provided, acknowledge this limitation and create content based on general knowledge only.
-- Format all citations consistently using APA 7th edition style.
-- Include a properly formatted reference list at the end of the document.
+    Here is all the available information for creating this document:
 
-DOCUMENT STRUCTURE:
-1. Title: Create a descriptive, academic title relevant to the topic
-2. Abstract: A concise summary (100-150 words) of the document's purpose and findings
-3. Introduction: Present the topic, its relevance, and outline the document's structure
-4. Main Body: Organized into logical sections with clear headings and subheadings
-   - Use H2 (##) for main sections and H3 (###) for subsections
-   - Support claims with evidence from provided references
-   - Include relevant data, examples, or case studies when appropriate
-   - Define specialized terminology when first introduced
-5. Discussion/Analysis: Interpret findings, address implications, and consider limitations
-6. Conclusion: Summarize key points and suggest areas for further research
-7. References: List all cited works in APA format, alphabetically by author
+    {combined_context}
 
-WRITING STYLE:
-- Maintain formal, objective academic tone throughout
-- Use precise, discipline-appropriate terminology
-- Write in third person (avoid "I", "we", "you")
-- Use active voice where possible for clarity
-- Ensure logical flow between paragraphs and sections
-- Balance depth with accessibility for university-level readers
-- Avoid unsupported claims, exaggerations, or speculation
-
-FORMATTING:
-- Use proper markdown syntax for all elements
-- Use bullet points or numbered lists for series of related items
-- Format tables using markdown table syntax where appropriate
-- Describe any necessary figures or diagrams in markdown
-- Use emphasis (italic, bold) sparingly and only when needed for clarity
-- Keep paragraphs focused and reasonably sized (4-6 sentences typical)
-
-Your document should demonstrate scholarly rigor while remaining accessible to academic readers. Focus on creating content that would be valuable for research, teaching, or academic reference at Universidad del Norte.""",
+    Make sure to:
+    1. Create a well-structured and organized document
+    2. Incorporate information from all provided sources
+    3. Use proper Markdown for headings, but avoid Markdown formatting within paragraphs
+    4. Ensure accuracy and depth in the content
+    """
             }
         ]
 
-        if context or references:
-            messages.append(
-                {"role": "user", "content": f"""Use these references and information as the basis for your document: {context}\n
-                Use this real referencess: {references}\n
-                If the content of the references is a json with an error as a key, do not use it as a reference."""}
-            )
-
-        messages.append(
-            {"role": "user", "content": f"Generate a well-structured academic document in markdown format based on this topic: {query}\n Do not create references or citations if the were not provided by me before.\n\n\n"}
-        )
-
         openai_response = client.chat.completions.create(
-            model="gpt-4o",
+            model="gpt-4.1",
             messages=messages
         )
 
-        messages.append(
-            {"role": "assistant", "content": openai_response.choices[0].message.content}
-        )
+        print("Document successfully generated")
         return {"pdf": openai_response.choices[0].message.content}
     except Exception as e:
-        print(f"Error generating document: {str(e)}")
+        import traceback
+        error_details = traceback.format_exc()
+        print(f"Error generating document: {str(e)}\n{error_details}")
         return {"error": str(e)}
 
 # Rag function 
