@@ -4,7 +4,7 @@ from dotenv import load_dotenv
 import os
 import time
 import requests
-
+import base64
 
 class LLMService:
     _client = None
@@ -34,8 +34,10 @@ class LLMService:
                 "role": "developer",
                 "content": model_prompt
             }]
-
+        start_time = time.time()
         messages_array.append(self._create_message_input(user_input, image_url))
+        end_time = time.time()
+        print(f"Tiempo de creación de mensajes: {end_time - start_time:.2f}s")
         return messages_array
     
     def _create_message_input(self, user_input, image_url):
@@ -51,46 +53,42 @@ class LLMService:
                 ],
             }
         else:
-            # Verify image URL is accessible
             try:
-                response = requests.head(image_url, timeout=5)
-                if response.status_code < 200 or response.status_code >= 300:
-                    print(f"La imagen no es accesible. Código de estado: {response.status_code}")
+                response = requests.get(image_url, timeout=5, stream=True)
+                if response.status_code >= 200 and response.status_code < 300:
+                    image_data = base64.b64encode(response.content).decode('utf-8')
+                    
+                    content_type = response.headers.get('Content-Type', 'image/jpeg')
+                    
                     return {
-                        "role": "user",
+                        "role": "user", 
                         "content": [
                             {
                                 "type": "text",
                                 "text": user_input
-                            }
+                            },
+                            {
+                                "type": "image_url",
+                                "image_url": {
+                                    "url": f"data:{content_type};base64,{image_data}",
+                                    "detail": "low"
+                                }
+                            },
                         ],
                     }
+                else:
+                    print(f"No se pudo acceder a la imagen. Código de estado: {response.status_code}")
             except Exception as e:
-                print(f"Error al verificar la URL de la imagen: {str(e)}")
-                return {
-                    "role": "user",
-                    "content": [
-                        {
-                            "type": "text",
-                            "text": user_input
-                        }
-                    ],
-                }
+                print(f"Error al procesar la imagen: {str(e)}")
                 
+            print("Fallback: continuando sin imagen debido a error")
             return {
-                "role": "user", 
+                "role": "user",
                 "content": [
                     {
                         "type": "text",
                         "text": user_input
-                    },
-                    {
-                        "type": "image_url",
-                        "image_url": {
-                            "url": image_url,
-                            "detail": "low"
-                        }
-                    },
+                    }
                 ],
             }
 
@@ -164,37 +162,63 @@ class LLMService:
     def generate_response(self, user_input, image_url, messages):
         start_time = time.time()
         is_function = self.route_query(user_input, messages)
-        if is_function:
-            model_prompt = self.prompts["function"]
-            model = self.FUNCTION_MODEL
-            messages = self._init_conversation(messages, user_input, image_url, model_prompt)
-            completions = self.client.chat.completions.create(
-                model=model,
-                messages=messages,
-                tools=self.tools,
-                tool_choice="required"
-            )
-        else:
-            model_prompt = self.prompts["chat"]
-            model = self.CHAT_MODEL
-            messages = self._init_conversation(messages, user_input, image_url, model_prompt)
-            completions = self.client.chat.completions.create(
-                model=model,
-                messages=messages,
-                tools=None  # No tools for chat model
-            )
-
+        
+        retry_without_image = False
+        
+        try:
+            if is_function:
+                model_prompt = self.prompts["function"]
+                model = self.FUNCTION_MODEL
+                messages = self._init_conversation(messages, user_input, image_url, model_prompt)
+                completions = self.client.chat.completions.create(
+                    model=model,
+                    messages=messages,
+                    tools=self.tools,
+                    tool_choice="required"
+                )
+            else:
+                model_prompt = self.prompts["chat"]
+                model = self.CHAT_MODEL
+                messages = self._init_conversation(messages, user_input, image_url, model_prompt)
+                completions = self.client.chat.completions.create(
+                    model=model,
+                    messages=messages,
+                    tools=None  # No tools for chat model
+                )
+        except Exception as e:
+            if "invalid_image_url" in str(e) and not retry_without_image:
+                print(f"Error con la imagen, reintentando sin imagen: {str(e)}")
+                retry_without_image = True
+                
+                if is_function:
+                    model_prompt = self.prompts["function"]
+                    model = self.FUNCTION_MODEL
+                    messages = self._init_conversation(messages, user_input, None, model_prompt)
+                    completions = self.client.chat.completions.create(
+                        model=model,
+                        messages=messages,
+                        tools=self.tools,
+                        tool_choice="required"
+                    )
+                else:
+                    model_prompt = self.prompts["chat"]
+                    model = self.CHAT_MODEL
+                    messages = self._init_conversation(messages, user_input, None, model_prompt)
+                    completions = self.client.chat.completions.create(
+                        model=model,
+                        messages=messages,
+                        tools=None  # No tools for chat model
+                    )
+            else:
+                raise e
 
         function_results = []
         
-     
         max_function_chain_length = 5
         current_chain_length = 0
-        
 
         response = completions.choices[0].message
         print(f"Initial response type: {'content' if response.content else response}")
-        print(f"Initial response: {response.content}")
         while response.content is None and response.tool_calls and current_chain_length < max_function_chain_length:
             current_chain_length += 1
             print(f"Processing function call {current_chain_length} of max {max_function_chain_length}")
@@ -242,7 +266,7 @@ class LLMService:
                 tools=self.tools,
             )
             response = completions.choices[0].message
-            print(f"Next response type: {'content' if response.content else 'tool_call'}")
+            print(f"Next response type: {response.content if response.content else response}")
         
         # If we got a text response or hit the max chain length
         if response.content is not None:
@@ -275,7 +299,8 @@ class LLMService:
             "response": self._clean_json_response(final_content) if final_content else {},
             "messages": messages,
             "function_results": function_results,
-            "processing_time": end_time - start_time
+            "processing_time": end_time - start_time,
+            "image_removed": retry_without_image  
         }
         return json_response
     
