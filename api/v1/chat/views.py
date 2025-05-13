@@ -7,6 +7,8 @@ from .serializers import ChatSerializer, ChatMessagesSerializer
 from dotenv import load_dotenv
 import time
 import logging
+from apps.chat.repositories import redis_pool
+import redis
 load_dotenv()
 
 
@@ -97,19 +99,31 @@ def upload_current_image(request):
         user_id = request.data.get('user_id')
         image = request.FILES.get('image')
         
-
         if not user_id or not image:
-            return Response({"error": "user_id y image son requeridos"}, status=status.HTTP_400_BAD_REQUEST)
+            return Response({"error": "user_id and image are required"}, status=status.HTTP_400_BAD_REQUEST)
         
         if not image.content_type.startswith('image/'):
-            return Response({"error": "El archivo debe ser una imagen"}, status=status.HTTP_400_BAD_REQUEST)
-
+            return Response({"error": "File must be an image"}, status=status.HTTP_400_BAD_REQUEST)
+        
+        r = redis.Redis(connection_pool=redis_pool)
+        
+        rate_limit_key = f"image_upload_ratelimit_{user_id}"
+        
+        if r.exists(rate_limit_key):
+            ttl = r.ttl(rate_limit_key)
+            return Response(
+                {"error": f"Please wait {ttl} seconds before uploading another image"}, 
+                status=status.HTTP_429_TOO_MANY_REQUESTS
+            )
+        
         chat = ChatService()
         result = chat.upload_image(user_id, image)
         
-        return Response({"message": "Imagen subida"}, status=status.HTTP_200_OK)
+        r.setex(rate_limit_key, 5, "1")
+        
+        return Response({"message": "Image uploaded"}, status=status.HTTP_200_OK)
     except Exception as e:
         import traceback
         traceback.print_exc()
-        logging.error(f"Error en la vista upload_current_image: {str(e)}")
+        logging.error(f"Error in upload_current_image view: {str(e)}")
         return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
