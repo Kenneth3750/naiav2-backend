@@ -9,25 +9,30 @@ import requests
 class LLMService:
     _client = None
 
-    def __init__(self, available_tools, tools, system_prompt):
+    def __init__(self, available_tools, tools, prompts):
         load_dotenv()
-        self.system_prompt = system_prompt
+        self.prompts = prompts
         if LLMService._client is None:
             LLMService._client = OpenAI(api_key=os.getenv("open_ai"))
         self.client = LLMService._client
         self.available_tools = available_tools
         self.tools = tools
 
-    def _init_conversation(self, messages, user_input, image_url):
+        self.ROUTER_MODEL = "gpt-4.1-nano"
+        self.CHAT_MODEL = "gpt-4o-mini"
+        self.FUNCTION_MODEL = "gpt-4.1-mini"
+
+    def _init_conversation(self, messages, user_input, image_url, model_prompt):
+
         if messages:
             print("Mensajes desde la base de datos.... ")
             messages_array = messages
-            messages_array.insert(0, {"role": "developer", "content": self.system_prompt})
+            messages_array.insert(0, {"role": "developer", "content": model_prompt})
         else:
             print("No hay mensajes desde la base de datos, iniciando conversación...")
             messages_array = [{
                 "role": "developer",
-                "content": self.system_prompt
+                "content": model_prompt
             }]
 
         messages_array.append(self._create_message_input(user_input, image_url))
@@ -117,24 +122,76 @@ class LLMService:
         except json.JSONDecodeError as e:
             raise Exception(f"Failed to parse JSON response: {content}") from e
 
+    def route_query(self, user_input, messages):
+        """
+        This function routes the user input to the appropriate function based on the content of the input.
+        """
+        start_time = time.time()
+        
+        router_prompt = self.prompts["router"].format(
+            user_input=user_input
+        )
+        if messages:
+            router_messages = messages.copy()
+        else:
+            router_messages = []
 
+        router_messages.append(
+            {"role": "system", "content": "You are a specialized router for the NAIA assistant. Use the context of the conversation to determine if the user needs a function or not."}
+        )
+        router_messages.append(
+            {"role": "user", "content": router_prompt}
+        )
+        
+
+        response = self.client.chat.completions.create(
+            model=self.ROUTER_MODEL,
+            messages=router_messages,
+            max_tokens=20  
+        )
+        
+        routing_decision = response.choices[0].message.content.strip()
+        
+        routing_time = time.time() - start_time
+        print(f"Routing time: {routing_time:.2f}s")
+        print(f"Routing decision: {routing_decision}")
+        
+        if "NO_FUNCTION_NEEDED" in routing_decision:
+            return False
+        else:
+            return True
     
     def generate_response(self, user_input, image_url, messages):
-        model = "gpt-4.1-mini"
-        messages = self._init_conversation(messages, user_input, image_url)
         start_time = time.time()
+        is_function = self.route_query(user_input, messages)
+        if is_function:
+            model_prompt = self.prompts["function"]
+            model = self.FUNCTION_MODEL
+            messages = self._init_conversation(messages, user_input, image_url, model_prompt)
+            completions = self.client.chat.completions.create(
+                model=model,
+                messages=messages,
+                tools=self.tools,
+                tool_choice="required"
+            )
+        else:
+            model_prompt = self.prompts["chat"]
+            model = self.CHAT_MODEL
+            messages = self._init_conversation(messages, user_input, image_url, model_prompt)
+            completions = self.client.chat.completions.create(
+                model=model,
+                messages=messages,
+                tools=None  # No tools for chat model
+            )
+
+
         function_results = []
         
      
         max_function_chain_length = 5
         current_chain_length = 0
         
-        # Process the initial request
-        completions = self.client.chat.completions.create(
-            model=model,
-            messages=messages,
-            tools=self.tools
-        )
+
         response = completions.choices[0].message
         print(f"Initial response type: {'content' if response.content else response}")
         print(f"Initial response: {response.content}")
@@ -180,7 +237,7 @@ class LLMService:
             
             # Get the next response based on the function results
             completions = self.client.chat.completions.create(
-                model=model,
+                model=self.FUNCTION_MODEL,
                 messages=messages,
                 tools=self.tools,
             )
@@ -197,7 +254,7 @@ class LLMService:
             # Force a final response without tool calls
             print("Hit maximum function chain length, forcing final response")
             completions = self.client.chat.completions.create(
-                model=model,
+                model= self.FUNCTION_MODEL,
                 messages=messages,
                 tools=None,  # Disable tools for final response
             )
