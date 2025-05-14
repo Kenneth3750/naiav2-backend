@@ -1,4 +1,4 @@
-from .functions import scholar_search, write_document, answer_from_user_rag, create_graph, factual_web_query, deep_content_analysis_for_specific_information
+from .functions import scholar_search, write_document, answer_from_user_rag, create_graph, factual_web_query, deep_content_analysis_for_specific_information, send_email
 from services.files import B2FileService
 from django.core.cache import cache
 import datetime
@@ -300,6 +300,46 @@ class ResearcherService:
                                 ]
                             }
                         }
+                    },
+                    {
+                        "type": "function",
+                        "function": {
+                            "name": "send_email",
+                            "description": "Send an email to the user. This function is used to send an email to the user with the information provided by the user.",
+                            "parameters": {
+                                "type": "object",
+                                "properties": {
+                                    "to_email": {
+                                        "type": "string",
+                                        "description": """The email of the user to send the email to."""
+                                    },
+                                    "subject": {
+                                        "type": "string",
+                                        "description": """The subject of the email to send."""
+                                    },
+                                    "body": {
+                                        "type": "string",
+                                        "description": """The body of the email to send."""
+                                    },
+                                    "user_id": {
+                                        "type": "integer",
+                                        "description": "The ID of the user requesting the email. Look at the first developer prompt to get the user_id"
+                                    },
+                                    "status": {
+                                        "type": "string",
+                                        "description": "A concise description of the task to be performed. Write it in the same language as the user is asking the question"
+                                    }
+        
+                                },
+                                "required": [
+                                    "to_email",
+                                    "subject",
+                                    "body",
+                                    "user_id",
+                                    "status"
+                                ]
+                            }
+                        }
                     }
 
 
@@ -312,7 +352,8 @@ class ResearcherService:
             "answer_from_user_rag": answer_from_user_rag,
             "factual_web_query": factual_web_query,
             "create_graph": create_graph,
-            "deep_content_analysis_for_specific_information": deep_content_analysis_for_specific_information
+            "deep_content_analysis_for_specific_information": deep_content_analysis_for_specific_information,
+            "send_email": send_email
         }
 
         current_utc_time = datetime.datetime.utcnow()
