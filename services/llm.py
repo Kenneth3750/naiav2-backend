@@ -255,9 +255,12 @@ class LLMService:
                         "tool_call_id": tool_call.id,
                         "content": str(json.dumps(tool_output))
                     })
-                    
-                    # Track all function results for the final response
-                    function_results.append(tool_output)
+
+                    if isinstance(tool_output, dict) and len(tool_output) > 1:
+                        for key, value in tool_output.items():
+                            function_results.append({key: value})
+                    else:
+                        function_results.append(tool_output)
             
             # Get the next response based on the function results
             completions = self.client.chat.completions.create(
