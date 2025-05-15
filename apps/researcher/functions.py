@@ -801,10 +801,18 @@ def factual_web_query(query: str, status: str = "", user_id: int = 0) -> dict:
             }
         </style>
         """
-        with open(f"search_results_{user_id}.html", "w", encoding="utf-8") as f:
-            f.write(html_output)
+        image_params = {
+            "engine": "google_images",
+            "q": query,
+            "api_key": api_key,
+        }
+
+        search_results = GoogleSearch(image_params)
+        image_html = generate_image_carousel_html(search_results.get_dict().get("images_results", []))
+
+
         
-        return {"search_results": html_output}
+        return {"search_results": html_output, "graph": image_html}
     except Exception as e:
         print(f"Error during search: {str(e)}")
         return {"error": str(e)}
@@ -883,3 +891,351 @@ Present information that is factual, balanced, and thoroughly researched."""
         error_details = traceback.format_exc()
         print(f"Error during deep content analysis: {str(e)}\n{error_details}")
         return {"error": str(e), "details": error_details}
+    
+
+def generate_image_carousel_html(search_results, max_images=4):
+    """
+    Genera HTML para un carrusel de imágenes a partir de los resultados de búsqueda de SerpAPI.
+    
+    Args:
+        search_results: Resultados obtenidos de la API de Google Image Search
+        max_images: Número máximo de imágenes a mostrar (por defecto 4)
+    
+    Returns:
+        String con HTML para el carrusel de imágenes
+    """
+    if isinstance(search_results, dict) and "images_results" in search_results:
+        results = search_results["images_results"]
+    else:
+        results = search_results
+    
+    results = results[:max_images]
+    
+    if not results:
+        return "<div class='no-results'>No se encontraron imágenes para esta búsqueda.</div>"
+    
+    html = """
+    <!DOCTYPE html>
+    <html lang="es">
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>Resultados de Búsqueda de Imágenes</title>
+        <style>
+            * {
+                box-sizing: border-box;
+                margin: 0;
+                padding: 0;
+            }
+            
+            body {
+                font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', sans-serif;
+                background-color: #f8fafc;
+                color: #1e293b;
+            }
+            
+            .carousel-container {
+                width: 100%;
+                max-width: 800px;
+                margin: 0 auto;
+                padding: 20px;
+                background-color: white;
+                border-radius: 12px;
+                box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+            }
+            
+            .carousel-title {
+                font-size: 1.25rem;
+                font-weight: 600;
+                margin-bottom: 16px;
+                color: #334155;
+                display: flex;
+                align-items: center;
+            }
+            
+            .carousel-title svg {
+                margin-right: 8px;
+            }
+            
+            .carousel {
+                position: relative;
+                overflow: hidden;
+                border-radius: 8px;
+            }
+            
+            .carousel-inner {
+                display: flex;
+                transition: transform 0.5s ease;
+            }
+            
+            .carousel-item {
+                min-width: 100%;
+                display: flex;
+                flex-direction: column;
+                align-items: center;
+            }
+            
+            .carousel-image {
+                width: 100%;
+                max-height: 400px;
+                object-fit: contain;
+                border-radius: 8px;
+                background-color: #f1f5f9;
+            }
+            
+            .carousel-caption {
+                width: 100%;
+                padding: 12px;
+                text-align: center;
+                font-size: 0.875rem;
+                color: #64748b;
+                max-width: 100%;
+                overflow: hidden;
+                text-overflow: ellipsis;
+            }
+            
+            .carousel-indicators {
+                display: flex;
+                justify-content: center;
+                margin-top: 16px;
+                gap: 8px;
+            }
+            
+            .carousel-indicator {
+                width: 8px;
+                height: 8px;
+                border-radius: 50%;
+                background-color: #cbd5e1;
+                cursor: pointer;
+                transition: background-color 0.3s ease;
+            }
+            
+            .carousel-indicator.active {
+                background-color: #2563eb;
+                transform: scale(1.25);
+            }
+            
+            .carousel-controls {
+                position: absolute;
+                top: 50%;
+                left: 0;
+                right: 0;
+                transform: translateY(-50%);
+                display: flex;
+                justify-content: space-between;
+                padding: 0 16px;
+            }
+            
+            .carousel-control {
+                width: 40px;
+                height: 40px;
+                background-color: rgba(255, 255, 255, 0.8);
+                border-radius: 50%;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                cursor: pointer;
+                box-shadow: 0 2px 6px rgba(0,0,0,0.1);
+                transition: all 0.2s ease;
+            }
+            
+            .carousel-control:hover {
+                background-color: white;
+                box-shadow: 0 4px 8px rgba(0,0,0,0.15);
+            }
+            
+            .carousel-attribution {
+                margin-top: 12px;
+                font-size: 0.75rem;
+                color: #94a3b8;
+                text-align: center;
+            }
+            
+            .carousel-attribution a {
+                color: #3b82f6;
+                text-decoration: none;
+            }
+            
+            @media (max-width: 640px) {
+                .carousel-container {
+                    padding: 12px;
+                }
+                
+                .carousel-image {
+                    max-height: 300px;
+                }
+            }
+            
+            /* Impresión */
+            @media print {
+                .carousel-container {
+                    box-shadow: none;
+                }
+                
+                .carousel-controls,
+                .carousel-indicators {
+                    display: none;
+                }
+                
+                .carousel-inner {
+                    display: block;
+                }
+                
+                .carousel-item {
+                    page-break-inside: avoid;
+                    margin-bottom: 20px;
+                }
+            }
+        </style>
+    </head>
+    <body>
+        <div class="carousel-container">
+            <h2 class="carousel-title">
+                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><circle cx="8.5" cy="8.5" r="1.5"></circle><polyline points="21 15 16 10 5 21"></polyline></svg>
+                Resultados de imágenes
+            </h2>
+            <div class="carousel" id="imageCarousel">
+                <div class="carousel-inner" id="carouselInner">
+    """
+    
+    for i, image in enumerate(results):
+        title = image.get("title", "").replace('"', "&quot;").replace("'", "&#39;")
+        source = image.get("source", "")
+        image_url = image.get("original", image.get("thumbnail", ""))
+        source_url = image.get("source_url", image.get("link", ""))
+        
+        html += f"""
+                    <div class="carousel-item" id="slide{i}">
+                        <img src="{image_url}" alt="{title}" class="carousel-image" />
+                        <div class="carousel-caption">
+                            {title}
+                            <div class="text-xs text-gray-500">Fuente: {source}</div>
+                        </div>
+                    </div>
+        """
+    
+    html += """
+                </div>
+                <div class="carousel-controls">
+                    <div class="carousel-control" id="prevButton">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"></polyline></svg>
+                    </div>
+                    <div class="carousel-control" id="nextButton">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"></polyline></svg>
+                    </div>
+                </div>
+                <div class="carousel-indicators" id="indicators">
+    """
+    
+    for i in range(len(results)):
+        active = "active" if i == 0 else ""
+        html += f'<div class="carousel-indicator {active}" data-slide="{i}"></div>'
+    
+    # Cerrar el HTML con JavaScript para el carrusel
+    html += """
+                </div>
+            </div>
+            <div class="carousel-attribution">
+                Imágenes proporcionadas a través de Google Image Search
+            </div>
+        </div>
+        
+        <script>
+            // Carousel functionality
+            document.addEventListener('DOMContentLoaded', function() {
+                const carousel = document.getElementById('imageCarousel');
+                const inner = document.getElementById('carouselInner');
+                const indicators = document.querySelectorAll('.carousel-indicator');
+                const prevButton = document.getElementById('prevButton');
+                const nextButton = document.getElementById('nextButton');
+                
+                let currentSlide = 0;
+                const slideCount = indicators.length;
+                
+                // Function to show a specific slide
+                function showSlide(index) {
+                    // Handle boundary cases
+                    if (index < 0) index = slideCount - 1;
+                    if (index >= slideCount) index = 0;
+                    
+                    // Update current slide
+                    currentSlide = index;
+                    
+                    // Update carousel position
+                    inner.style.transform = `translateX(-${currentSlide * 100}%)`;
+                    
+                    // Update indicators
+                    indicators.forEach((indicator, i) => {
+                        if (i === currentSlide) {
+                            indicator.classList.add('active');
+                        } else {
+                            indicator.classList.remove('active');
+                        }
+                    });
+                }
+                
+                // Set up controls
+                prevButton.addEventListener('click', () => {
+                    showSlide(currentSlide - 1);
+                });
+                
+                nextButton.addEventListener('click', () => {
+                    showSlide(currentSlide + 1);
+                });
+                
+                // Set up indicators
+                indicators.forEach((indicator, index) => {
+                    indicator.addEventListener('click', () => {
+                        showSlide(index);
+                    });
+                });
+                
+                // Auto-advance carousel every 5 seconds
+                let autoplayInterval = setInterval(() => {
+                    showSlide(currentSlide + 1);
+                }, 3000);
+                
+                // Pause autoplay when hovering over carousel
+                carousel.addEventListener('mouseenter', () => {
+                    clearInterval(autoplayInterval);
+                });
+                
+                // Resume autoplay when mouse leaves
+                carousel.addEventListener('mouseleave', () => {
+                    autoplayInterval = setInterval(() => {
+                        showSlide(currentSlide + 1);
+                    }, 5000);
+                });
+                
+                // Handle keyboard navigation
+                document.addEventListener('keydown', (e) => {
+                    if (e.key === 'ArrowLeft') {
+                        showSlide(currentSlide - 1);
+                    } else if (e.key === 'ArrowRight') {
+                        showSlide(currentSlide + 1);
+                    }
+                });
+                
+                // Initialize first slide
+                showSlide(0);
+            });
+            
+            // Message parent frame when an image is clicked (for full screen viewing)
+            document.querySelectorAll('.carousel-image').forEach(img => {
+                img.addEventListener('click', function() {
+                    // Check if we're in an iframe
+                    if (window.parent !== window) {
+                        window.parent.postMessage({
+                            type: 'view-image',
+                            src: this.src,
+                            alt: this.alt
+                        }, '*');
+                    }
+                });
+            });
+        </script>
+    </body>
+    </html>
+    """
+    
+    return html
