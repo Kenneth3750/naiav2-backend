@@ -20,7 +20,6 @@ class Chat(APIView):
     def post(self, request):
         try:
             serializer = ChatSerializer(data=request.data)
-            print("Datos recibidos: ", request.data)
             if serializer.is_valid():
                 user_id = serializer.validated_data['user_id']
                 user_input = serializer.validated_data['user_input']

@@ -3,7 +3,6 @@ from apps.chat.models import Roles
 from .models import Chat
 from django.utils import timezone
 import redis
-from dotenv import load_dotenv
 import os
 import json
 
