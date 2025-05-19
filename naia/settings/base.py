@@ -86,6 +86,7 @@ INSTALLED_APPS = [
     'apps.roles',
     'apps.status',
     'apps.researcher',
+    'apps.uniguide',
 ]
 
 
