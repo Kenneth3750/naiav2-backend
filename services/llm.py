@@ -5,6 +5,7 @@ import os
 import time
 import requests
 import base64
+import re
 
 class LLMService:
     _client = None
@@ -158,9 +159,33 @@ class LLMService:
             return False
         else:
             return True
+        
+    def fix_naia_mispelling(self, user_input):
+        """
+        This function fixes the spelling of "NAIA" in the user input,
+        including common speech recognition variants.
+        """
+        naia_variants = ["naia", "naya", "nadia", "maya", "anaya", "nayla", "anaia"]
+        
+        lower_input = user_input.lower()
+        corrected_input = user_input
+        for variant in naia_variants:
+            corrected_input = self._replace_whole_word(corrected_input, variant, "NAIA")
+            
+        return corrected_input
+    
+    def _replace_whole_word(self, text, word_to_replace, replacement):
+        """
+        Helper method to replace only whole words in text, preserving case when possible.
+        """
+        pattern = r'\b' + re.escape(word_to_replace) + r'\b'
+        
+        return re.sub(pattern, replacement, text, flags=re.IGNORECASE)
     
     def generate_response(self, user_input, image_url, messages):
         start_time = time.time()
+        user_input = self.fix_naia_mispelling(user_input)
+        print(f"User input after fixing spelling: {user_input}")
         is_function = self.route_query(user_input, messages)
         
         retry_without_image = False
