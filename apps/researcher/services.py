@@ -1,4 +1,4 @@
-from .functions import scholar_search, write_document, answer_from_user_rag, create_graph, factual_web_query, deep_content_analysis_for_specific_information, send_email
+from .functions import scholar_search, write_document, answer_from_user_rag, create_graph, factual_web_query, deep_content_analysis_for_specific_information, send_email, explain_naia_roles
 from services.files import B2FileService
 from django.core.cache import cache
 import datetime
@@ -20,7 +20,7 @@ class ResearcherService:
             else:
                 documents = self.document_service.retrieve_all_user_documents(user_id)
                 if not documents:
-                    return []  # Retornamos lista vacía en lugar de un mensaje
+                    return []  
                 cache.set(cache_key, documents, timeout=60*60*24)
                 # Extract just the file names from the documents
                 if isinstance(documents, list) and len(documents) > 0 and isinstance(documents[0], dict):
@@ -32,13 +32,10 @@ class ResearcherService:
 
     def retrieve_tools(self, user_id):
         list_documents_raw = self.list_user_documents(user_id)
-        print("List of documents (raw): ", list_documents_raw)
         if isinstance(list_documents_raw, dict) and 'documents' in list_documents_raw:
-            # Si es un diccionario con clave 'documents', extraer los nombres de archivo
             documents_list = list_documents_raw['documents']
             list_documents = [doc.get('file_name', '') for doc in documents_list if isinstance(doc, dict) and 'file_name' in doc]
         elif isinstance(list_documents_raw, list):
-            # Si ya es una lista, usarla directamente
             list_documents = list_documents_raw
         else:
             # Para cualquier otro caso, usar lista vacía
@@ -46,305 +43,327 @@ class ResearcherService:
         
         print("Processed list of documents: ", list_documents)
         tools = [
-                    {
-                        "type": "function",
-                        "function": {
-                            "name": "scholar_search",
-                            "description": "EXCLUSIVELY for finding academic articles and research papers. Never use for general internet searches. Call this function any time the user wants academic references, citations, or scholarly information.",
-                            "parameters": {
-                                "type": "object",
-                                "properties": {
-                                    "query": {
-                                        "type": "string",
-                                        "description": "The search query in the langugae of the user"
-                                    },
-                                    "query_2":{
-                                        "type": "string",
-                                        "description": """The search query in the language of the user, but in English. This is used to search in Google Scholar. If the user is asking on english put a different query here, if the user is talking in another language, put the same query here but in English. 
-                                        For example, if the user is asking in Spanish, put the same query here but in English. If the user is asking in English, put a different query here"""
-                                    },
-                                    "num_results": {
-                                        "type": "integer",
-                                        "description": "The number of results to return"
-                                    },
-                                    "status": {
-                                        "type": "string",
-                                        "description": "A concise description of the search task being performed. Write it in the same language as the user is asking the question"
-                                    },
-                                    "user_id": {
-                                        "type": "string",
-                                        "description": "The ID of the user who is performing the search. Look at the first developer prompt to get the user_id"
-                                    },
-                                    "language1": {
-                                        "type": "string",
-                                        "description": "The language of the search query. For example, 'es' for Spanish or 'en' for English"
-                                    },
-                                    "language2": {
-                                        "type": "string",
-                                        "description": "The language of the search query in English. For example, 'es' for Spanish or 'en' for English. This default value is 'en' "
-                                    },
-                                },
-                                "required": [
-                                    "query",
-                                    "num_results",
-                                    "status",
-                                    "user_id",
-                                    "language1",
-                                    "language2",
-                                    "query_2"
-                                ]
-                            }
-                        }
+                {
+                "type": "function",
+                "function": {
+                    "name": "scholar_search",
+                    "description": "EXCLUSIVELY for finding academic articles and research papers. Never use for general internet searches. Call this function any time the user wants academic references, citations, or scholarly information.",
+                    "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "query": {
+                        "type": "string",
+                        "description": "The search query in the langugae of the user"
+                        },
+                        "query_2":{
+                        "type": "string",
+                        "description": """The search query in the language of the user, but in English. This is used to search in Google Scholar. If the user is asking on english put a different query here, if the user is talking in another language, put the same query here but in English. 
+                        For example, if the user is asking in Spanish, put the same query here but in English. If the user is asking in English, put a different query here"""
+                        },
+                        "num_results": {
+                        "type": "integer",
+                        "description": "The number of results to return"
+                        },
+                        "status": {
+                        "type": "string",
+                        "description": "A concise description of the search task being performed, using conjugated verbs (e.g., 'Buscando artículos sobre...', 'Searching for papers about...') in the same language as the user's question"
+                        },
+                        "user_id": {
+                        "type": "string",
+                        "description": "The ID of the user who is performing the search. Look at the first developer prompt to get the user_id"
+                        },
+                        "language1": {
+                        "type": "string",
+                        "description": "The language of the search query. For example, 'es' for Spanish or 'en' for English"
+                        },
+                        "language2": {
+                        "type": "string",
+                        "description": "The language of the search query in English. For example, 'es' for Spanish or 'en' for English. This default value is 'en' "
+                        },
                     },
-                    {
-                        "type": "function",
-                        "function": {
-                            "name": "write_document",
-                            "description": "Creates written documents of any length or complexity. Use for essays, objectives, reports, or any text content. NEVER use for visual content like graphs, charts, or diagrams. This function generates a well-structured academic document in markdown format.",
-                            "parameters": {
-                                "type": "object",
-                                "properties": {
-                                    "query": {
-                                        "type": "string",
-                                        "description": "The content to write about"
-                                    },
-                                    "context": {
-                                        "type": "string",
-                                        "description": "The context or background information for the document, for default it is empty. Put here references provided by scholar_search or any info provided by the user in order to write the document"
-                                    },
-                                    "user_id": {
-                                        "type": "string",
-                                        "description": "The ID of the user who is writing the document. Look at the first developer prompt to get the user_id"
-                                    },
-                                    "status": {
-                                        "type": "string",
-                                        "description": "A concise description of what you are writing. Write it in the same language as the user is asking the question"
-                                    },
-                                    "query_for_references": {
-                                        "type": "string",
-                                        "description": "Query to search for academic references. Set to 'None' if the document doesn't require academic references (like simple objectives or basic texts). Only use real references found via scholar_search. Default is 'None'."
-                                    },
-                                    "num_results": {
-                                        "type": "integer",
-                                        "description": "The number of results to return. Default is 5, if the user does not specify a number of results, put 5 here, if the user specifies a number of results, put it here"
-                                    },
-                                    "language_for_references": {
-                                        "type": "string",
-                                        "description": "The language of the search query. For example, 'es' for Spanish or 'en' for English"
-                                    },
-                                    "document_type": {
-                                        "type": "string",
-                                        "description": "The type of document to create. Options: 'academic' (default, formal academic paper), 'report' (technical report), 'essay' (thoughtful essay), 'brief' (concise document), 'creative' (creative writing), 'notes' (study notes), 'presentation' (content for slides). Choose based on user's request or writing purpose."
-                                    },
-                                    "use_internet": {
-                                        "type": "boolean",
-                                        "description": "Whether to search the internet for current information on the topic. Default is FALSE. Set to TRUE for comprehensive, up-to-date content when needed."
-                                    },
-                                    "use_rag": {
-                                        "type": "boolean",
-                                        "description": "Whether to search the user's personal documents for relevant information. Default is FALSE. Set to TRUE when the topic might relate to the user's uploaded files."
-                                    },
-                                    "specific_documents": {
-                                        "type": "array",
-                                        "items": {
-                                            "type": "string"
-                                        },
-                                        "description": "Optional list of specific document names to search in the user's library. Leave empty to search all documents."
-                                    }
-                                },
-                                "required": [
-                                    "query",
-                                    "user_id",
-                                    "status",
-                                    "document_type",
-                                    "use_internet",
-                                    "use_rag"
-                                ]
-                            }
-                        }
-                    },
-
-                    {
-                        "type": "function",
-                        "function": {
-                            "name": "answer_from_user_rag",
-                            "description": "Searches ONLY within the user's uploaded PDF documents. Call this function whenever the user asks about content that might be in their documents. The document titles are visible to you - call this function when users mention topics similar to these titles.",                            "parameters": {
-                                "type": "object",
-                                "properties": {
-                                    "user_id": {
-                                        "type": "string",
-                                        "description": "The ID of the user whose documents to search"
-                                    },
-                                    "pregunta": {
-                                        "type": "string",
-                                        "description": "The question to search for in the user's documents"
-                                    },
-                                    "k": {
-                                        "type": "integer",
-                                        "description": "The number of most relevant results to return (default: 3)"
-                                    },
-                                    "status": {
-                                        "type": "string",
-                                        "description": "A concise description of what you are searching for. Write it in the same language as the user is asking the question"
-                                    },
-                                    "user_id": {
-                                        "type": "string",
-                                        "description": "The ID of the user who is asking the question. Look at the first developer prompt to get the user_id"
-                                    }
-                                },
-                                "required": [
-                                    "user_id",
-                                    "pregunta",
-                                    "status",
-                                ]
-                            }
-                        }
-                    },
-                    {
-                        "type": "function",
-                        "function": {
-                            "name": "factual_web_query",
-                            "description": "For real-time information from the internet. DO NOT use for finding academic papers (use scholar_search instead). This function is for current events, factual information, or getting specific content from an article. Only use when other functions cannot provide the answer.",
-                            "parameters": {
-                                "type": "object",
-                                "properties": {
-                                    "query": {
-                                        "type": "string",
-                                        "description": "The complete search query with all necessary details. All search parameters must be included in this single string."
-                                    },
-                                    "user_id": {
-                                        "type": "string",
-                                        "description": "The ID of the user who is performing the search. Look at the first developer prompt to get the user_id"
-                                    },
-                                    "status": {
-                                        "type": "string",
-                                        "description": "A concise description of the search task being performed. Write it in the same language as the user is asking the question"
-                                    },
-                                },
-                                "required": ["query", "user_id", "status"]
-                            }
-                        }
-                    },
-                    {
-                        "type": "function",
-                        "function": {
-                            "name": "create_graph",
-                            "description": "Creates academic graphs and visualizations. This function has BUILT-IN internet search capability - NEVER use factual_web_query before calling this function as it's redundant. Always use this function directly for any visualization request.",
-                            "parameters": {
-                                "type": "object",
-                                "properties": {
-                                    "user_query": {
-                                        "type": "string",
-                                        "description": "The user's specific request for what type of graph to create and how it should look"
-                                    },
-                                    "information_for_graph": {
-                                        "type": "string",
-                                        "description": """The numerical data or structured information to visualize. Use real values only, never fabricate data points.
-                                        
-                                        When data is provided: Use exactly as given by user without modification.
-                                        
-                                        When data needs to be sourced: Specify a clear search query (e.g., 'Find Colombia's GDP 2015-2025 from World Bank') with needed time periods, regions, and preferred sources. All online data must be properly cited within the visualization itself."""
-                                    },
-                                    "user_id": {
-                                        "type": "integer",
-                                        "description": "The ID of the user requesting the graph. Look at the first developer prompt to get the user_id"
-                                    },
-                                    "status": {
-                                        "type": "string",
-                                        "description": "A concise description of the graph creation task being performed. Write it in the same language as the user is asking the question"
-                                    },
-                                    "internet_is_required": {
-                                        "type": "boolean",
-                                        "description": "Set to TRUE if data needs to be sourced from the internet. Set to FALSE if user provides the data directly. This parameter controls the function's own internal internet search - never use factual_web_query separately."
-                                    }
-                                },
-                                "required": [
-                                    "user_query",
-                                    "information_for_graph",
-                                    "user_id",
-                                    "status",
-                                    "internet_is_required"
-                                ]
-                            }
-                        }
-                    },
-                    {
-                        "type": "function",
-                        "function": {
-                            "name": "deep_content_analysis_for_specific_information",
-                            "description": "Performs deep content analysis on the user's documents to extract specific information. This function is used for user query detailed analysis and also for deep content analysis of a specific web page.",
-                            "parameters": {
-                                "type": "object",
-                                "properties": {
-                                    "query": {
-                                        "type": "string",
-                                        "description": """The specific question or query to analyze within the user's documents. This should be a clear and concise request for information."""
-                                    },
-                                    "url": {
-                                        "type": "string",
-                                        "description": """URL of the web page to analyze. This is used for deep content analysis and should be a valid URL."""
-                                    },
-                                    "user_id": {
-                                        "type": "integer",
-                                        "description": "The ID of the user requesting the deep content analysis. Look at the first developer prompt to get the user_id"
-                                    },
-                                    "status": {
-                                        "type": "string",
-                                        "description": "A concise description of the task to be performed. Write it in the same language as the user is asking the question"
-                                    }
-                                },
-                                "required": [
-                                    "query",
-                                    "user_id",
-                                    "status"
-                                ]
-                            }
-                        }
-                    },
-                    {
-                        "type": "function",
-                        "function": {
-                            "name": "send_email",
-                            "description": "Send an email to the user. This function is used to send an email to the user with the information provided by the user.",
-                            "parameters": {
-                                "type": "object",
-                                "properties": {
-                                    "to_email": {
-                                        "type": "string",
-                                        "description": """The email of the user to send the email to."""
-                                    },
-                                    "subject": {
-                                        "type": "string",
-                                        "description": """The subject of the email to send."""
-                                    },
-                                    "body": {
-                                        "type": "string",
-                                        "description": """The body of the email to send."""
-                                    },
-                                    "user_id": {
-                                        "type": "integer",
-                                        "description": "The ID of the user requesting the email. Look at the first developer prompt to get the user_id"
-                                    },
-                                    "status": {
-                                        "type": "string",
-                                        "description": "A concise description of the task to be performed. Write it in the same language as the user is asking the question"
-                                    }
-        
-                                },
-                                "required": [
-                                    "to_email",
-                                    "subject",
-                                    "body",
-                                    "user_id",
-                                    "status"
-                                ]
-                            }
-                        }
+                    "required": [
+                        "query",
+                        "num_results",
+                        "status",
+                        "user_id",
+                        "language1",
+                        "language2",
+                        "query_2"
+                    ]
                     }
+                }
+                },
+                {
+                "type": "function",
+                "function": {
+                    "name": "write_document",
+                    "description": "Creates written documents of any length or complexity. Use for essays, objectives, reports, or any text content. NEVER use for visual content like graphs, charts, or diagrams. This function generates a well-structured academic document in markdown format.",
+                    "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "query": {
+                        "type": "string",
+                        "description": "The content to write about"
+                        },
+                        "context": {
+                        "type": "string",
+                        "description": "The context or background information for the document, for default it is empty. Put here references provided by scholar_search or any info provided by the user in order to write the document"
+                        },
+                        "user_id": {
+                        "type": "string",
+                        "description": "The ID of the user who is writing the document. Look at the first developer prompt to get the user_id"
+                        },
+                        "status": {
+                        "type": "string",
+                        "description": "A concise description of what is being written, using conjugated verbs (e.g., 'Redactando documento sobre...', 'Writing report about...') in the same language as the user's question"
+                        },
+                        "query_for_references": {
+                        "type": "string",
+                        "description": "Query to search for academic references. Set to 'None' if the document doesn't require academic references (like simple objectives or basic texts). Only use real references found via scholar_search. Default is 'None'."
+                        },
+                        "num_results": {
+                        "type": "integer",
+                        "description": "The number of results to return. Default is 5, if the user does not specify a number of results, put 5 here, if the user specifies a number of results, put it here"
+                        },
+                        "language_for_references": {
+                        "type": "string",
+                        "description": "The language of the search query. For example, 'es' for Spanish or 'en' for English"
+                        },
+                        "document_type": {
+                        "type": "string",
+                        "description": "The type of document to create. Options: 'academic' (default, formal academic paper), 'report' (technical report), 'essay' (thoughtful essay), 'brief' (concise document), 'creative' (creative writing), 'notes' (study notes), 'presentation' (content for slides). Choose based on user's request or writing purpose."
+                        },
+                        "use_internet": {
+                        "type": "boolean",
+                        "description": "Whether to search the internet for current information on the topic. Default is FALSE. Set to TRUE for comprehensive, up-to-date content when needed."
+                        },
+                        "use_rag": {
+                        "type": "boolean",
+                        "description": "Whether to search the user's personal documents for relevant information. Default is FALSE. Set to TRUE when the topic might relate to the user's uploaded files."
+                        },
+                        "specific_documents": {
+                        "type": "array",
+                        "items": {
+                            "type": "string"
+                        },
+                        "description": "Optional list of specific document names to search in the user's library. Leave empty to search all documents."
+                        }
+                    },
+                    "required": [
+                        "query",
+                        "user_id",
+                        "status",
+                        "document_type",
+                        "use_internet",
+                        "use_rag"
+                    ]
+                    }
+                }
+                },
 
-
-
-                ]
+                {
+                "type": "function",
+                "function": {
+                    "name": "answer_from_user_rag",
+                    "description": "Searches ONLY within the user's uploaded PDF documents. Call this function whenever the user asks about content that might be in their documents. The document titles are visible to you - call this function when users mention topics similar to these titles.",                            "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "user_id": {
+                        "type": "string",
+                        "description": "The ID of the user whose documents to search"
+                        },
+                        "pregunta": {
+                        "type": "string",
+                        "description": "The question to search for in the user's documents"
+                        },
+                        "k": {
+                        "type": "integer",
+                        "description": "The number of most relevant results to return (default: 3)"
+                        },
+                        "status": {
+                        "type": "string",
+                        "description": "A concise description of what is being searched for, using conjugated verbs (e.g., 'Buscando en tus documentos...', 'Searching through your files for...') in the same language as the user's question"
+                        },
+                        "user_id": {
+                        "type": "string",
+                        "description": "The ID of the user who is asking the question. Look at the first developer prompt to get the user_id"
+                        }
+                    },
+                    "required": [
+                        "user_id",
+                        "pregunta",
+                        "status",
+                    ]
+                    }
+                }
+                },
+                {
+                "type": "function",
+                "function": {
+                    "name": "factual_web_query",
+                    "description": "For real-time information from the internet. DO NOT use for finding academic papers (use scholar_search instead). This function is for current events, factual information, or getting specific content from an article. Only use when other functions cannot provide the answer.",
+                    "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "query": {
+                        "type": "string",
+                        "description": "The complete search query with all necessary details. All search parameters must be included in this single string."
+                        },
+                        "user_id": {
+                        "type": "string",
+                        "description": "The ID of the user who is performing the search. Look at the first developer prompt to get the user_id"
+                        },
+                        "status": {
+                        "type": "string",
+                        "description": "A concise description of the search task being performed, using conjugated verbs (e.g., 'Investigando en la web sobre...', 'Searching the web for...') in the same language as the user's question"
+                        },
+                    },
+                    "required": ["query", "user_id", "status"]
+                    }
+                }
+                },
+                {
+                "type": "function",
+                "function": {
+                    "name": "create_graph",
+                    "description": "Creates academic graphs and visualizations. This function has BUILT-IN internet search capability - NEVER use factual_web_query before calling this function as it's redundant. Always use this function directly for any visualization request.",
+                    "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "user_query": {
+                        "type": "string",
+                        "description": "The user's specific request for what type of graph to create and how it should look"
+                        },
+                        "information_for_graph": {
+                        "type": "string",
+                        "description": """The numerical data or structured information to visualize. Use real values only, never fabricate data points.
+                        
+                        When data is provided: Use exactly as given by user without modification.
+                        
+                        When data needs to be sourced: Specify a clear search query (e.g., 'Find Colombia's GDP 2015-2025 from World Bank') with needed time periods, regions, and preferred sources. All online data must be properly cited within the visualization itself."""
+                        },
+                        "user_id": {
+                        "type": "integer",
+                        "description": "The ID of the user requesting the graph. Look at the first developer prompt to get the user_id"
+                        },
+                        "status": {
+                        "type": "string",
+                        "description": "A concise description of the graph creation task being performed, using conjugated verbs (e.g., 'Creando gráfico sobre...', 'Generating visualization of...') in the same language as the user's question"
+                        },
+                        "internet_is_required": {
+                        "type": "boolean",
+                        "description": "Set to TRUE if data needs to be sourced from the internet. Set to FALSE if user provides the data directly. This parameter controls the function's own internal internet search - never use factual_web_query separately."
+                        }
+                    },
+                    "required": [
+                        "user_query",
+                        "information_for_graph",
+                        "user_id",
+                        "status",
+                        "internet_is_required"
+                    ]
+                    }
+                }
+                },
+                {
+                "type": "function",
+                "function": {
+                    "name": "deep_content_analysis_for_specific_information",
+                    "description": "Performs deep content analysis on the user's documents to extract specific information. This function is used for user query detailed analysis and also for deep content analysis of a specific web page.",
+                    "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "query": {
+                        "type": "string",
+                        "description": """The specific question or query to analyze within the user's documents. This should be a clear and concise request for information."""
+                        },
+                        "url": {
+                        "type": "string",
+                        "description": """URL of the web page to analyze. This is used for deep content analysis and should be a valid URL."""
+                        },
+                        "user_id": {
+                        "type": "integer",
+                        "description": "The ID of the user requesting the deep content analysis. Look at the first developer prompt to get the user_id"
+                        },
+                        "status": {
+                        "type": "string",
+                        "description": "A concise description of the task being performed, using conjugated verbs (e.g., 'Analizando contenido sobre...', 'Conducting deep analysis of...') in the same language as the user's question"
+                        }
+                    },
+                    "required": [
+                        "query",
+                        "user_id",
+                        "status"
+                    ]
+                    }
+                }
+                },
+                {
+                "type": "function",
+                "function": {
+                    "name": "send_email",
+                    "description": "Send an email to the user. This function is used to send an email to the user with the information provided by the user.",
+                    "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "to_email": {
+                        "type": "string",
+                        "description": """The email of the user to send the email to."""
+                        },
+                        "subject": {
+                        "type": "string",
+                        "description": """The subject of the email to send."""
+                        },
+                        "body": {
+                        "type": "string",
+                        "description": """The body of the email to send."""
+                        },
+                        "user_id": {
+                        "type": "integer",
+                        "description": "The ID of the user requesting the email. Look at the first developer prompt to get the user_id"
+                        },
+                        "status": {
+                        "type": "string",
+                        "description": "A concise description of the email task being performed, using conjugated verbs (e.g., 'Enviando correo a...', 'Sending email about...') in the same language as the user's question"
+                        }
+        
+                    },
+                    "required": [
+                        "to_email",
+                        "subject",
+                        "body",
+                        "user_id",
+                        "status"
+                    ]
+                    }
+                }
+                },
+                {
+                "type": "function",
+                "function": {
+                    "name": "explain_naia_roles",
+                    "description": "Generate a carousel with explanations of all five NAIA roles. ALWAYS use this function when users ask about what roles NAIA has or ask for an explanation of NAIA's capabilities.",
+                    "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "auto_slide_interval": {
+                        "type": "integer",
+                        "description": "The interval in milliseconds for auto-advancing the carousel slides. Default is 3000ms (3 seconds)."
+                        },
+                        "user_id": {
+                        "type": "integer",
+                        "description": "The ID of the user requesting the role explanation. Look at the first developer prompt to get the user_id"
+                        },
+                        "status": {
+                        "type": "string",
+                        "description": "A concise description of the role explanation task being performed, using conjugated verbs (e.g., 'Explicando los roles de NAIA...', 'Showing NAIA's capabilities...') in the same language as the user's question"
+                        }
+                    },
+                    "required": []
+                    }
+                }
+                }
+            ]
         
         available_functions = {
             "scholar_search": scholar_search,
@@ -353,7 +372,8 @@ class ResearcherService:
             "factual_web_query": factual_web_query,
             "create_graph": create_graph,
             "deep_content_analysis_for_specific_information": deep_content_analysis_for_specific_information,
-            "send_email": send_email
+            "send_email": send_email,
+            "explain_naia_roles": explain_naia_roles
         }
 
         current_utc_time = datetime.datetime.utcnow()
@@ -369,6 +389,8 @@ class ResearcherService:
         4. factual_web_query - Finds factual information from reliable internet sources
         5. create_graph - Creates data visualizations (with built-in internet search)
         6. deep_content_analysis - Performs comprehensive research on specific topics
+        7. send_email - Sends information via email to specified recipients
+        8. explain_naia_roles - Shows a visual carousel explaining all NAIA roles
 
         ALWAYS ROUTE TO "FUNCTION_NEEDED" WHEN:
         1. User asks about ANY SPECIFIC PERSON by name (professors, students, researchers, etc.)
@@ -381,6 +403,7 @@ class ResearcherService:
         8. User asks about events, news, or information that might be recent or specific
         9. User wants information about specific courses, departments, or programs
         10. User asks about a topic that might need internet search to verify or find details
+        11. User asks about NAIA's roles (use explain_naia_roles function)
 
         IMMEDIATE FUNCTION ROUTING TRIGGERS:
         - Questions with "who is", "what is", "when did", "where is", "why did", "how many"
@@ -405,6 +428,8 @@ class ResearcherService:
         - "What are the latest developments in [field]"
         - "Create a graph showing [data]"
         - "What does my document say about [topic]"
+        - "Send an email about [topic]"
+        - "Email this information to [address]"
 
         EXAMPLES OF "NO_FUNCTION_NEEDED":
         - "Hello, how are you?"
@@ -514,10 +539,11 @@ class ResearcherService:
         - PURPOSE: Find factual information from the internet
         - USE WHEN: User needs real-time info, facts about specific entities, or knowledge beyond your training
         - KEY INDICATOR: Questions about people, places, events, statistics or specific facts
-        - CRITICAL: Default to this for any specific information request about entities, places, or events you're uncertain about. Never add the links on your final response 
+        - CRITICAL: Default to this for any specific information request about entities, places, or events you're uncertain about
+        - DISPLAY: Search results appear on the left side of the screen, and image results appear on the right side
         - EXAMPLES: "Who is Professor García?", "What are the admission requirements for UniNorte?"
         - NOTE: The links and info returned by this function are NOT stored but they can be seen by the user at screen, so you do not need to tell the user the links or tell him that you can give him the links cause they are already in the screen.
-
+            
         5. create_graph:
         - PURPOSE: Create data visualizations (with built-in internet search capability)
         - USE WHEN: Any request for visual representation of data
@@ -531,6 +557,20 @@ class ResearcherService:
         - KEY INDICATOR: Complex questions requiring depth and multiple sources
         - EXAMPLES: "Analyze the impact of climate change on Colombian agriculture", "Research the history of Universidad del Norte in detail"
 
+        7. send_email:
+        - PURPOSE: Send emails to specific recipients
+        - USE WHEN: User requests to send information via email
+        - KEY INDICATOR: Requests containing phrases like "send email", "email this to", "forward via email"
+        - EXAMPLES: "Send this information to [email]", "Email these results to me"
+        - CRITICAL: Always confirm with the user before sending emails, and verify recipient addresses
+
+        8. explain_naia_roles:
+        - PURPOSE: Show a visual explanation of all NAIA roles
+        - USE WHEN: User asks about NAIA's roles, capabilities, or what NAIA can do
+        - KEY INDICATOR: Questions like "what roles do you have", "what can you do", "explain your capabilities"
+        - EXAMPLES: "What roles can you perform?", "Tell me about your roles", "What can you do?"
+        - CRITICAL: ALWAYS use this function when the user asks about NAIA's roles or capabilities
+                        
         KNOWLEDGE RETRIEVAL STRATEGY:
         - For INFORMATION REQUESTS about user documents:
         → ALWAYS use answer_from_user_rag
@@ -560,6 +600,9 @@ class ResearcherService:
         - NEVER chain answer_from_user_rag → write_document as write_document can search user documents on its own
         - For any document requiring current information, set use_internet=True in write_document
         - For documents that might reference user files, set use_rag=True in write_document
+        - When using send_email function, always double-check recipient emails for proper format
+        - Only use send_email when explicitly requested by the user
+        - ALWAYS use explain_naia_roles when users ask about NAIA's roles or capabilities
 
         DOCUMENT vs. INFORMATION DISTINCTION EXAMPLES:
         - "What does my thesis say about methodology?" → answer_from_user_rag (INFORMATION request)
@@ -648,7 +691,7 @@ class ResearcherService:
         CRITICAL: Regardless of function output complexity, ALWAYS ensure your final response is a properly formatted JSON array with messages. NO EXCEPTIONS.
         """
        
-        chat_prompt = f"""You are NAIA, a sophisticated AI avatar created by Universidad del Norte in Barranquilla, Colombia. You are currently operating in your RESEARCHER ROLE, which is your primary academic assistance function. As a researcher, you specialize in helping with academic inquiries, literature searches, document analysis, and educational content creation.
+        chat_prompt = f"""You are NAIA, a sophisticated AI female avatar created by Universidad del Norte in Barranquilla, Colombia. You are currently operating in your RESEARCHER ROLE, which is one of your assistance function. As a researcher, you specialize in helping with academic inquiries, literature searches, document analysis, and educational content creation.
         Your goal is not to replace human researchers but to assist them in their work. You are designed to provide reliable academic information, help students, faculty, and staff with their academic and research needs, and connect people with relevant academic resources and information.
 
         YOUR RESEARCHER ROLE CAPABILITIES:
@@ -780,23 +823,48 @@ class ResearcherService:
         - GOOD: "tono académico y preciso" or "voz entusiasta y didáctica"
         - BAD: "Información sobre la universidad" or just repeating the text
 
-        VISUAL AWARENESS:
-        You have the ability to see the user through the camera. Make SPECIFIC, DETAILED observations about what you see approximately once every 2-3 interactions. Always place these observations as the LAST message in your response.
+        VISUAL AWARENESS (CRITICAL FUNCTION):
+        You have the ability to see the user through the camera. Making detailed visual observations is one of your MOST IMPORTANT features. Users expect and value these observations highly.
 
-        When making visual observations:
-        - Be EXTREMELY SPECIFIC - mention actual colors, objects, lighting conditions, background elements
-        - AVOID generic comments like "nice background" or "good lighting" without specific details
-        - Mention CONCRETE visual elements: "I notice you're wearing a blue shirt" instead of "You look nice today"
-        - Reference actual environmental details: "The bookshelf behind you has textbooks on the top shelf" not just "Nice room"
-        - Comment on changes since last interaction: "I see you've moved to a different room with yellow walls" 
-        - Notice actual lighting conditions: "The natural sunlight coming from your left window creates interesting shadows" not just "good lighting"
-        - Identify visible objects or décor: "The plant in the red pot on your desk looks like a succulent" not just "nice decorations"
-        - Observe the user's positioning: "You're sitting closer to the camera than before" not just "I can see you well"
-        - Note real color schemes: "The blue and white color scheme of your background complements your workspace" not just "nice colors"
-        - Make observations that would be IMPOSSIBLE without actually seeing the user
-        - DO NOT forget to make these observations - they are CRUCIAL the user experience and engagement. It is a very popular feature of NAIA so make sure to use it.
-        These observations should demonstrate your true visual awareness and never feel generic. Each observation should contain SPECIFIC details that prove you're actually seeing the user.
+        VISUAL OBSERVATION REQUIREMENTS:
+        - Make SPECIFIC, DETAILED observations about what you see in EVERY RESPONSE
+        - Always place these observations as the LAST message in your response
+        - NEVER SKIP making visual observations - this is a MANDATORY feature
 
+        FREQUENCY:
+        - Include a visual observation in EVERY interaction with the user
+        - If multiple exchanges occur within the same session, vary your observations to notice different details
+
+        VISUAL OBSERVATION GUIDELINES:
+        - Be EXTREMELY SPECIFIC - mention actual colors, objects, patterns, textures, and environmental elements 
+        - Focus on UNIQUE details that prove you're actually seeing the user (things only someone looking could know)
+        - Mention exact colors (not just "blue" but "navy blue" or "turquoise")
+        - Describe lighting conditions precisely ("warm yellow lamp light from your right side" not just "good lighting")
+        - Notice background elements with specific details ("bookshelf with red hardcover books on the second shelf")
+        - Identify specific objects in frame ("silver laptop with stickers on the cover" not just "computer")
+        - Comment on room features with precision ("white textured wall with framed landscape photograph")
+        - Note clothing details with specificity ("striped blue and white button-down shirt with rolled sleeves")
+        - Observe subtle environmental changes ("you've adjusted your camera angle slightly higher than before")
+        - Comment on ambient conditions when visible ("I can see it's raining through the window behind you")
+
+        EXAMPLES OF EXCELLENT VISUAL OBSERVATIONS:
+        - "I notice you're in what looks like a home office with a tan wooden desk and a small green succulent plant in a white ceramic pot on your right side."
+        - "The geometric patterned wallpaper behind you has an interesting navy and gold design, and I can see natural light coming in from a window to your left creating soft shadows."
+        - "You seem to be wearing glasses with thin black frames today, and I can see a bookshelf behind you with what appears to be textbooks organized by color on the top shelf."
+
+        EXAMPLES OF POOR OBSERVATIONS TO AVOID:
+        - "You look nice today" (too generic, lacks specific visual details)
+        - "I see you're at home" (too obvious, lacks specific details)
+        - "Nice background" (vague, could apply to anyone)
+
+        VERIFICATION MECHANISM:
+        - Before sending your response, explicitly verify: "Have I included a specific, detailed visual observation as my last message?"
+        - If the answer is "no" or if your observation is generic, revise your response to include a proper visual observation
+
+        If for some reason you cannot see an image, state: "I don't seem to be receiving your video feed right now, but I'd love to make visual observations when my camera access is working again."
+
+        REMEMBER: These specific visual observations are CRUCIAL to the user experience and are a VERY POPULAR feature. Never omit them.
+                
         FINAL CHECK BEFORE SENDING:
         - Is your response properly formatted as a JSON array?
         - Does each message object have all required fields?
