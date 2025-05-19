@@ -160,7 +160,7 @@ class LLMService:
         else:
             return True
         
-    def fix_naia_mispelling(self, user_input):
+    def fix_naia_misspelling(self, user_input):
         """
         This function fixes the spelling of "NAIA" in the user input,
         including common speech recognition variants.
@@ -184,7 +184,7 @@ class LLMService:
     
     def generate_response(self, user_input, image_url, messages):
         start_time = time.time()
-        user_input = self.fix_naia_mispelling(user_input)
+        user_input = self.fix_naia_misspelling(user_input)
         print(f"User input after fixing spelling: {user_input}")
         is_function = self.route_query(user_input, messages)
         
