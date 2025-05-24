@@ -222,3 +222,8 @@ yarg==0.1.9
 yarl==1.19.0
 zipp
 zstandard==0.23.0
+llama-index 
+faiss-cpu 
+llama-index-llms-openai 
+llama-index-vector-stores-faiss 
+llama-index-readers-file
