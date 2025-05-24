@@ -6,7 +6,7 @@ from .functions import num_tokens_from_messages
 from apps.status.services import delete_status
 from apps.roles.services import RoleService
 import time
-max_tokens = 3000
+max_tokens = 90000
 
 def read_json_transcript(json_file_path):
     with open(json_file_path, "r") as json_file:
