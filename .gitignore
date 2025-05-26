@@ -22,3 +22,8 @@ deploy_server.py
 chromadb_user/
 media/
 logs/
+
+
+chromadb_uniguide/
+rag_docs/
+apps/uniguide/rag_test.py
