@@ -4,7 +4,7 @@ import smtplib
 import os
 from dotenv import load_dotenv
 from openai import OpenAI
-from langchain_community.document_loaders import PyPDFLoader, TextLoader
+from langchain_community.document_loaders import PyPDFLoader, TextLoader, Docx2txtLoader
 from langchain_community.vectorstores import Chroma
 from langchain_text_splitters import CharacterTextSplitter
 from langchain_openai import OpenAIEmbeddings
@@ -12,6 +12,7 @@ import tempfile
 from typing import List
 import json
 import re
+from services.files import B2FileService
 load_dotenv()
 
 DEFAULT_FROM_EMAIL=os.getenv("DEFAULT_FROM_EMAIL")
@@ -401,37 +402,78 @@ def mental_health_screening_tool(user_id: int, status: str, user_specific_situat
         return {"error": str(e)}
 
 
-def create_rag(documents_dir: str):
+def create_rag():
     """
-    Save documents from a directory into a vector database
-    documents_dir: path to the directory containing PDF and TXT files
+    Save documents from B2 cloud storage into a vector database
     """
-    if not os.path.exists(documents_dir):
-        raise ValueError(f"Directory {documents_dir} does not exist.")
-    
-    all_documents = []
-    
     try:
-        # Process PDF files
-        pdf_files = [f for f in os.listdir(documents_dir) if f.lower().endswith('.pdf')]
-        for pdf_file in pdf_files:
-            pdf_path = os.path.join(documents_dir, pdf_file)
-            loader = PyPDFLoader(pdf_path)
-            docs = loader.load()
-            all_documents.extend(docs)
-            print(f"Processed PDF: {pdf_file}")
-
-        # Process TXT files
-        txt_files = [f for f in os.listdir(documents_dir) if f.lower().endswith('.txt')]
-        for txt_file in txt_files:
-            txt_path = os.path.join(documents_dir, txt_file)
-            loader = TextLoader(txt_path)
-            docs = loader.load()
-            all_documents.extend(docs)
-            print(f"Processed TXT: {txt_file}")
+        # Get documents from B2
+        b2_service = B2FileService()
+        document_bytes_list = b2_service.download_uniguide_documents()
+        
+        if not document_bytes_list:
+            raise ValueError("No documents found in B2 storage.")
+            
+        all_documents = []
+        
+        # Process each document from B2
+        for i, file_info in enumerate(document_bytes_list):
+            # Extract file bytes and filename from the returned data
+            if isinstance(file_info, dict) and 'bytes' in file_info and 'filename' in file_info:
+                file_bytes = file_info['bytes']
+                file_name = file_info['filename']
+            else:
+                # If not in expected format, use the old behavior
+                file_bytes = file_info
+                file_name = ""
+            
+            # Determine appropriate file extension for temp file
+            if file_name and file_name.lower().endswith('.docx'):
+                suffix = '.docx'
+            elif file_name and file_name.lower().endswith('.txt'):
+                suffix = '.txt'
+            else:
+                suffix = '.pdf'  # Default to PDF
+            
+            with tempfile.NamedTemporaryFile(delete=False, suffix=suffix) as temp_file:
+                temp_path = temp_file.name
+                temp_file.write(file_bytes)
+            
+            try:
+                if suffix == '.pdf':
+                    # Process as PDF
+                    loader = PyPDFLoader(temp_path)
+                    docs = loader.load()
+                    all_documents.extend(docs)
+                    print(f"Processed PDF document #{i+1}")
+                elif suffix == '.docx':
+                    # Process as DOCX
+                    loader = Docx2txtLoader(temp_path)
+                    docs = loader.load()
+                    all_documents.extend(docs)
+                    print(f"Processed DOCX document #{i+1}")
+                else:
+                    # Process as text
+                    loader = TextLoader(temp_path)
+                    docs = loader.load()
+                    all_documents.extend(docs)
+                    print(f"Processed TXT document #{i+1}")
+            except Exception as e:
+                print(f"Failed to process document #{i+1}: {str(e)}")
+                try:
+                    # Fallback: try as plain text if original processing fails
+                    loader = TextLoader(temp_path, encoding='utf-8', autodetect_encoding=True)
+                    docs = loader.load()
+                    all_documents.extend(docs)
+                    print(f"Processed document #{i+1} as fallback text")
+                except Exception as inner_e:
+                    print(f"All processing methods failed for document #{i+1}: {str(inner_e)}")
+            
+            # Clean up temp file
+            os.unlink(temp_path)
 
         if not all_documents:
-            raise ValueError("No PDF or TXT files found in the specified directory.")
+            raise ValueError("No documents could be successfully processed.")
         
         # Create embeddings and store in Chroma
         persist_dir = "./chromadb_uniguide"
@@ -461,22 +503,22 @@ def create_rag(documents_dir: str):
         vector_store.add_documents(chunks)
         vector_store.persist()
 
-        return f"Successfully processed {len(pdf_files)} PDF files and {len(txt_files)} TXT files"
+        return f"Successfully processed {len(document_bytes_list)} documents from B2 storage"
 
     except Exception as e:
         print(f"Error processing documents: {str(e)}")
         return {"error": str(e)}
 
-def query_rag(question: str, k: int = 3, status:str = "") -> dict:
+def query_rag(user_id: int, question: str, k: int = 3, status:str = "") -> dict:
     """
     Query the information stored in the vector store and generate a response.
     """
     try:
-        set_status(status, 1)
+        set_status(user_id, status, 1)
         persist_dir = "./chromadb_uniguide"
 
         if not os.path.exists(persist_dir):
-            create_rag("./rag_docs")
+            create_rag()
             raise FileNotFoundError("No documents have been indexed yet.")
 
         embeddings = OpenAIEmbeddings(
@@ -501,115 +543,7 @@ def query_rag(question: str, k: int = 3, status:str = "") -> dict:
         result_text = "\n\n".join(rag_results)
 
         print(f"RAG results: {result_text}")
-        return {"Resolved RAG": result_text}
-
-    except Exception as e:
-        print(f"Error retrieving documents: {str(e)}")
-        return {"error": str(e)}
-
-
-
-def create_rag(documents_dir: str):
-    """
-    Save documents from a directory into a vector database
-    documents_dir: path to the directory containing PDF and TXT files
-    """
-    if not os.path.exists(documents_dir):
-        raise ValueError(f"Directory {documents_dir} does not exist.")
-    
-    all_documents = []
-    
-    try:
-        # Process PDF files
-        pdf_files = [f for f in os.listdir(documents_dir) if f.lower().endswith('.pdf')]
-        for pdf_file in pdf_files:
-            pdf_path = os.path.join(documents_dir, pdf_file)
-            loader = PyPDFLoader(pdf_path)
-            docs = loader.load()
-            all_documents.extend(docs)
-            print(f"Processed PDF: {pdf_file}")
-
-        # Process TXT files
-        txt_files = [f for f in os.listdir(documents_dir) if f.lower().endswith('.txt')]
-        for txt_file in txt_files:
-            txt_path = os.path.join(documents_dir, txt_file)
-            loader = TextLoader(txt_path)
-            docs = loader.load()
-            all_documents.extend(docs)
-            print(f"Processed TXT: {txt_file}")
-
-        if not all_documents:
-            raise ValueError("No PDF or TXT files found in the specified directory.")
-        
-        # Create embeddings and store in Chroma
-        persist_dir = "./chromadb_uniguide"
-        os.makedirs(persist_dir, exist_ok=True)
-
-        embeddings = OpenAIEmbeddings(
-            api_key=openai_api_key,
-            model="text-embedding-3-large"
-        )
-
-        # Create text splitter
-        text_splitter = CharacterTextSplitter.from_tiktoken_encoder(
-            encoding_name="cl100k_base",
-            chunk_size=1000,
-            chunk_overlap=200
-        )
-
-        # Split documents into chunks
-        chunks = text_splitter.split_documents(all_documents)
-
-        # Create and persist vector store
-        vector_store = Chroma(
-            persist_directory=persist_dir,
-            embedding_function=embeddings
-        )
-        
-        vector_store.add_documents(chunks)
-        vector_store.persist()
-
-        return f"Successfully processed {len(pdf_files)} PDF files and {len(txt_files)} TXT files"
-
-    except Exception as e:
-        print(f"Error processing documents: {str(e)}")
-        return {"error": str(e)}
-
-def query_rag(question: str, k: int = 3, status:str = "") -> dict:
-    """
-    Query the information stored in the vector store and generate a response.
-    """
-    try:
-        set_status(status, 1)
-        persist_dir = "./chromadb_uniguide"
-
-        if not os.path.exists(persist_dir):
-            create_rag("./rag_docs")
-            raise FileNotFoundError("No documents have been indexed yet.")
-
-        embeddings = OpenAIEmbeddings(
-            api_key=openai_api_key,
-            model="text-embedding-3-large"
-        )
-        
-        vector_store = Chroma(
-            persist_directory=persist_dir,
-            embedding_function=embeddings
-        )
-
-        results = vector_store.similarity_search(question, k=k)
-
-        if not results:
-            return {"response": "No relevant documents found for your question."}
-        
-        rag_results = []
-        for i, doc in enumerate(results, 1):
-            rag_results.append(f"Document {i}: {doc.page_content}")
-
-        result_text = "\n\n".join(rag_results)
-
-        print(f"RAG results: {result_text}")
-        return {"Resolved RAG": result_text}
+        return {"resolved_rag": result_text}
 
     except Exception as e:
         print(f"Error retrieving documents: {str(e)}")

@@ -18,6 +18,7 @@ class B2FileService:
         self.bucket_id = os.getenv("b2_bucket_id")
         self.image_prefix = os.getenv("b2_image_prefix")
         self.document_prefix = os.getenv("b2_document_prefix")
+        self.uni_docs_prefix= os.getenv("b2_uniguide_docs_prefix")
 
    
    
@@ -187,6 +188,38 @@ class B2FileService:
         
         for file_info, file_metadata in files:
             if file_info.file_name.lower().endswith('.pdf'):
+                try:
+                    with tempfile.NamedTemporaryFile(delete=False) as temp_file:
+                        temp_path = temp_file.name
+                    
+                    downloaded_file = b2_api.download_file_by_id(file_info.id_)
+                    downloaded_file.save_to(temp_path)
+                    
+                    with open(temp_path, 'rb') as f:
+                        file_bytes = f.read()
+                        documents.append(file_bytes)
+                    
+                    os.unlink(temp_path)
+                    
+                    print(f"Archivo descargado: {file_info.file_name}")
+                except Exception as e:
+                    print(f"Error al descargar el archivo {file_info.file_name}: {str(e)}")
+        
+        return documents
+    
+
+    def download_uniguide_documents(self):
+        import tempfile
+        import os
+        
+        b2_api = self._get_b2_api()
+        bucket = b2.Bucket(b2_api, self.bucket_id, name=self.bucket_name)
+        prefix = self.uni_docs_prefix
+        files = bucket.ls(folder_to_list=prefix, recursive=False)
+        documents = []
+        
+        for file_info, file_metadata in files:
+            if file_info.file_name.lower().endswith(('.pdf', '.docx', '.txt')):
                 try:
                     with tempfile.NamedTemporaryFile(delete=False) as temp_file:
                         temp_path = temp_file.name
