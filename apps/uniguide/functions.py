@@ -4,7 +4,7 @@ import smtplib
 import os
 from dotenv import load_dotenv
 from openai import OpenAI
-
+import re
 load_dotenv()
 
 DEFAULT_FROM_EMAIL=os.getenv("DEFAULT_FROM_EMAIL")
@@ -93,20 +93,153 @@ def mental_health_screening_tool(user_id: int, status: str, user_specific_situat
     try:
         set_status(user_id, status, 1)
 
-        base_url = os.getenv('BACKEND_BASE_URL', 'http://localhost:3000')
+        base_url = os.getenv('BACKEND_BASE_URL', 'http://localhost:8000')
         form_action_url = f"{base_url}/api/v1/uniguide/form/analysis/"
 
         # Agent specialized in mental health forms
-        agent_prompt = f"""You are a specialized mental health form generator for Universidad del Norte students. Your task is to create personalized HTML questionnaires for mental health screening that will help connect students with the CAE (Centro de Acompañamiento Estudiantil).
+        agent_prompt = """You are a specialized mental health form generator for Universidad del Norte students. Your task is to create personalized HTML questionnaires for mental health screening that will help connect students with the CAE (Centro de Acompañamiento Estudiantil).
 
         IMPORTANT: You are NOT the CAE. You are a SUPPORT SERVICE that helps students connect with CAE professionals.
 
         CRITICAL FORM REQUIREMENTS:
-        1. The form MUST always have id="mental-health-screening-form" and name="mental-health-screening-form"
-        2. DO NOT include any submit button - this will be handled separately
-        3. All input fields must have unique names for easy data extraction
-        4. Use appropriate input types (radio, checkbox, textarea, select, etc.)
-        5. Include hidden field with user_id: <input type="hidden" name="user_id" value="{user_id}">
+        1. Generate ONLY form field content (div, input, select, textarea elements)
+        2. NO DOCTYPE, NO HTML tags, NO HEAD, NO BODY, NO FORM tags
+        3. Start directly with the first div or fieldset
+        4. End with the last input field - no closing tags for html/body/form
+        5. NO submit button
+        6. Think of it as generating ONLY the inside content that goes between <form> and </form>
+
+        FORBIDDEN ELEMENTS:
+        - <!DOCTYPE html>
+        - <html>, <head>, <body>
+        - <form> opening or closing tags
+        - <button type="submit">
+        - Any complete HTML document structure
+
+        ⚠️ ABSOLUTELY NO IMAGES ALLOWED:
+        - NO <img> tags
+        - NO background images in CSS
+        - NO image URLs or references
+        - NO icons that require image files
+        - Use only text, CSS shapes, and Unicode symbols (✓, ✗, ●, etc.)
+        - Focus on clean typography and colors for visual appeal
+
+        🔒 MANDATORY FIELD REQUIREMENTS:
+        - ALL input fields MUST have the "required" attribute
+        - ALL select fields MUST have the "required" attribute
+        - ALL textarea fields MUST have the "required" attribute
+        - NO optional fields allowed - every field must be mandatory
+        - Use placeholder text to guide users on what to input
+
+        🚫 SINGLE SUBMIT PREVENTION (Include this JavaScript):
+        You MUST include this exact JavaScript code within a <script> tag at the end of your HTML:
+
+        <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const form = document.getElementById('mental-health-screening-form');
+            let isSubmitting = false;
+            
+            if (form) {
+                form.addEventListener('submit', function(event) {
+                    event.preventDefault(); // Prevent form redirection
+                    
+                    // Check if already submitted
+                    if (isSubmitting) {
+                        return false;
+                    }
+                    
+                    // Validate all required fields
+                    const requiredFields = form.querySelectorAll('[required]');
+                    let allValid = true;
+                    
+                    requiredFields.forEach(field => {
+                        if (!field.value.trim()) {
+                            allValid = false;
+                            field.style.borderColor = '#dc3545';
+                            field.style.boxShadow = '0 0 0 0.2rem rgba(220, 53, 69, 0.25)';
+                        } else {
+                            field.style.borderColor = '#28a745';
+                            field.style.boxShadow = '0 0 0 0.2rem rgba(40, 167, 69, 0.25)';
+                        }
+                    });
+                    
+                    if (!allValid) {
+                        alert('Por favor completa todos los campos obligatorios.');
+                        return false;
+                    }
+                    
+                    // Mark as submitting
+                    isSubmitting = true;
+                    
+                    // Disable all form elements
+                    const allInputs = form.querySelectorAll('input, select, textarea, button');
+                    allInputs.forEach(element => {
+                        element.disabled = true;
+                        element.style.opacity = '0.6';
+                    });
+                    
+                    // Change submit button text and style
+                    const submitBtn = form.querySelector('button[type="submit"]');
+                    if (submitBtn) {
+                        submitBtn.innerHTML = '✓ Enviado - Procesando...';
+                        submitBtn.style.background = '#28a745';
+                        submitBtn.style.cursor = 'not-allowed';
+                    }
+                    
+                    // Show processing message
+                    const processingDiv = document.createElement('div');
+                    processingDiv.innerHTML = '<div style="text-align: center; padding: 20px; background: #d4edda; border: 1px solid #c3e6cb; border-radius: 8px; margin: 20px 0; color: #155724;"><strong>✓ Formulario enviado exitosamente</strong><br>Tu evaluación está siendo procesada. Gracias por confiar en nuestro servicio de apoyo.</div>';
+                    form.appendChild(processingDiv);
+                    
+                    // Prepare form data as URL-encoded string (compatible with Django request.POST)
+                    const formData = new FormData(form);
+                    const urlEncodedData = new URLSearchParams();
+                    
+                    for (const [key, value] of formData.entries()) {
+                        urlEncodedData.append(key, value);
+                    }
+                    
+                    // Submit form data via XMLHttpRequest (compatible with Django)
+                    const xhr = new XMLHttpRequest();
+                    xhr.open('POST', form.action, true);
+                    xhr.setRequestHeader('Content-Type', 'application/x-www-form-urlencoded');
+                    xhr.setRequestHeader('X-Requested-With', 'XMLHttpRequest');
+                    
+                    xhr.onreadystatechange = function() {
+                        if (xhr.readyState === 4) {
+                            if (xhr.status === 200) {
+                                try {
+                                    const response = JSON.parse(xhr.responseText);
+                                    console.log('Form submitted successfully:', response);
+                                } catch (e) {
+                                    console.log('Form submitted successfully (non-JSON response)');
+                                }
+                            } else {
+                                console.error('Error submitting form. Status:', xhr.status);
+                            }
+                        }
+                    };
+                    
+                    xhr.send(urlEncodedData.toString());
+                    return false;
+                });
+            }
+        });
+        </script>
+
+        OUTPUT EXAMPLE:
+        <div class="container">
+            <input type="hidden" name="user_id" value="1" required>
+            <h3>Section Title</h3>
+            <fieldset>
+                <input type="text" name="example" required placeholder="Required field">
+                <select name="example_select" required>
+                    <option value="">Select an option</option>
+                    <option value="option1">Option 1</option>
+                </select>
+            </fieldset>
+            <script>[INCLUDE THE JAVASCRIPT CODE ABOVE]</script>
+        </div>
 
         MESSAGING GUIDELINES:
         - Make it clear this is a SUPPORT TOOL to help connect with CAE
@@ -157,13 +290,14 @@ def mental_health_screening_tool(user_id: int, status: str, user_specific_situat
         1. Create a welcoming introduction explaining the purpose and confidentiality
         2. Include CAE contact information prominently at the beginning
         3. Personalize questions based on the user's specific situation
-        4. Use a mix of question types (scales, multiple choice, open text)
+        4. Use a mix of question types (scales, multiple choice, open text) - ALL REQUIRED
         5. Include severity assessment and risk level evaluation
         6. Organize questions logically by categories (emotional, behavioral, physical, social, academic)
         7. Use empathetic, non-judgmental language reflecting CAE's supportive approach
         8. Include proper styling for a professional, calming appearance
         9. Add emergency contact information if high-risk indicators are present
         10. Make it responsive and accessible
+        11. MANDATORY: Include the JavaScript code for single-submit prevention
 
         STYLING GUIDELINES:
         - Use Universidad del Norte colors (blues, whites)
@@ -171,7 +305,17 @@ def mental_health_screening_tool(user_id: int, status: str, user_specific_situat
         - Proper spacing and organization
         - Professional but empathetic appearance
         - Ensure mobile responsiveness
-        - Include visual elements that reflect care and support
+        - NO IMAGES - use CSS styling, colors, and Unicode symbols only
+        - Visual feedback for required fields
+        - Consistent styling for disabled state
+
+        TECHNICAL REQUIREMENTS:
+        - All fields must have "required" attribute
+        - Include comprehensive JavaScript for form submission control
+        - Prevent multiple submissions with client-side validation
+        - Provide visual feedback for form states (valid, invalid, submitted)
+        - Use fetch API for form submission without page refresh
+        - Include proper error handling and user feedback
 
         PERSONALIZATION:
         - Adapt questions to directly address the user's specific situation
@@ -186,13 +330,13 @@ def mental_health_screening_tool(user_id: int, status: str, user_specific_situat
         - Always available support network
         - Normalize seeking help when needed
 
-        OUTPUT: Return ONLY the complete HTML form with embedded CSS styling. No explanations or additional text."""
-
+        OUTPUT: Return ONLY the complete HTML form content with embedded CSS styling and JavaScript. No explanations or additional text. Remember: NO images, ALL fields required, single-submit prevention included."""
+                
         response = client.chat.completions.create(
             model="gpt-4.1",
             messages=[
                 {"role": "system", "content": agent_prompt},
-                {"role": "user", "content": f"Create a html form questionnaire for mental health screening. This is a SUPPORT TOOL to help connect students with CAE professionals. The questionnaire should be personalized for: {user_specific_situation}. Form language: {language}."},
+                {"role": "user", "content": f"Create a html form questionnaire for mental health screening. This is a SUPPORT TOOL to help connect students with CAE professionals. The questionnaire should be personalized for: {user_specific_situation}. Form language: {language}. Put a hidden input field with the user_id: {user_id}."},
             ],
         )
         html_form = response.choices[0].message.content
@@ -208,6 +352,13 @@ def mental_health_screening_tool(user_id: int, status: str, user_specific_situat
             html_form = html_form[:-3].rstrip()
         
         html_form = html_form.strip()
+
+        html_form = html_form.replace('<!DOCTYPE html>', '')
+        html_form = html_form.replace('<html', '').replace('</html>', '')
+        html_form = html_form.replace('<head>', '').replace('</head>', '')
+        html_form = html_form.replace('<body>', '').replace('</body>', '')
+        html_form = re.sub(r'<form[^>]*>', '', html_form)
+        html_form = html_form.replace('</form>', '')
 
 
         submit_button_text = "Enviar Evaluación" if language.lower() == "spanish" else "Submit Assessment"
