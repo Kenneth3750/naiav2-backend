@@ -1,4 +1,4 @@
-from apps.uniguide.functions import send_email, mental_health_screening_tool
+from apps.uniguide.functions import send_email, mental_health_screening_tool, query_rag
 import datetime
 
 
@@ -81,11 +81,26 @@ class UniGuideService:
                         }
                     }
                 },
+                {
+                    "type": "function",
+                    "function": {
+                        "name": "query_rag",
+                        "description": "Query the RAG database for information about the university.",
+                        "parameters": {
+                            "type": "object",
+                            "properties": {
+                                "question": {"type": "string", "description": "The question to query the RAG database with."},
+                            }
+                        },
+                        "required": ["question"]
+                    }
+                }
         ]
 
         available_functions = {
             "send_email": send_email,
-            "mental_health_screening_tool": mental_health_screening_tool
+            "mental_health_screening_tool": mental_health_screening_tool,
+            "query_rag": query_rag
         }
 
 

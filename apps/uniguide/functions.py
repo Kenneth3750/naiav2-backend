@@ -4,6 +4,13 @@ import smtplib
 import os
 from dotenv import load_dotenv
 from openai import OpenAI
+from langchain_community.document_loaders import PyPDFLoader, TextLoader
+from langchain_community.vectorstores import Chroma
+from langchain_text_splitters import CharacterTextSplitter
+from langchain_openai import OpenAIEmbeddings
+import tempfile
+from typing import List
+import json
 import re
 load_dotenv()
 
@@ -392,4 +399,221 @@ def mental_health_screening_tool(user_id: int, status: str, user_specific_situat
     except Exception as e:
         print(f"Error generating mental health screening tool: {str(e)}")
         return {"error": str(e)}
+
+
+def create_rag(documents_dir: str):
+    """
+    Save documents from a directory into a vector database
+    documents_dir: path to the directory containing PDF and TXT files
+    """
+    if not os.path.exists(documents_dir):
+        raise ValueError(f"Directory {documents_dir} does not exist.")
+    
+    all_documents = []
+    
+    try:
+        # Process PDF files
+        pdf_files = [f for f in os.listdir(documents_dir) if f.lower().endswith('.pdf')]
+        for pdf_file in pdf_files:
+            pdf_path = os.path.join(documents_dir, pdf_file)
+            loader = PyPDFLoader(pdf_path)
+            docs = loader.load()
+            all_documents.extend(docs)
+            print(f"Processed PDF: {pdf_file}")
+
+        # Process TXT files
+        txt_files = [f for f in os.listdir(documents_dir) if f.lower().endswith('.txt')]
+        for txt_file in txt_files:
+            txt_path = os.path.join(documents_dir, txt_file)
+            loader = TextLoader(txt_path)
+            docs = loader.load()
+            all_documents.extend(docs)
+            print(f"Processed TXT: {txt_file}")
+
+        if not all_documents:
+            raise ValueError("No PDF or TXT files found in the specified directory.")
+        
+        # Create embeddings and store in Chroma
+        persist_dir = "./chromadb_uniguide"
+        os.makedirs(persist_dir, exist_ok=True)
+
+        embeddings = OpenAIEmbeddings(
+            api_key=openai_api_key,
+            model="text-embedding-3-large"
+        )
+
+        # Create text splitter
+        text_splitter = CharacterTextSplitter.from_tiktoken_encoder(
+            encoding_name="cl100k_base",
+            chunk_size=1000,
+            chunk_overlap=200
+        )
+
+        # Split documents into chunks
+        chunks = text_splitter.split_documents(all_documents)
+
+        # Create and persist vector store
+        vector_store = Chroma(
+            persist_directory=persist_dir,
+            embedding_function=embeddings
+        )
+        
+        vector_store.add_documents(chunks)
+        vector_store.persist()
+
+        return f"Successfully processed {len(pdf_files)} PDF files and {len(txt_files)} TXT files"
+
+    except Exception as e:
+        print(f"Error processing documents: {str(e)}")
+        return {"error": str(e)}
+
+def query_rag(question: str, k: int = 3, status:str = "") -> dict:
+    """
+    Query the information stored in the vector store and generate a response.
+    """
+    try:
+        set_status(status, 1)
+        persist_dir = "./chromadb_uniguide"
+
+        if not os.path.exists(persist_dir):
+            create_rag("./rag_docs")
+            raise FileNotFoundError("No documents have been indexed yet.")
+
+        embeddings = OpenAIEmbeddings(
+            api_key=openai_api_key,
+            model="text-embedding-3-large"
+        )
+        
+        vector_store = Chroma(
+            persist_directory=persist_dir,
+            embedding_function=embeddings
+        )
+
+        results = vector_store.similarity_search(question, k=k)
+
+        if not results:
+            return {"response": "No relevant documents found for your question."}
+        
+        rag_results = []
+        for i, doc in enumerate(results, 1):
+            rag_results.append(f"Document {i}: {doc.page_content}")
+
+        result_text = "\n\n".join(rag_results)
+
+        print(f"RAG results: {result_text}")
+        return {"Resolved RAG": result_text}
+
+    except Exception as e:
+        print(f"Error retrieving documents: {str(e)}")
+        return {"error": str(e)}
+
+
+
+def create_rag(documents_dir: str):
+    """
+    Save documents from a directory into a vector database
+    documents_dir: path to the directory containing PDF and TXT files
+    """
+    if not os.path.exists(documents_dir):
+        raise ValueError(f"Directory {documents_dir} does not exist.")
+    
+    all_documents = []
+    
+    try:
+        # Process PDF files
+        pdf_files = [f for f in os.listdir(documents_dir) if f.lower().endswith('.pdf')]
+        for pdf_file in pdf_files:
+            pdf_path = os.path.join(documents_dir, pdf_file)
+            loader = PyPDFLoader(pdf_path)
+            docs = loader.load()
+            all_documents.extend(docs)
+            print(f"Processed PDF: {pdf_file}")
+
+        # Process TXT files
+        txt_files = [f for f in os.listdir(documents_dir) if f.lower().endswith('.txt')]
+        for txt_file in txt_files:
+            txt_path = os.path.join(documents_dir, txt_file)
+            loader = TextLoader(txt_path)
+            docs = loader.load()
+            all_documents.extend(docs)
+            print(f"Processed TXT: {txt_file}")
+
+        if not all_documents:
+            raise ValueError("No PDF or TXT files found in the specified directory.")
+        
+        # Create embeddings and store in Chroma
+        persist_dir = "./chromadb_uniguide"
+        os.makedirs(persist_dir, exist_ok=True)
+
+        embeddings = OpenAIEmbeddings(
+            api_key=openai_api_key,
+            model="text-embedding-3-large"
+        )
+
+        # Create text splitter
+        text_splitter = CharacterTextSplitter.from_tiktoken_encoder(
+            encoding_name="cl100k_base",
+            chunk_size=1000,
+            chunk_overlap=200
+        )
+
+        # Split documents into chunks
+        chunks = text_splitter.split_documents(all_documents)
+
+        # Create and persist vector store
+        vector_store = Chroma(
+            persist_directory=persist_dir,
+            embedding_function=embeddings
+        )
+        
+        vector_store.add_documents(chunks)
+        vector_store.persist()
+
+        return f"Successfully processed {len(pdf_files)} PDF files and {len(txt_files)} TXT files"
+
+    except Exception as e:
+        print(f"Error processing documents: {str(e)}")
+        return {"error": str(e)}
+
+def query_rag(question: str, k: int = 3, status:str = "") -> dict:
+    """
+    Query the information stored in the vector store and generate a response.
+    """
+    try:
+        set_status(status, 1)
+        persist_dir = "./chromadb_uniguide"
+
+        if not os.path.exists(persist_dir):
+            create_rag("./rag_docs")
+            raise FileNotFoundError("No documents have been indexed yet.")
+
+        embeddings = OpenAIEmbeddings(
+            api_key=openai_api_key,
+            model="text-embedding-3-large"
+        )
+        
+        vector_store = Chroma(
+            persist_directory=persist_dir,
+            embedding_function=embeddings
+        )
+
+        results = vector_store.similarity_search(question, k=k)
+
+        if not results:
+            return {"response": "No relevant documents found for your question."}
+        
+        rag_results = []
+        for i, doc in enumerate(results, 1):
+            rag_results.append(f"Document {i}: {doc.page_content}")
+
+        result_text = "\n\n".join(rag_results)
+
+        print(f"RAG results: {result_text}")
+        return {"Resolved RAG": result_text}
+
+    except Exception as e:
+        print(f"Error retrieving documents: {str(e)}")
+        return {"error": str(e)}
+
+
 
