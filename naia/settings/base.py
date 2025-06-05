@@ -22,53 +22,6 @@ pymysql.install_as_MySQLdb()
 BASE_DIR = Path(__file__).resolve().parent.parent
 
 
-# Quick-start development settings - unsuitable for production
-# See https://docs.djangoproject.com/en/5.1/howto/deployment/checklist/
-
-# Application definition
-# log_dir = os.path.join(BASE_DIR, 'logs')
-
-# LOGGING = {
-#     'version': 1,
-#     'disable_existing_loggers': False,
-#     'formatters': {
-#         'verbose': {
-#             'format': '{levelname} {asctime} {module} {message}',
-#             'style': '{',
-#         },
-#     },
-#     'handlers': {
-#         'file': {
-#             'level': 'DEBUG',
-#             'class': 'logging.FileHandler',
-#             'filename': os.path.join(log_dir, 'naia.log'),
-#             'formatter': 'verbose',
-#         },
-#         'console': {
-#             'level': 'DEBUG',
-#             'class': 'logging.StreamHandler',
-#             'formatter': 'verbose',
-#         },
-#     },
-#     'root': {  # Configuración para el logger raíz
-#         'handlers': ['file', 'console'],
-#         'level': 'DEBUG',
-#     },
-#     'loggers': {
-#         'django': {
-#             'handlers': ['file', 'console'],
-#             'level': 'DEBUG',
-#             'propagate': True,
-#         },
-#         'services': {  # Añade un logger específico para tus servicios
-#             'handlers': ['file', 'console'],
-#             'level': 'DEBUG',
-#             'propagate': False,
-#         },
-#     },
-# }
-
-
 INSTALLED_APPS = [
     'django.contrib.admin',
     'django.contrib.auth',
