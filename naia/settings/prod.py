@@ -41,6 +41,10 @@ CORS_ALLOWED_ORIGINS = [
     'https://40.70.47.15'
 ]
 CORS_ALLOW_CREDENTIALS = True
+CORS_ALLOWED_ORIGIN_REGEXES = [
+    r"^https://naia\.uninorte\.edu\.co.*$",
+]
+
 
 # Configuraciones adicionales de seguridad
 SECURE_CONTENT_TYPE_NOSNIFF = True
