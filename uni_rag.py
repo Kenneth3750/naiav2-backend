@@ -1,4 +1,4 @@
-from apps.uniguide.functions import create_rag, query_rag
+from apps.uniguide.functions import create_rag, query_university_rag
 
 
 if __name__ == "__main__":
@@ -21,5 +21,5 @@ if __name__ == "__main__":
     create_rag()
 
     query = "¿Cómo puedo actualizar mi documento de identidad?"
-    response = query_rag(user_id = 1, question = query, k = 2, status = "Guayando")
+    response = query_university_rag(user_id = 1, question = query, k = 2, status = "Guayando")
     print(f"Response for query '{query}': {response}")
