@@ -28,9 +28,9 @@ class ResearcherService:
                 return documents
         except Exception as e:
             print(f"Error getting user documents: {str(e)}")
-            return []  # En caso de error, devolvemos una lista vacía
+            return [] 
 
-    def retrieve_tools(self, user_id):
+    def retrieve_tools(self, user_id, messages):
         list_documents_raw = self.list_user_documents(user_id)
         if isinstance(list_documents_raw, dict) and 'documents' in list_documents_raw:
             documents_list = list_documents_raw['documents']

@@ -13,6 +13,6 @@ class RoleService:
         else:
             raise Exception(f"Role {role_id} not found")
 
-    def get_role(self, user_id):
-        tools, available_functions, prompts = self.role.retrieve_tools(user_id)
+    def get_role(self, user_id, messages):
+        tools, available_functions, prompts = self.role.retrieve_tools(user_id, messages)
         return tools, available_functions, prompts

@@ -29,11 +29,6 @@ class ChatService():
         delete_status(user_id, role_id)
         timing_info["role_and_status"] = time.time() - start_time
         
-        # 3. Get tools and system prompt
-        start_time = time.time()
-        tools, available_tools, prompts = role.get_role(user_id)
-        timing_info["get_tools_and_prompt"] = time.time() - start_time
-        
         # 4. Get image URL
         start_time = time.time()
         image_url = file_service.get_current_file_url(user_id)
@@ -46,6 +41,11 @@ class ChatService():
         if not messages:
             messages = ChatRepository.get_last_conversation(user_id, role_id)
         timing_info["get_conversation"] = time.time() - start_time
+
+        # 3. Get tools and system prompt
+        start_time = time.time()
+        tools, available_tools, prompts = role.get_role(user_id, messages)
+        timing_info["get_tools_and_prompt"] = time.time() - start_time
         
         # 6. Count tokens
         start_time = time.time()

@@ -10,9 +10,13 @@ from langchain_text_splitters import CharacterTextSplitter
 from langchain_openai import OpenAIEmbeddings
 import tempfile
 from typing import List
-import json
+from selenium import webdriver
+from selenium.webdriver.chrome.options import Options
+from bs4 import BeautifulSoup
+import time
 import re
 from services.files import B2FileService
+from datetime import datetime, timezone, timedelta
 load_dotenv()
 
 DEFAULT_FROM_EMAIL=os.getenv("DEFAULT_FROM_EMAIL")
@@ -53,7 +57,7 @@ def send_email(to_email: str, subject: str, body: str, status: str = "", user_id
     
     try:
         if user_id:
-            set_status(user_id, status or "Sending email...", 1)
+            set_status(user_id, status or "Sending email...", 2)
 
         if not all([DEFAULT_FROM_EMAIL, EMAIL_HOST_PASSWORD]):
             raise ValueError("DEFAULT_FROM_EMAIL and EMAIL_HOST_PASSWORD must be set in the environment variables")
@@ -99,7 +103,7 @@ def mental_health_screening_tool(user_id: int, status: str, user_specific_situat
     
     """
     try:
-        set_status(user_id, status, 1)
+        set_status(user_id, status, 2)
 
         base_url = os.getenv('BACKEND_BASE_URL', 'http://localhost:8000')
         form_action_url = f"{base_url}/api/v1/uniguide/form/analysis/"
@@ -509,12 +513,12 @@ def create_rag():
         print(f"Error processing documents: {str(e)}")
         return {"error": str(e)}
 
-def query_rag(user_id: int, question: str, k: int = 3, status:str = "") -> dict:
+def query_university_rag(user_id: int, question: str, k: int = 3, status:str = "") -> dict:
     """
     Query the information stored in the vector store and generate a response.
     """
     try:
-        set_status(user_id, status, 1)
+        set_status(user_id, status, 2)
         persist_dir = "./chromadb_uniguide"
 
         if not os.path.exists(persist_dir):
@@ -549,5 +553,60 @@ def query_rag(user_id: int, question: str, k: int = 3, status:str = "") -> dict:
         print(f"Error retrieving documents: {str(e)}")
         return {"error": str(e)}
 
+
+def get_current_month_uni_calendar(user_id: int, status: str) -> str:
+    """ Scrape the current month's events from the Universidad del Norte calendar.
+    Returns:
+        str: Formatted string of events with their names and dates.
+    """
+    try: 
+        set_status(user_id, status, 2)
+        url = 'https://outlook.office365.com/calendar/published/82dc57e4303e46d490fec6d6df9e41c6@uninorte.edu.co/ca0af55ded00488eb89bac6079a9675a7730392440685253853/calendar.html'
+
+
+        # Create a timezone object for GMT-5
+        gmt_minus_5 = timezone(timedelta(hours=-5))
+
+        # Get current time in GMT-5
+        current_bogota_time = datetime.now(gmt_minus_5)
+
+        # Format to get the current day
+        current_day = current_bogota_time.strftime('%Y-%m-%d')
+        print(f"Current day in GMT-5: {current_day}")
+        options = Options()
+        options.add_argument('--headless')
+        driver = webdriver.Chrome(options=options)
+
+        driver.get(url)
+        time.sleep(2)  
+
+        page_source = driver.page_source
+        driver.quit()
+
+        soup = BeautifulSoup(page_source, 'html.parser')
+
+        divs = soup.find_all('div', role='button')
+
+        print(f"Found {len(divs)} events.")
+
+        formatted_events = ""
+        for div in divs:
+
+            if div.get('aria-label') is not None:
+                title = div.get("aria-label").strip().replace('\n', ' ').split(",")
+                formatted_events += f"EVENT NAME: {title[0].strip()}, DATE: {title[2].strip()}\n"
+            elif div.get('title') is not None:
+                title = div.get("title").strip().replace('\n', ' ').split(",")
+                formatted_events += f"EVENT NAME: {title[0].strip()}, DATE: {title[1].strip()}\n"
+            else:
+                print("No title or aria-label found for a div.")
+
+        print("number of formatted events:", len(formatted_events.split('\n')) - 1)
+        formatted_events += f"\n\nCurrent day in GMT-5: {current_day}, Use this date to compare with the events above.\n"
+        return {"current_month_calendar": formatted_events}
+    
+    except Exception as e:
+        print(f"Error scraping calendar: {str(e)}")
+        return {"error": str(e)}
 
 
