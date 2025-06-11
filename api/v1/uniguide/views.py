@@ -10,7 +10,7 @@ class UniGuideAnalysisView(APIView):
         try:
             form_data = request.POST.dict()
             user_id = form_data.get('user_id')
-
+            print(type(form_data))
             print("Received form data:", form_data)
 
             if not user_id:

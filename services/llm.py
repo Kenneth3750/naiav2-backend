@@ -294,7 +294,7 @@ class LLMService:
                 tools=self.tools,
             )
             response = completions.choices[0].message
-            print(f"Next response type: {response.content if response.content else response}")
+            print(f"Next response type: {None if response.content else response}")
         
         # If we got a text response or hit the max chain length
         if response.content is not None:

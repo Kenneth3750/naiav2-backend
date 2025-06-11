@@ -1,5 +1,6 @@
 from apps.researcher.services import ResearcherService
 from apps.uniguide.services import UniGuideService
+from apps.mental.services import MentalHealthService
 
 
 class RoleService:
@@ -10,6 +11,9 @@ class RoleService:
         elif role_id == 2:
             self.role = UniGuideService()
             print("RoleService UniGuide")
+        elif role_id == 6:
+            self.role = MentalHealthService()
+            print("RoleService MentalHealth")
         else:
             raise Exception(f"Role {role_id} not found")
 

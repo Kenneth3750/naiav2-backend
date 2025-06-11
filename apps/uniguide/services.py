@@ -1,5 +1,6 @@
 from apps.uniguide.functions import send_email, query_university_rag, get_current_month_uni_calendar
 import datetime
+from datetime import timedelta, timezone
 import json
 
 class UniGuideService:
@@ -111,6 +112,9 @@ class UniGuideService:
 
 
         current_utc_time = datetime.datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S")
+        gmt_minus_5 = timezone(timedelta(hours=-5))
+
+        current_bogota_time = datetime.datetime.now(gmt_minus_5)
 
         router_prompt = f"""You are a specialized router for NAIA, an AI assistant at Universidad del Norte. Your ONLY job is to determine whether a user message requires a specialized function or can be handled with a simple chat response.
 
@@ -244,6 +248,7 @@ class UniGuideService:
         - "NO_FUNCTION_NEEDED"
 
         CURRENT UTC TIME: {current_utc_time}
+        Universidad del Norte is located in Barranquilla, Colombia, which is in the GMT-5 timezone. The current time in Barranquilla is {current_bogota_time.strftime('%Y-%m-%d %H:%M:%S')}.
         User message: {{user_input}}
         """
 
@@ -398,6 +403,8 @@ class UniGuideService:
         - Did you include a specific, detailed visual observation as your last message?
 
         CURRENT UTC TIME: {current_utc_time}
+        Universidad del Norte is located in Barranquilla, Colombia, which is in the GMT-5 timezone. The current time in Barranquilla is {current_bogota_time.strftime('%Y-%m-%d %H:%M:%S')}.
+
         CRITICAL: Regardless of function output complexity, ALWAYS ensure your final response is a properly formatted JSON array with messages. NO EXCEPTIONS.
         """
         chat_prompt = f"""You are NAIA, a sophisticated AI male avatar created by Universidad del Norte in Barranquilla, Colombia. You are currently operating in your UNIVERSITY GUIDE ROLE, specializing in helping the university community navigate university services, resources, and providing support connections.
@@ -543,6 +550,7 @@ class UniGuideService:
 
         Remember: NEVER return raw text - ALWAYS use JSON format and maintain your university guide role with appropriate context sensitivity.
         CURRENT UTC TIME: {current_utc_time}
+        Universidad del Norte is located in Barranquilla, Colombia, which is in the GMT-5 timezone. The current time in Barranquilla is {current_bogota_time.strftime('%Y-%m-%d %H:%M:%S')}.
         """
 
 

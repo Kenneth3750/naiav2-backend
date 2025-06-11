@@ -40,6 +40,7 @@ INSTALLED_APPS = [
     'apps.status',
     'apps.researcher',
     'apps.uniguide',
+    'apps.mental',
 ]
 
 

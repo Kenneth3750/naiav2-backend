@@ -2,6 +2,7 @@ from .functions import scholar_search, write_document, answer_from_user_rag, cre
 from services.files import B2FileService
 from django.core.cache import cache
 import datetime
+from datetime import timedelta, timezone
 class ResearcherService:
     def __init__(self):
         self.document_service = B2FileService()
@@ -377,6 +378,9 @@ class ResearcherService:
         }
 
         current_utc_time = datetime.datetime.utcnow()
+        gmt_minus_5 = timezone(timedelta(hours=-5))
+
+        current_bogota_time = datetime.datetime.now(gmt_minus_5)
 
         router_prompt = f"""You are a specialized router for NAIA, an AI assistant at Universidad del Norte. Your ONLY job is to determine whether a user message requires a specialized function or can be handled with a simple chat response.
 
@@ -447,6 +451,7 @@ class ResearcherService:
         - "NO_FUNCTION_NEEDED"
         
         CURRENT UTC TIME: {current_utc_time}
+        Universidad del Norte is located in Barranquilla, Colombia, which is in the GMT-5 timezone. The current time in Barranquilla is {current_bogota_time.strftime('%Y-%m-%d %H:%M:%S')}.
         User message: {{user_input}}
         """
 
@@ -688,6 +693,7 @@ class ResearcherService:
         - Did you use write_document ONLY if the user EXPLICITLY requested a document?
 
         CURRENT UTC TIME: {current_utc_time}
+        Universidad del Norte is located in Barranquilla, Colombia, which is in the GMT-5 timezone. The current time in Barranquilla is {current_bogota_time.strftime('%Y-%m-%d %H:%M:%S')}.
         CRITICAL: Regardless of function output complexity, ALWAYS ensure your final response is a properly formatted JSON array with messages. NO EXCEPTIONS.
         """
        
@@ -878,6 +884,9 @@ class ResearcherService:
         - Have you avoided generic platitudes and made your response distinctive?
 
         Remember: NEVER return raw text - ALWAYS wrap your responses in the JSON format, and always maintain your researcher role personality and context.
+
+        CURRENT UTC TIME: {current_utc_time}
+        Universidad del Norte is located in Barranquilla, Colombia, which is in the GMT-5 timezone. The current time in Barranquilla is {current_bogota_time.strftime('%Y-%m-%d %H:%M:%S')}.
         """
         prompts = {
             "function": function_prompt,
