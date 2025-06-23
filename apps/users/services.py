@@ -13,3 +13,9 @@ class UserService():
             return self.user_repository.create_user(name, family_name, email, photo_url)
         except Exception as e:
             raise e
+    def get_user_by_email(self, email):
+        user = self.user_repository.get_user_by_email(email)
+        if not user:
+            raise Exception(f"User with email {email} does not exist")
+        return user
+        

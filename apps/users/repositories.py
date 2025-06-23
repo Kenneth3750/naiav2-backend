@@ -12,3 +12,9 @@ class UserRepository:
         except IntegrityError:
             raise Exception(f"User with email {email} already exists")
     
+    def get_user_by_email(self, email):
+        try:
+            return User.objects.get(email=email)
+        except User.DoesNotExist:
+            return None
+    

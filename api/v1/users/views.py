@@ -147,8 +147,16 @@ class UserDetail(APIView):
         tags=["Users"]
     )
     @method_decorator(cache_page(60*15, key_prefix="user"))
-    def get(self, request, user_id):
-        user = self.user_service.get_user_by_id(user_id)
+    def get(self, request, user_id=None, email=None):
+        if user_id is None and email is None:
+            return Response(
+                {"status": "User ID or email must be provided"},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        if email is not None:
+            user = self.user_service.get_user_by_email(email)
+        elif user_id is not None:
+            user = self.user_service.get_user_by_id(user_id)
         if user is None:
             return Response(
                 {"status": "Not Found"},
