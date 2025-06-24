@@ -11,7 +11,6 @@ from drf_spectacular.types import OpenApiTypes
 from drf_spectacular.openapi import OpenApiResponse
 
 class UserList(APIView):
-    permission_classes = [IsAuthenticated]  
     def __init__(self):
         self.user_service = UserService()
 
@@ -98,21 +97,27 @@ class UserList(APIView):
             )
 
 class UserDetail(APIView):
-    permission_classes = [IsAuthenticated]  
     def __init__(self):
         self.user_service = UserService()
 
 
     @extend_schema(
-        summary="Get user by ID",
-        description="Returns the user with the provided ID",
+        summary="Get user by ID or email",
+        description="Returns the user with the provided ID or email",
         parameters=[
             OpenApiParameter(
                 name="user_id",
                 description="The ID of the user",
-                required=True,
+                required=False,
                 type=OpenApiTypes.INT,
-                location=OpenApiParameter.PATH
+                location=OpenApiParameter.QUERY
+            ),
+            OpenApiParameter(
+                name="email",
+                description="The email of the user",
+                required=False,
+                type=OpenApiTypes.EMAIL,
+                location=OpenApiParameter.QUERY
             )
         ],
         responses={
@@ -134,6 +139,15 @@ class UserDetail(APIView):
                     )
                 ]
             ),
+            400: OpenApiResponse(
+                description="Bad request",
+                examples=[
+                    OpenApiExample(
+                        "Missing Parameters",
+                        value={"status": "User ID or email must be provided"}
+                    )
+                ]
+            ),
             404: OpenApiResponse(
                 description="User not found",
                 examples=[
@@ -147,20 +161,26 @@ class UserDetail(APIView):
         tags=["Users"]
     )
     @method_decorator(cache_page(60*15, key_prefix="user"))
-    def get(self, request, user_id=None, email=None):
+    def get(self, request):
+        user_id = request.query_params.get('user_id')
+        email = request.query_params.get('email')
+        
         if user_id is None and email is None:
             return Response(
                 {"status": "User ID or email must be provided"},
                 status=status.HTTP_400_BAD_REQUEST
             )
+        
         if email is not None:
             user = self.user_service.get_user_by_email(email)
-        elif user_id is not None:
+        else:
             user = self.user_service.get_user_by_id(user_id)
+            
         if user is None:
             return Response(
                 {"status": "Not Found"},
                 status=status.HTTP_404_NOT_FOUND)
+                
         return Response(
             {
                 "id": user.id,
