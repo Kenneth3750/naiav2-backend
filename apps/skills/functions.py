@@ -199,136 +199,479 @@ Generate a script that allows NAIA to be a professional, empathetic and effectiv
 def generate_spanish_html(job_position: str, company_type: str, interview_data: dict) -> str:
     """Generate Spanish HTML for interview simulation"""
     return f"""
-    <!DOCTYPE html>
-    <html lang="es">
-    <head>
-        <meta charset="UTF-8">
-        <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <title>Simulación de Entrevista - {job_position}</title>
-        <style>
-            {get_simulation_css()}
-        </style>
-    </head>
-    <body>
-        <div class="simulation-container">
-            <div class="header">
-                <h1>
-                    <span class="emoji">🎯</span>
-                    Simulación de Entrevista
-                </h1>
-                <div class="status-badge">
-                    <span>🔴</span>
-                    EN VIVO - Entrevista Activa
-                </div>
-            </div>
-            
-            <div class="progress-bar">
-                <div class="progress-fill"></div>
-            </div>
-            
-            <div class="info-grid">
-                <div class="info-card">
-                    <h3>💼 Posición</h3>
-                    <p>{job_position}</p>
-                </div>
-                
-                <div class="info-card">
-                    <h3>🏢 Empresa</h3>
-                    <p>{company_type}</p>
-                </div>
-                
-                <div class="info-card">
-                    <h3>⏱️ Duración</h3>
-                    <p>10-15 minutos aproximadamente</p>
-                </div>
-                
-                <div class="info-card">
-                    <h3>👥 Entrevistadora</h3>
-                    <p>NAIA - Especialista en RRHH</p>
-                </div>
-            </div>
-            
-            <div class="questions-preview">
-                <h3>📋 Áreas a Evaluar</h3>
-                {chr(10).join([f'<div class="question-item">• {q.get("purpose", "Evaluación general")}</div>' for q in interview_data.get("questions", [])[:5]])}
-            </div>
-            
-            <div class="tips-section">
-                <h3>💡 Consejos para la Entrevista</h3>
-                <p>{interview_data.get("interview_tips", "Mantén la calma, sé auténtico y muestra tu entusiasmo por la oportunidad.")}</p>
+    <div class="simulation-container">
+        <div class="header">
+            <h1>
+                <span class="emoji">🎯</span>
+                Simulación de Entrevista
+            </h1>
+            <div class="status-badge">
+                <span>🔴</span>
+                EN VIVO - Entrevista Activa
             </div>
         </div>
-    </body>
-    </html>
+        
+        <div class="progress-bar">
+            <div class="progress-fill"></div>
+        </div>
+        
+        <div class="info-grid">
+            <div class="info-card">
+                <h3>💼 Posición</h3>
+                <p>{job_position}</p>
+            </div>
+            
+            <div class="info-card">
+                <h3>🏢 Empresa</h3>
+                <p>{company_type}</p>
+            </div>
+            
+            <div class="info-card">
+                <h3>⏱️ Duración</h3>
+                <p>10-15 minutos aproximadamente</p>
+            </div>
+            
+            <div class="info-card">
+                <h3>👥 Entrevistadora</h3>
+                <p>NAIA - Especialista en RRHH</p>
+            </div>
+        </div>
+        
+        <div class="questions-preview">
+            <h3>📋 Áreas a Evaluar</h3>
+            {chr(10).join([f'<div class="question-item">• {q.get("purpose", "Evaluación general")}</div>' for q in interview_data.get("questions", [])[:5]])}
+        </div>
+        
+        <div class="tips-section">
+            <h3>💡 Consejos para la Entrevista</h3>
+            <p>{interview_data.get("interview_tips", "Mantén la calma, sé auténtico y muestra tu entusiasmo por la oportunidad.")}</p>
+        </div>
+    </div>
+    <style>
+        * {{
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }}
+        
+        .simulation-container {{
+            max-width: 800px;
+            margin: 0 auto;
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 20px;
+            padding: 30px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+            backdrop-filter: blur(10px);
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        }}
+        
+        .header {{
+            text-align: center;
+            margin-bottom: 30px;
+            padding-bottom: 20px;
+            border-bottom: 2px solid #667eea;
+        }}
+        
+        .header h1 {{
+            font-size: 2.2rem;
+            color: #2d3748;
+            margin-bottom: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 15px;
+        }}
+        
+        .header .emoji {{
+            font-size: 2.5rem;
+        }}
+        
+        .status-badge {{
+            background: linear-gradient(45deg, #48bb78, #38a169);
+            color: white;
+            padding: 8px 20px;
+            border-radius: 25px;
+            font-weight: 600;
+            font-size: 0.9rem;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            animation: pulse 2s infinite;
+        }}
+        
+        @keyframes pulse {{
+            0%, 100% {{ opacity: 1; }}
+            50% {{ opacity: 0.8; }}
+        }}
+        
+        .info-grid {{
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+        }}
+        
+        .info-card {{
+            background: linear-gradient(135deg, rgba(102, 126, 234, 0.1), rgba(118, 75, 162, 0.1));
+            border-radius: 15px;
+            padding: 20px;
+            border: 2px solid rgba(102, 126, 234, 0.2);
+            transition: all 0.3s ease;
+        }}
+        
+        .info-card:hover {{
+            transform: translateY(-5px);
+            box-shadow: 0 10px 25px rgba(0,0,0,0.1);
+            border-color: #667eea;
+        }}
+        
+        .info-card h3 {{
+            color: #4a5568;
+            font-size: 1.1rem;
+            margin-bottom: 10px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }}
+        
+        .info-card p {{
+            color: #2d3748;
+            line-height: 1.6;
+            font-size: 0.95rem;
+        }}
+        
+        .questions-preview {{
+            background: rgba(255, 255, 255, 0.8);
+            border-radius: 15px;
+            padding: 25px;
+            margin-bottom: 25px;
+        }}
+        
+        .questions-preview h3 {{
+            color: #2d3748;
+            margin-bottom: 15px;
+            font-size: 1.3rem;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }}
+        
+        .question-item {{
+            background: linear-gradient(90deg, #f7fafc, #edf2f7);
+            padding: 12px 18px;
+            border-radius: 10px;
+            margin-bottom: 10px;
+            border-left: 4px solid #667eea;
+            transition: all 0.3s ease;
+        }}
+        
+        .question-item:hover {{
+            background: linear-gradient(90deg, #edf2f7, #e2e8f0);
+            transform: translateX(5px);
+        }}
+        
+        .tips-section {{
+            background: linear-gradient(135deg, #ffeaa7, #fdcb6e);
+            border-radius: 15px;
+            padding: 20px;
+            border: 2px solid rgba(253, 203, 110, 0.3);
+        }}
+        
+        .tips-section h3 {{
+            color: #8b4513;
+            margin-bottom: 15px;
+            font-size: 1.2rem;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }}
+        
+        .tips-section p {{
+            color: #8b4513;
+            line-height: 1.6;
+            font-weight: 500;
+        }}
+        
+        .progress-bar {{
+            background: rgba(255, 255, 255, 0.3);
+            height: 8px;
+            border-radius: 4px;
+            margin: 20px 0;
+            overflow: hidden;
+        }}
+        
+        .progress-fill {{
+            background: linear-gradient(90deg, #48bb78, #38a169);
+            height: 100%;
+            width: 0%;
+            border-radius: 4px;
+            animation: fillProgress 3s ease-in-out;
+        }}
+        
+        @keyframes fillProgress {{
+            from {{ width: 0%; }}
+            to {{ width: 100%; }}
+        }}
+        
+        @media (max-width: 768px) {{
+            .simulation-container {{
+                padding: 20px;
+                margin: 10px;
+            }}
+            
+            .header h1 {{
+                font-size: 1.8rem;
+                flex-direction: column;
+                gap: 10px;
+            }}
+            
+            .info-grid {{
+                grid-template-columns: 1fr;
+                gap: 15px;
+            }}
+        }}
+    </style>
     """
 
 
 def generate_english_html(job_position: str, company_type: str, interview_data: dict) -> str:
     """Generate English HTML for interview simulation"""
     return f"""
-    <!DOCTYPE html>
-    <html lang="en">
-    <head>
-        <meta charset="UTF-8">
-        <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <title>Interview Simulation - {job_position}</title>
-        <style>
-            {get_simulation_css()}
-        </style>
-    </head>
-    <body>
-        <div class="simulation-container">
-            <div class="header">
-                <h1>
-                    <span class="emoji">🎯</span>
-                    Interview Simulation
-                </h1>
-                <div class="status-badge">
-                    <span>🔴</span>
-                    LIVE - Active Interview
-                </div>
-            </div>
-            
-            <div class="progress-bar">
-                <div class="progress-fill"></div>
-            </div>
-            
-            <div class="info-grid">
-                <div class="info-card">
-                    <h3>💼 Position</h3>
-                    <p>{job_position}</p>
-                </div>
-                
-                <div class="info-card">
-                    <h3>🏢 Company</h3>
-                    <p>{company_type}</p>
-                </div>
-                
-                <div class="info-card">
-                    <h3>⏱️ Duration</h3>
-                    <p>Approximately 10-15 minutes</p>
-                </div>
-                
-                <div class="info-card">
-                    <h3>👥 Interviewer</h3>
-                    <p>NAIA - HR Specialist</p>
-                </div>
-            </div>
-            
-            <div class="questions-preview">
-                <h3>📋 Areas to Evaluate</h3>
-                {chr(10).join([f'<div class="question-item">• {q.get("purpose", "General evaluation")}</div>' for q in interview_data.get("questions", [])[:5]])}
-            </div>
-            
-            <div class="tips-section">
-                <h3>💡 Interview Tips</h3>
-                <p>{interview_data.get("interview_tips", "Stay calm, be authentic and show your enthusiasm for the opportunity.")}</p>
+    <div class="simulation-container">
+        <div class="header">
+            <h1>
+                <span class="emoji">🎯</span>
+                Interview Simulation
+            </h1>
+            <div class="status-badge">
+                <span>🔴</span>
+                LIVE - Active Interview
             </div>
         </div>
-    </body>
-    </html>
+        
+        <div class="progress-bar">
+            <div class="progress-fill"></div>
+        </div>
+        
+        <div class="info-grid">
+            <div class="info-card">
+                <h3>💼 Position</h3>
+                <p>{job_position}</p>
+            </div>
+            
+            <div class="info-card">
+                <h3>🏢 Company</h3>
+                <p>{company_type}</p>
+            </div>
+            
+            <div class="info-card">
+                <h3>⏱️ Duration</h3>
+                <p>Approximately 10-15 minutes</p>
+            </div>
+            
+            <div class="info-card">
+                <h3>👥 Interviewer</h3>
+                <p>NAIA - HR Specialist</p>
+            </div>
+        </div>
+        
+        <div class="questions-preview">
+            <h3>📋 Areas to Evaluate</h3>
+            {chr(10).join([f'<div class="question-item">• {q.get("purpose", "General evaluation")}</div>' for q in interview_data.get("questions", [])[:5]])}
+        </div>
+        
+        <div class="tips-section">
+            <h3>💡 Interview Tips</h3>
+            <p>{interview_data.get("interview_tips", "Stay calm, be authentic and show your enthusiasm for the opportunity.")}</p>
+        </div>
+    </div>
+    <style>
+        * {{
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }}
+        
+        .simulation-container {{
+            max-width: 800px;
+            margin: 0 auto;
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 20px;
+            padding: 30px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+            backdrop-filter: blur(10px);
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        }}
+        
+        .header {{
+            text-align: center;
+            margin-bottom: 30px;
+            padding-bottom: 20px;
+            border-bottom: 2px solid #667eea;
+        }}
+        
+        .header h1 {{
+            font-size: 2.2rem;
+            color: #2d3748;
+            margin-bottom: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 15px;
+        }}
+        
+        .header .emoji {{
+            font-size: 2.5rem;
+        }}
+        
+        .status-badge {{
+            background: linear-gradient(45deg, #48bb78, #38a169);
+            color: white;
+            padding: 8px 20px;
+            border-radius: 25px;
+            font-weight: 600;
+            font-size: 0.9rem;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            animation: pulse 2s infinite;
+        }}
+        
+        @keyframes pulse {{
+            0%, 100% {{ opacity: 1; }}
+            50% {{ opacity: 0.8; }}
+        }}
+        
+        .info-grid {{
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+        }}
+        
+        .info-card {{
+            background: linear-gradient(135deg, rgba(102, 126, 234, 0.1), rgba(118, 75, 162, 0.1));
+            border-radius: 15px;
+            padding: 20px;
+            border: 2px solid rgba(102, 126, 234, 0.2);
+            transition: all 0.3s ease;
+        }}
+        
+        .info-card:hover {{
+            transform: translateY(-5px);
+            box-shadow: 0 10px 25px rgba(0,0,0,0.1);
+            border-color: #667eea;
+        }}
+        
+        .info-card h3 {{
+            color: #4a5568;
+            font-size: 1.1rem;
+            margin-bottom: 10px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }}
+        
+        .info-card p {{
+            color: #2d3748;
+            line-height: 1.6;
+            font-size: 0.95rem;
+        }}
+        
+        .questions-preview {{
+            background: rgba(255, 255, 255, 0.8);
+            border-radius: 15px;
+            padding: 25px;
+            margin-bottom: 25px;
+        }}
+        
+        .questions-preview h3 {{
+            color: #2d3748;
+            margin-bottom: 15px;
+            font-size: 1.3rem;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }}
+        
+        .question-item {{
+            background: linear-gradient(90deg, #f7fafc, #edf2f7);
+            padding: 12px 18px;
+            border-radius: 10px;
+            margin-bottom: 10px;
+            border-left: 4px solid #667eea;
+            transition: all 0.3s ease;
+        }}
+        
+        .question-item:hover {{
+            background: linear-gradient(90deg, #edf2f7, #e2e8f0);
+            transform: translateX(5px);
+        }}
+        
+        .tips-section {{
+            background: linear-gradient(135deg, #ffeaa7, #fdcb6e);
+            border-radius: 15px;
+            padding: 20px;
+            border: 2px solid rgba(253, 203, 110, 0.3);
+        }}
+        
+        .tips-section h3 {{
+            color: #8b4513;
+            margin-bottom: 15px;
+            font-size: 1.2rem;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }}
+        
+        .tips-section p {{
+            color: #8b4513;
+            line-height: 1.6;
+            font-weight: 500;
+        }}
+        
+        .progress-bar {{
+            background: rgba(255, 255, 255, 0.3);
+            height: 8px;
+            border-radius: 4px;
+            margin: 20px 0;
+            overflow: hidden;
+        }}
+        
+        .progress-fill {{
+            background: linear-gradient(90deg, #48bb78, #38a169);
+            height: 100%;
+            width: 0%;
+            border-radius: 4px;
+            animation: fillProgress 3s ease-in-out;
+        }}
+        
+        @keyframes fillProgress {{
+            from {{ width: 0%; }}
+            to {{ width: 100%; }}
+        }}
+        
+        @media (max-width: 768px) {{
+            .simulation-container {{
+                padding: 20px;
+                margin: 10px;
+            }}
+            
+            .header h1 {{
+                font-size: 1.8rem;
+                flex-direction: column;
+                gap: 10px;
+            }}
+            
+            .info-grid {{
+                grid-template-columns: 1fr;
+                gap: 15px;
+            }}
+        }}
+    </style>
     """
-
 
 def get_simulation_css() -> str:
     """Return the CSS styles for interview simulation"""
