@@ -55,3 +55,66 @@ def num_tokens_from_messages_big(messages, model="gpt-4o-mini-2024-07-18"):
                 num_tokens += tokens_per_name
     num_tokens += 3  # every reply is primed with <|start|>assistant<|message|>
     return num_tokens
+
+
+
+def get_last_four_messages(messages):
+    if messages:
+        # Take last 4 messages and filter out tool calls and messages without content
+        last_four_messages = messages[-4:]
+        valid_messages = []
+        
+        for msg in last_four_messages:
+            # Skip tool calls and messages without content
+            if msg.get("role") == "tool" or msg.get("content") is None:
+                continue
+            
+            role = msg.get("role", "")
+            content = msg.get("content", "")
+            if content:
+                message_text = ""
+                
+                # Handle different content formats
+                if isinstance(content, list):
+                    # Handle OpenAI format with [{'type': 'text', 'text': '...'}]
+                    texts = []
+                    for item in content:
+                        if isinstance(item, dict) and item.get("type") == "text":
+                            texts.append(item.get("text", ""))
+                    if texts:
+                        message_text = " ".join(texts)
+                elif role == "assistant":
+                    try:
+                        # Parse JSON if it's a string (NAIA format)
+                        parsed_content = json.loads(content) if isinstance(content, str) else content
+                        # If it's a list of NAIA JSON objects, extract text
+                        if isinstance(parsed_content, list):
+                            texts = [item.get("text", "") for item in parsed_content if isinstance(item, dict) and "text" in item]
+                            if texts:
+                                message_text = " ".join(texts)
+                        else:
+                            message_text = str(content)
+                    except (json.JSONDecodeError, TypeError):
+                        # If not JSON, use as is
+                        message_text = str(content)
+                else:
+                    # For other messages, convert to string safely
+                    message_text = str(content)
+                
+                # Add role prefix and append to valid messages
+                if message_text.strip():
+                    if role == "user":
+                        valid_messages.append(f"User: {message_text}")
+                    elif role == "assistant":
+                        valid_messages.append(f"Assistant: {message_text}")
+                    elif role == "developer":
+                        valid_messages.append(f"System: {message_text}")
+                    else:
+                        valid_messages.append(f"{role.capitalize()}: {message_text}")
+        
+        last_messages_text = " ".join(valid_messages) if valid_messages else "No previous messages found."
+    else:
+        last_messages_text = "No previous messages found."
+
+    print(f"Last messages text: {last_messages_text}")
+    return last_messages_text
