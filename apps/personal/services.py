@@ -19,54 +19,62 @@ class PersonalAssistantService:
         
         tools = [
             {
-                "type": "function",
-                "function": {
-                    "name": "get_current_news",
-                    "description": "Obtiene las últimas noticias de una ubicación específica con visualización moderna y atractiva.",
-                    "parameters": {
-                        "type": "object",
-                        "properties": {
-                            "location": {
-                                "type": "string",
-                                "description": "La ubicación para obtener noticias (ciudad, país o región). Ejemplo: 'Barranquilla', 'Colombia', 'Atlántico'"
-                            },
-                            "user_id": {
-                                "type": "integer",
-                                "description": "El ID del usuario que solicita las noticias. Buscar en el primer developer prompt para obtener el user_id"
-                            },
-                            "status": {
-                                "type": "string",
-                                "description": "Una descripción concisa de la tarea que se está realizando, usando verbos conjugados (ej: 'Obteniendo noticias de...', 'Searching news about...') en el mismo idioma de la pregunta del usuario"
-                            }
-                        },
-                        "required": ["location", "user_id", "status"]
+            "type": "function",
+            "function": {
+                "name": "get_current_news",
+                "description": "Gets the latest news from a specific location with modern and attractive visualization.",
+                "parameters": {
+                "type": "object",
+                "properties": {
+                    "location": {
+                    "type": "string",
+                    "description": "The location to get news from (city, country, or region). Example: 'Barranquilla', 'Colombia', 'Atlántico'"
+                    },
+                    "user_id": {
+                    "type": "integer",
+                    "description": "The ID of the user requesting the news. Look in the first developer prompt to get the user_id"
+                    },
+                    "status": {
+                    "type": "string",
+                    "description": "A concise description of the task being performed, using conjugated verbs (e.g., 'Getting news from...', 'Searching news about...') in the same language as the user's question"
+                    },
+                    "query": {
+                    "type": "string",
+                    "description": "Specific query to search for news. Example: 'latest news from Barranquilla', 'breaking news Colombia', 'recent news Atlántico', written in the same language as the user's question"
+                    },
+                    "language": {
+                    "type": "string",
+                    "description": "The language in which the news should be retrieved. Example: 'es' for Spanish, 'en' for English, always use the two letter ISO 639-1 code",
                     }
+                },
+                "required": ["location", "user_id", "status", "query", "language"]
                 }
+            }
             },
             {
-                "type": "function",
-                "function": {
-                    "name": "get_weather",
-                    "description": "Obtiene información del clima de una ubicación específica con visualización moderna y atractiva.",
-                    "parameters": {
-                        "type": "object",
-                        "properties": {
-                            "location": {
-                                "type": "string",
-                                "description": "La ubicación para obtener el clima (ciudad, país o región). Ejemplo: 'Barranquilla', 'Bogotá', 'Medellín'"
-                            },
-                            "user_id": {
-                                "type": "integer",
-                                "description": "El ID del usuario que solicita el clima. Buscar en el primer developer prompt para obtener el user_id"
-                            },
-                            "status": {
-                                "type": "string",
-                                "description": "Una descripción concisa de la tarea que se está realizando, usando verbos conjugados (ej: 'Consultando clima de...', 'Getting weather for...') en el mismo idioma de la pregunta del usuario"
-                            }
-                        },
-                        "required": ["location", "user_id", "status"]
+            "type": "function",
+            "function": {
+                "name": "get_weather",
+                "description": "Gets weather information for a specific location with modern and attractive visualization.",
+                "parameters": {
+                "type": "object",
+                "properties": {
+                    "location": {
+                    "type": "string",
+                    "description": "The location to get weather for (city, country, or region). Example: 'Barranquilla', 'Bogotá', 'Medellín'"
+                    },
+                    "user_id": {
+                    "type": "integer",
+                    "description": "The ID of the user requesting the weather. Look in the first developer prompt to get the user_id"
+                    },
+                    "status": {
+                    "type": "string",
+                    "description": "A concise description of the task being performed, using conjugated verbs (e.g., 'Checking weather for...', 'Getting weather for...') in the same language as the user's question"
                     }
+                },
+                "required": ["location", "user_id", "status"]
                 }
+            }
             }
         ]
 
