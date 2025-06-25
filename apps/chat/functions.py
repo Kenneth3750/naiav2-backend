@@ -1,5 +1,5 @@
 import tiktoken
-
+import json
 
 def num_tokens_from_messages(messages):
     total_chars = sum(len(str(m.get("content", ""))) for m in messages)
