@@ -642,11 +642,11 @@ def generate_single_place_html_split(place_data: dict, available_images: dict, b
 
 
 def generate_tour_overview_html_split(categories: list, available_images: dict, b2_service: B2FileService, is_spanish: bool = True) -> tuple:
-    """Generate split HTML for tour overview: (info_content, preview_gallery)"""
+    """Generate split HTML for tour overview: (info_content, campus_carousel)"""
     
     title = "Tour Virtual - Universidad del Norte" if is_spanish else "Virtual Tour - Universidad del Norte"
     
-    # Information content (display)
+    # Information content (display) - Esta parte se mantiene igual
     places_html = ""
     for category in categories:
         category_name = category.get('name', '')
@@ -693,47 +693,355 @@ def generate_tour_overview_html_split(categories: list, available_images: dict, 
     {get_info_styles()}
     """
     
-    # Generate preview gallery (graph)
-    gallery_title = "Vista Previa del Campus" if is_spanish else "Campus Preview"
-    preview_gallery = f"""
-    <div class="preview-gallery-container">
-        <div class="gallery-header">
-            <h2 class="gallery-title">🏛️ {gallery_title}</h2>
-        </div>
-        <div class="preview-grid">
-    """
+    # NUEVA IMPLEMENTACIÓN: Carrusel optimizado con todas las imágenes del campus
+    carousel_title = "Galería del Campus" if is_spanish else "Campus Gallery"
     
-    # Collect preview images from all places
+    # Recopilar TODAS las imágenes de todos los lugares
+    all_images = []
     for category in categories:
         places = category.get('places', {})
         for place_key, place_data in places.items():
             place_name = place_data.get('name', place_key)
             images = place_data.get('images', [])
             
-            # Get first available image
-            if images:
-                for img_name in images:
-                    if img_name in available_images:
-                        img_url = b2_service.get_virtual_tour_image_url(img_name)
-                        if img_url:
-                            preview_gallery += f'''
-                            <div class="preview-card">
-                                <img src="{img_url}" alt="{place_name}" class="preview-image">
-                                <div class="preview-overlay">
-                                    <span class="preview-label">{place_name}</span>
-                                </div>
+            # Agregar todas las imágenes de este lugar
+            for img_name in images:
+                if img_name in available_images:
+                    img_url = b2_service.get_virtual_tour_image_url(img_name)
+                    if img_url:
+                        all_images.append({
+                            'url': img_url,
+                            'name': img_name,
+                            'place': place_name,
+                            'alt': f"{place_name} - {img_name}"
+                        })
+    
+    # Generar carrusel con las mismas dimensiones que el que funciona bien
+    campus_carousel = ""
+    if all_images:
+        campus_carousel = f"""
+        <!DOCTYPE html>
+        <html lang="es">
+        <head>
+            <meta charset="UTF-8">
+            <meta name="viewport" content="width=device-width, initial-scale=1.0">
+            <title>{carousel_title}</title>
+            <style>
+                * {{
+                    box-sizing: border-box;
+                    margin: 0;
+                    padding: 0;
+                }}
+                
+                body {{
+                    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', sans-serif;
+                    background-color: #f8fafc;
+                    color: #1e293b;
+                }}
+                
+                .carousel-container {{
+                    width: 100%;
+                    max-width: 800px;
+                    margin: 0 auto;
+                    padding: 20px;
+                    background-color: white;
+                    border-radius: 12px;
+                    box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+                }}
+                
+                .carousel-title {{
+                    font-size: 1.25rem;
+                    font-weight: 600;
+                    margin-bottom: 16px;
+                    color: #334155;
+                    display: flex;
+                    align-items: center;
+                }}
+                
+                .carousel-title svg {{
+                    margin-right: 8px;
+                }}
+                
+                .carousel {{
+                    position: relative;
+                    overflow: hidden;
+                    border-radius: 8px;
+                    height: 400px;
+                    background-color: #f1f5f9;
+                }}
+                
+                .carousel-inner {{
+                    display: flex;
+                    transition: transform 0.5s ease;
+                    height: 100%;
+                }}
+                
+                .carousel-item {{
+                    min-width: 100%;
+                    height: 100%;
+                    position: relative;
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                }}
+                
+                .carousel-image {{
+                    width: 100%;
+                    height: 100%;
+                    object-fit: cover;
+                    border-radius: 8px;
+                }}
+                
+                .place-title {{
+                    position: absolute;
+                    top: 0;
+                    left: 0;
+                    right: 0;
+                    background: linear-gradient(to bottom, rgba(0,0,0,0.8), transparent);
+                    color: white;
+                    padding: 16px 20px 30px;
+                    text-align: center;
+                    z-index: 5;
+                }}
+                
+                .place-name {{
+                    font-size: 1.1rem;
+                    font-weight: 600;
+                    text-shadow: 0 2px 4px rgba(0,0,0,0.5);
+                }}
+                
+                .image-counter {{
+                    position: absolute;
+                    bottom: 12px;
+                    right: 12px;
+                    background: rgba(0,0,0,0.7);
+                    color: white;
+                    padding: 4px 8px;
+                    border-radius: 12px;
+                    font-size: 0.75rem;
+                    font-weight: 500;
+                    z-index: 5;
+                }}
+                
+                .carousel-controls {{
+                    position: absolute;
+                    top: 50%;
+                    transform: translateY(-50%);
+                    width: 40px;
+                    height: 40px;
+                    background: rgba(255, 255, 255, 0.9);
+                    border: none;
+                    border-radius: 50%;
+                    cursor: pointer;
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                    transition: all 0.2s ease;
+                    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+                    z-index: 10;
+                }}
+                
+                .carousel-control:hover {{
+                    background-color: white;
+                    box-shadow: 0 4px 8px rgba(0,0,0,0.15);
+                }}
+                
+                .carousel-control.prev {{
+                    left: 12px;
+                }}
+                
+                .carousel-control.next {{
+                    right: 12px;
+                }}
+                
+                .carousel-indicators {{
+                    display: flex;
+                    justify-content: center;
+                    gap: 6px;
+                    margin-top: 12px;
+                    flex-wrap: wrap;
+                    max-height: 60px;
+                    overflow-y: auto;
+                }}
+                
+                .carousel-indicator {{
+                    width: 8px;
+                    height: 8px;
+                    border-radius: 50%;
+                    background-color: #cbd5e1;
+                    cursor: pointer;
+                    transition: background-color 0.2s ease;
+                    margin: 2px;
+                }}
+                
+                .carousel-indicator.active {{
+                    background-color: #3b82f6;
+                }}
+                
+                .carousel-attribution {{
+                    margin-top: 12px;
+                    font-size: 0.75rem;
+                    color: #94a3b8;
+                    text-align: center;
+                }}
+                
+                @media (max-width: 640px) {{
+                    .carousel-container {{
+                        padding: 12px;
+                    }}
+                    
+                    .carousel {{
+                        height: 300px;
+                    }}
+                    
+                    .carousel-indicators {{
+                        gap: 4px;
+                        max-height: 40px;
+                    }}
+                    
+                    .carousel-indicator {{
+                        width: 6px;
+                        height: 6px;
+                    }}
+                }}
+            </style>
+        </head>
+        <body>
+            <div class="carousel-container">
+                <h2 class="carousel-title">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><circle cx="8.5" cy="8.5" r="1.5"></circle><polyline points="21 15 16 10 5 21"></polyline></svg>
+                    {carousel_title}
+                </h2>
+                <div class="carousel" id="campusCarousel">
+                    <div class="carousel-inner" id="carouselInner">
+        """
+        
+        # Generar HTML para cada imagen
+        for i, img_data in enumerate(all_images):
+            campus_carousel += f"""
+                        <div class="carousel-item" id="slide{i}">
+                            <img src="{img_data['url']}" alt="{img_data['alt']}" class="carousel-image" />
+                            <div class="place-title">
+                                <div class="place-name">{img_data['place']}</div>
                             </div>
-                            '''
-                            break  # Only first image per place
-    
-    preview_gallery += f'''
+                            <div class="image-counter">{i+1} / {len(all_images)}</div>
+                        </div>
+            """
+        
+        # Añadir controles y indicadores
+        campus_carousel += """
+                    </div>
+                    <button class="carousel-controls carousel-control prev" id="prevButton">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"></polyline></svg>
+                    </button>
+                    <button class="carousel-controls carousel-control next" id="nextButton">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"></polyline></svg>
+                    </button>
+                </div>
+                <div class="carousel-indicators" id="indicators">
+        """
+        
+        # Generar indicadores (limitados si hay muchas imágenes)
+        for i in range(len(all_images)):
+            active = "active" if i == 0 else ""
+            campus_carousel += f'<div class="carousel-indicator {active}" data-slide="{i}"></div>'
+        
+        # JavaScript para el carrusel
+        campus_carousel += f"""
+                </div>
+                <div class="carousel-attribution">
+                    Campus Universidad del Norte - {len(all_images)} imágenes
+                </div>
+            </div>
+            
+            <script>
+                document.addEventListener('DOMContentLoaded', function() {{
+                    const carousel = document.getElementById('campusCarousel');
+                    const inner = document.getElementById('carouselInner');
+                    const items = document.querySelectorAll('.carousel-item');
+                    const indicators = document.querySelectorAll('.carousel-indicator');
+                    const prevButton = document.getElementById('prevButton');
+                    const nextButton = document.getElementById('nextButton');
+                    
+                    let currentSlide = 0;
+                    const totalSlides = items.length;
+                    
+                    function showSlide(index) {{
+                        if (index >= totalSlides) {{
+                            currentSlide = 0;
+                        }} else if (index < 0) {{
+                            currentSlide = totalSlides - 1;
+                        }} else {{
+                            currentSlide = index;
+                        }}
+                        
+                        const offset = -currentSlide * 100;
+                        inner.style.transform = `translateX(${{offset}}%)`;
+                        
+                        // Update indicators
+                        indicators.forEach((indicator, i) => {{
+                            indicator.classList.toggle('active', i === currentSlide);
+                        }});
+                    }}
+                    
+                    // Navigation buttons
+                    prevButton.addEventListener('click', () => {{
+                        showSlide(currentSlide - 1);
+                    }});
+                    
+                    nextButton.addEventListener('click', () => {{
+                        showSlide(currentSlide + 1);
+                    }});
+                    
+                    // Indicator clicks
+                    indicators.forEach((indicator, i) => {{
+                        indicator.addEventListener('click', () => {{
+                            showSlide(i);
+                        }});
+                    }});
+                    
+                    // Auto-advance carousel every 4 seconds (más rápido porque hay más imágenes)
+                    let autoplayInterval = setInterval(() => {{
+                        showSlide(currentSlide + 1);
+                    }}, 4000);
+                    
+                    // Pause autoplay when hovering over carousel
+                    carousel.addEventListener('mouseenter', () => {{
+                        clearInterval(autoplayInterval);
+                    }});
+                    
+                    // Resume autoplay when mouse leaves
+                    carousel.addEventListener('mouseleave', () => {{
+                        autoplayInterval = setInterval(() => {{
+                            showSlide(currentSlide + 1);
+                        }}, 4000);
+                    }});
+                    
+                    // Handle keyboard navigation
+                    document.addEventListener('keydown', (e) => {{
+                        if (e.key === 'ArrowLeft') {{
+                            showSlide(currentSlide - 1);
+                        }} else if (e.key === 'ArrowRight') {{
+                            showSlide(currentSlide + 1);
+                        }}
+                    }});
+                    
+                    // Initialize first slide
+                    showSlide(0);
+                }});
+            </script>
+        </body>
+        </html>
+        """
+    else:
+        # Fallback si no hay imágenes
+        campus_carousel = f"""
+        <div style="text-align: center; padding: 40px; color: #64748b;">
+            <p>No hay imágenes disponibles para mostrar</p>
         </div>
-    </div>
+        """
     
-    {get_carousel_styles()}
-    '''
-    
-    return display_content, preview_gallery
+    return display_content, campus_carousel
 
 def get_info_styles() -> str:
     """Return CSS styles for information content"""
@@ -1467,3 +1775,29 @@ Return ONLY the JSON response."""
             "suggested_category": None,
             "interpretation": f"Error: {str(e)}"
         }
+    
+
+def search_internet_for_uni_answers(query: str, status: str, user_id: int):
+    """"
+    Use LLM with internet connectivity to search for answers about Universidad del Norte
+    """
+    try:
+        set_status(user_id, status, 2)
+        system_prompt = """ """
+        user_prompt = f"""The user has asked the following question about Universidad del Norte: '{query}'   """
+
+        response = client.chat.completions.create(
+            model="gpt-4o-search-preview",
+            messages=[
+                {"role": "system", "content": system_prompt},
+                {"role": "user", "content": user_prompt}
+            ],
+        )
+
+        answer = response.choices[0].message.content
+        print(f"Search result: {answer}")
+
+        return {"answer": answer}
+    except Exception as e:
+        print(f"Error in search_internet_for_uni_answers: {str(e)}")
+        return {"error": str(e), "answer": None}
