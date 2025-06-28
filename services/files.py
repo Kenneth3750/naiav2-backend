@@ -43,7 +43,10 @@ class B2FileService:
         # Use class-level token cache to share across instances
         current_time = time.time()
  
-        if flag in B2FileService._token_cache and (current_time - B2FileService._token_cache[flag]['time'] < 518400):  
+        if flag in B2FileService._token_cache and (current_time - B2FileService._token_cache[flag]['time'] < 518400) and flag == "image":
+            return B2FileService._token_cache[flag]['token']
+        
+        if flag in B2FileService._token_cache and (current_time - B2FileService._token_cache[flag]['time'] < 3600) and flag == "places":
             return B2FileService._token_cache[flag]['token']
 
         b2_api = self._get_b2_api()
@@ -53,7 +56,7 @@ class B2FileService:
             token = bucket.get_download_authorization(self.image_prefix, valid_duration_in_seconds=604800)
             B2FileService._token_cache[flag] = {'token': token, 'time': current_time}
             return token
-        elif flag == "places":
+        elif flag == "places":  
             token = bucket.get_download_authorization(self.uni_places_prefix, valid_duration_in_seconds=3600)
             B2FileService._token_cache[flag] = {'token': token, 'time': current_time}
             return token
