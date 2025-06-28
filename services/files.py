@@ -19,6 +19,8 @@ class B2FileService:
         self.image_prefix = os.getenv("b2_image_prefix")
         self.document_prefix = os.getenv("b2_document_prefix")
         self.uni_docs_prefix= os.getenv("b2_uniguide_docs_prefix")
+        self.uni_places_prefix = os.getenv("b2_uniguide_places_prefix")
+
 
    
    
@@ -30,22 +32,33 @@ class B2FileService:
         return B2FileService._b2_api_instance
    
     def _get_download_token(self, flag):
+        """
+        Args:
+            flag (str): The type of token needed ("image", "places", etc.)
+        Returns:
+            str: The download authorization token
+        """
+        load_dotenv()
+        
         # Use class-level token cache to share across instances
         current_time = time.time()
-        
-        # Check if we have a cached token
+ 
         if flag in B2FileService._token_cache and (current_time - B2FileService._token_cache[flag]['time'] < 518400):  
             return B2FileService._token_cache[flag]['token']
-            
-        # If not, get a new token
+
         b2_api = self._get_b2_api()
         bucket = b2.Bucket(b2_api, self.bucket_id, name=self.bucket_name)
         
         if flag == "image":
             token = bucket.get_download_authorization(self.image_prefix, valid_duration_in_seconds=604800)
-            # Store it in the class-level cache
             B2FileService._token_cache[flag] = {'token': token, 'time': current_time}
             return token
+        elif flag == "places":
+            token = bucket.get_download_authorization(self.uni_places_prefix, valid_duration_in_seconds=3600)
+            B2FileService._token_cache[flag] = {'token': token, 'time': current_time}
+            return token
+        
+        return None
     
     def get_current_file_url(self, user_id):
         try:
@@ -238,3 +251,81 @@ class B2FileService:
                     print(f"Error al descargar el archivo {file_info.file_name}: {str(e)}")
         
         return documents
+    
+
+    def download_virtual_tour_data(self):
+        """
+        Downloads virtual tour data including tour_info.json and processes images
+        
+        Returns:
+            dict: Dictionary containing tour information and available images
+        """
+        import tempfile
+        import os
+        import json
+        
+        b2_api = self._get_b2_api()
+        bucket = b2.Bucket(b2_api, self.bucket_id, name=self.bucket_name)
+        prefix = self.uni_places_prefix
+        files = bucket.ls(folder_to_list=prefix, recursive=False)
+        
+        tour_data = {}
+        images_info = {}
+        
+        for file_info, file_metadata in files:
+            try:
+                with tempfile.NamedTemporaryFile(delete=False) as temp_file:
+                    temp_path = temp_file.name
+                
+                downloaded_file = b2_api.download_file_by_id(file_info.id_)
+                downloaded_file.save_to(temp_path)
+                
+                file_name = file_info.file_name.split('/')[-1]  # Get just the filename
+                
+                if file_name == 'tour_info.json':
+                    # Process JSON file
+                    with open(temp_path, 'r', encoding='utf-8') as f:
+                        tour_data = json.load(f)
+                    print(f"Tour info JSON loaded: {file_name}")
+                    
+                elif file_name.lower().endswith(('.jpg', '.jpeg', '.png')):
+                    # Store image info for URL generation
+                    images_info[file_name] = {
+                        'file_id': file_info.id_,
+                        'file_name': file_info.file_name,
+                        'size': file_info.size
+                    }
+                    print(f"Image info stored: {file_name}")
+                
+                # Clean up temp file
+                os.unlink(temp_path)
+                
+            except Exception as e:
+                print(f"Error processing file {file_info.file_name}: {str(e)}")
+        
+        return {
+            'tour_info': tour_data,
+            'images': images_info
+        }
+
+    def get_virtual_tour_image_url(self, image_filename):
+        """
+        Generates authenticated URL for virtual tour images with access token
+        
+        Args:
+            image_filename (str): Name of the image file
+            
+        Returns:
+            str: Authenticated URL for the image or None if error
+        """
+        try:
+            filename = f"{self.uni_places_prefix}{image_filename}"
+            
+            self._get_b2_api()
+            
+            token = self._get_download_token("places")
+            return f"{B2FileService._download_url}/file/{self.bucket_name}/{filename}?Authorization={token}"
+                
+        except Exception as e:
+            print(f"Error generating virtual tour image URL: {str(e)}")
+            return None
