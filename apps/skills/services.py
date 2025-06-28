@@ -2,13 +2,13 @@ import datetime
 import json
 from datetime import timedelta, timezone
 from apps.chat.functions import get_last_four_messages
-
+from apps.skills.repositories import SkillsTrainerRepository
 class SkillsTrainerService:
     def retrieve_tools(self, user_id, messages):
 
         last_messages_text = get_last_four_messages(messages)
 
-        from apps.skills.functions import simulate_job_interview
+        from apps.skills.functions import simulate_job_interview, analyze_professional_appearance, generate_training_report
         
         tools = [
             {
@@ -47,11 +47,71 @@ class SkillsTrainerService:
                         "required": ["job_position", "company_type", "user_instructions", "user_id", "status", "language"]
                     }
                 }
-            }
+            },
+            {
+                "type": "function",
+                "function": {
+                    "name": "analyze_professional_appearance",
+                    "description": "Analyzes the user's professional appearance based on their current image and provided context. Evaluates clothing, grooming, posture, and overall professional presentation for specific situations like interviews, presentations, or formal events.",
+                    "parameters": {
+                        "type": "object",
+                        "properties": {
+                            "context": {
+                                "type": "string",
+                                "description": "The specific professional context for the analysis (e.g., 'job interview', 'business presentation', 'cocktail event', 'formal meeting', 'video conference', 'networking event'). This helps tailor the analysis to appropriate standards."
+                            },
+                            "user_id": {
+                                "type": "integer",
+                                "description": "The ID of the user requesting the appearance analysis. Look in the first developer prompt to get the user_id"
+                            },
+                            "status": {
+                                "type": "string",
+                                "description": "A concise description of the analysis task being performed, using conjugated verbs (e.g., 'Analyzing professional appearance...', 'Evaluating presentation style...') in the same language as the user's question"
+                            }
+                        },
+                        "required": ["context", "user_id", "status"]
+                    }
+                }
+            },
+                        {
+                "type": "function",
+                "function": {
+                    "name": "generate_training_report",
+                    "description": "Generates a comprehensive training report in professional HTML format with visual elements. Creates detailed analysis of training sessions including performance metrics, feedback, and improvement recommendations. Saves the report to database and returns it for PDF conversion.",
+                    "parameters": {
+                        "type": "object",
+                        "properties": {
+                            "training_type": {
+                                "type": "string",
+                                "description": "Type of training session to report on. Options: 'job_interview_simulation' for interview practice sessions, 'professional_appearance_analysis' for appearance feedback sessions, or custom training type name."
+                            },
+                            "training_data": {
+                                "type": "string",
+                                "description": "Detailed information about the training session. For real sessions: include questions asked, responses given, feedback provided, performance observations. For testing: request synthetic data generation. Format as structured text or JSON string."
+                            },
+                            "user_id": {
+                                "type": "integer",
+                                "description": "The ID of the user requesting the training report. Look in the first developer prompt to get the user_id"
+                            },
+                            "status": {
+                                "type": "string",
+                                "description": "A concise description of the report generation task being performed, using conjugated verbs (e.g., 'Generating training report...', 'Creating session analysis...') in the same language as the user's question"
+                            },
+                            "use_synthetic_data": {
+                                "type": "boolean",
+                                "description": "Whether to generate synthetic training data for testing purposes. Set to true only when explicitly requested for demonstration. Default is false to use real session data."
+                            }
+                        },
+                        "required": ["training_type", "training_data", "user_id", "status"]
+                    }
+                }
+            },
         ]
 
         available_functions = {
-            "simulate_job_interview": simulate_job_interview
+            "simulate_job_interview": simulate_job_interview,
+            "analyze_professional_appearance": analyze_professional_appearance,
+            "generate_training_report": generate_training_report
         }
 
         current_utc_time = datetime.datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S")
@@ -74,6 +134,18 @@ class SkillsTrainerService:
         6. User requests feedback on professional performance
         7. User asks for role-playing scenarios or simulations
         8. User wants to improve specific professional competencies
+        9. User asks for appearance analysis, style advice, or professional image feedback
+        10. User mentions dress code, professional attire, or appearance for events
+        11. User wants advice on how they look for professional situations
+        12. User asks about professional presentation or image consulting
+        13. User wants to generate a report of their training session
+        14. User asks for analysis or summary of their practice session
+        15. User mentions wanting documentation of their skill development
+        16. User requests a report, summary, or analysis of their training performance
+        13. User asks if they are well-dressed, well-presented, or appropriately dressed for any event
+        14. User wants feedback on their current appearance or outfit
+        15. User mentions preparing for presentations, conferences, meetings, or professional events
+        16. User asks about their image or presentation for specific occasions
 
         IMMEDIATE FUNCTION ROUTING TRIGGERS:
         - "Quiero practicar una entrevista" / "I want to practice an interview"
@@ -84,6 +156,23 @@ class SkillsTrainerService:
         - "Preparación para entrevista" / "Interview preparation"
         - "Quiero mejorar mis habilidades" / "I want to improve my skills"
         - "Práctica de presentación" / "Presentation practice"
+        - "¿Cómo me veo?" / "How do I look?"
+        - "¿Mi apariencia es profesional?" / "Is my appearance professional?"
+        - "Consejos de vestimenta" / "Clothing advice"
+        - "¿Estoy bien vestido para...?" / "Am I dressed appropriately for...?"
+        - "Análisis de mi imagen" / "Analyze my image"
+        - "¿Mi outfit está bien para...?" / "Is my outfit good for...?"
+        - "¿Estoy bien presentado?" / "Am I well-presented?"
+        - "¿Me veo bien para...?" / "Do I look good for...?"
+        - "Dime si estoy bien vestido" / "Tell me if I'm well-dressed"
+        - "¿Mi presentación está bien?" / "Is my presentation okay?"
+        - "Voy a dar una conferencia" / "I'm giving a conference"
+        - "Tengo una presentación" / "I have a presentation"
+        - "¿Cómo me veo para la reunión?" / "How do I look for the meeting?"
+        - "Genera un reporte de mi entrenamiento" / "Generate a training report"
+        - "Quiero un análisis de mi sesión" / "I want an analysis of my session"
+        - "Crear reporte de entrevista" / "Create interview report"
+        - "¿Puedes hacer un resumen de mi práctica?" / "Can you make a summary of my practice?"
 
         CONTEXT-AWARE ROUTING BASED ON CONVERSATION HISTORY:
         PREVIOUS MESSAGES: {last_messages_text}
@@ -93,6 +182,28 @@ class SkillsTrainerService:
         - If user is providing details for skill practice after initial request, route to FUNCTION_NEEDED
         - If user is declining training ("no", "not now", "maybe later"), route to NO_FUNCTION_NEEDED
         - If user wants to proceed with any skill development activity after discussion, route to FUNCTION_NEEDED
+        - If user asks about appearance or professional image, route to FUNCTION_NEEDED
+        - If user mentions events like conferences, presentations, meetings and asks about their appearance, route to FUNCTION_NEEDED
+        - If user asks if they are well-dressed, well-presented, or look good for any occasion, route to FUNCTION_NEEDED
+        - If user requests training reports, session analysis, or performance summaries, route to FUNCTION_NEEDED
+
+        EXAMPLES OF "FUNCTION_NEEDED":
+        - "Quiero practicar una entrevista para desarrollador"
+        - "I want to practice an interview for marketing"
+        - "¿Cómo me veo para esta presentación?"
+        - "Is my appearance professional for the meeting?"
+        - "¿Estoy bien vestido para la conferencia?"
+        - "Am I dressed appropriately for this event?"
+        - "Dime si estoy bien presentado"
+        - "Tell me if I look professional"
+        - "¿Mi outfit está bien para la entrevista?"
+        - "How do I look for this presentation?"
+        - "Voy a dar una conferencia, ¿me veo bien?"
+        - "I have a meeting, am I well-dressed?"
+        - "Genera un reporte de mi entrenamiento"
+        - "Create a training report"
+        - "Quiero un análisis de mi sesión de práctica"
+        - "I want an analysis of my practice session"
 
         EXAMPLES OF "NO_FUNCTION_NEEDED":
         - "Hello, how are you?"
@@ -101,7 +212,21 @@ class SkillsTrainerService:
         - "What can you do?"
         - "Thank you for the information"
 
-        WHEN IN DOUBT: Choose "FUNCTION_NEEDED" for any request related to skill development, practice, training, or personal/professional growth within a university context.
+        EXAMPLES OF "FUNCTION_NEEDED":
+        - "Quiero practicar una entrevista para desarrollador"
+        - "I want to practice an interview for marketing"
+        - "¿Cómo me veo para esta presentación?"
+        - "Is my appearance professional for the meeting?"
+        - "¿Estoy bien vestido para la conferencia?"
+        - "Am I dressed appropriately for this event?"
+        - "Dime si estoy bien presentado"
+        - "Tell me if I look professional"
+        - "¿Mi outfit está bien para la entrevista?"
+        - "How do I look for this presentation?"
+        - "Voy a dar una conferencia, ¿me veo bien?"
+        - "I have a meeting, am I well-dressed?"
+
+        WHEN IN DOUBT: Choose "FUNCTION_NEEDED" for any request related to skill development, practice, training, appearance analysis, or personal/professional growth within a university context.
 
         YOU MUST RESPOND WITH EXACTLY ONE OF THESE PHRASES (no additional text):
         - "FUNCTION_NEEDED"
@@ -168,20 +293,10 @@ class SkillsTrainerService:
         - Communication and presentation skill development
         - Leadership and teamwork training exercises
         - Interview and professional preparation
+        - Professional appearance and image analysis
         - Creative skill development activities
         - Performance feedback and improvement strategies
         - Confidence building and personal growth coaching
-
-        CRITICAL INTERVIEW GUIDE EXECUTION:
-        When function results include "interview_guide", you MUST follow this script exactly:
-        - Follow each numbered phase in exact sequential order (Phase 1, Phase 2, Phase 3)
-        - Say exactly what the script tells you to say, word for word
-        - Wait for user responses where the script indicates
-        - Use the exact transitions provided between questions
-        - Complete ALL phases from opening to closing
-        - Do NOT deviate from the script or add extra questions
-        - Do NOT skip phases or questions listed in the guide
-        - The interview_guide is your complete roadmap - follow it religiously
 
         FUNCTION SELECTION GUIDELINES:
 
@@ -193,23 +308,36 @@ class SkillsTrainerService:
         - CRITICAL: Always use when user wants interview practice or professional scenario training
         - OUTPUT: Returns conversational guide for NAIA and visual HTML simulation interface
 
+        2. analyze_professional_appearance:
+        - PURPOSE: Analyze user's professional appearance and provide specific feedback
+        - USE WHEN: User asks about their appearance, style advice, professional image, or how they look for events
+        - KEY INDICATOR: Questions about appearance, clothing, professional image, dress code
+        - EXAMPLES: "How do I look for this interview?", "Is my outfit appropriate?", "Analyze my professional appearance"
+        - CRITICAL: Always use when user wants appearance feedback or style advice
+        - OUTPUT: Returns detailed analysis of professional appearance with strengths and recommendations
+
+        3. generate_training_report:
+        - PURPOSE: Generate comprehensive training reports with visual analysis and recommendations
+        - USE WHEN: User wants documentation, analysis, or summary of their training session or practice
+        - KEY INDICATOR: Requests for reports, analysis, summaries, documentation of training performance
+        - EXAMPLES: "Generate a report of my interview practice", "Create an analysis of my session", "I want a training summary"
+        - CRITICAL: Always use when user wants formal documentation or analysis of their skill development
+        - OUTPUT: Returns professional HTML report with performance analysis, saved to database, ready for PDF conversion
+
         FUNCTION EXECUTION RULES:
         - NEVER announce that you "will" create or simulate - IMMEDIATELY CALL the function when appropriate
         - Functions should be called seamlessly as part of providing excellent training experience
-        - Always ensure you have gathered necessary information about the job position and company type
+        - Always ensure you have gathered necessary information about the context
         - Use functions to create engaging, interactive, and personalized training experiences
 
         RESULT INTERPRETATION:
         - "interview_guide": CRITICAL - Follow this step-by-step script exactly as written. This is your complete interview roadmap from opening to closing.
         - "display": Interview simulation interface is shown on screen - reference it naturally and encourage the user to review the simulation details
-
-        INTERVIEW EXECUTION PROTOCOL:
-        1. When you receive an interview_guide, begin Phase 1 immediately
-        2. Follow each phase in numerical order without deviation
-        3. Wait for user responses when the script indicates
-        4. Use provided transitions exactly as written
-        5. Complete the entire interview following the script
-        6. End with Phase 3 closing as specified
+        - "professional_analysis": Professional appearance analysis results - synthesize and provide as constructive feedback
+        - "context_analyzed": The specific context that was analyzed - reference this in your feedback
+        - "pdf": Training report generated - inform user that comprehensive report has been created and saved
+        - "report_id": ID of saved report - can reference for future access
+        - "title": Report title - use when confirming report creation
 
         RESPONSE CREATION GUIDELINES:
         1. Be encouraging, motivational, and supportive
@@ -248,6 +376,7 @@ class SkillsTrainerService:
         - Communication and presentation skill development
         - Leadership and teamwork training exercises
         - Interview preparation and professional skill coaching
+        - Professional appearance and image consulting
         - Creative skill development and artistic training
         - Confidence building and personal growth strategies
         - Performance feedback and improvement planning
@@ -308,6 +437,22 @@ class SkillsTrainerService:
 
         SPECIALIZED SKILLS TRAINER FUNCTIONS (that you can explain but NOT execute in chat-only mode):
         - simulate_job_interview: Create interactive job interview simulations with personalized questions and professional scenarios
+        - analyze_professional_appearance: Analyze user's professional appearance and provide specific feedback for different contexts
+        - generate_training_report: Generate comprehensive training reports with performance analysis, visual elements, and improvement recommendations
+
+        TRAINING REPORT CAPABILITIES:
+        - Comprehensive session analysis with visual performance metrics
+        - Professional HTML reports ready for PDF conversion
+        - Detailed feedback on strengths and improvement areas
+        - Personalized action plans and development recommendations
+        - Database storage for progress tracking and future reference
+        - Support for interview simulations and appearance analysis sessions
+        - Professional image consulting for various contexts (interviews, presentations, formal events)
+        - Clothing and style evaluation appropriate for specific situations
+        - Grooming and personal presentation feedback
+        - Body language and posture assessment
+        - Environmental and background analysis for video calls
+        - Constructive recommendations for professional improvement
 
         INTERVIEW SIMULATION CAPABILITIES:
         - Comprehensive job interview practice with position-specific questions
@@ -319,7 +464,7 @@ class SkillsTrainerService:
         SKILL DEVELOPMENT AREAS:
         - Communication: Public speaking, presentation skills, interpersonal communication
         - Leadership: Team management, decision-making, conflict resolution
-        - Professional: Interview skills, networking, workplace etiquette
+        - Professional: Interview skills, networking, workplace etiquette, professional image
         - Creative: Artistic expression, creative thinking, innovation
         - Personal: Confidence building, time management, goal setting
 
@@ -378,3 +523,37 @@ class SkillsTrainerService:
         }
 
         return tools, available_functions, prompts
+    
+
+
+
+class SkillsTrainerDBService():
+    """
+    This service is responsible for managing the database interactions for the Skills Trainer role.
+    It handles the creation, retrieval, and management of training reports and user data.
+    """
+
+
+    def __init__(self):
+        self.repository = SkillsTrainerRepository()
+
+    
+    def list_user_training_reports(self, user_id):
+        """
+        Lists all training reports for a given user.
+        
+        :param user_id: The ID of the user whose training reports are to be listed.
+        :return: A list of training reports for the user.
+        """
+        return self.repository.list_user_training_reports(user_id)  
+    
+    def get_training_report_by_id(self, report_id):
+        """
+        Retrieves a training report by its ID.
+        
+        :param report_id: The ID of the training report to retrieve.
+        :return: The training report object if found, otherwise raises an exception.
+        """
+        return self.repository.get_training_report_by_id(report_id)
+
+    

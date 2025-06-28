@@ -4,7 +4,10 @@ from typing import Dict
 from apps.status.services import set_status
 from openai import OpenAI
 import json
-
+from services.files import B2FileService
+from apps.skills.models import TrainingReport
+from apps.users.models import User
+from datetime import datetime, timezone, timedelta
 load_dotenv()
 
 openai_api_key = os.getenv("open_ai")
@@ -865,3 +868,316 @@ def get_simulation_css() -> str:
             }
         }
     """
+
+
+def analyze_professional_appearance(context: str, user_id: int, status: str) -> Dict:
+    """
+    Analyzes the user's professional appearance based on their current image
+    and the provided context (interview, presentation, cocktail, formal, etc.)
+    
+    Args:
+        context (str): Analysis context (interview, presentation, cocktail, formal, etc.)
+        user_id (int): User ID
+        status (str): Status message for tracking
+        
+    Returns:
+        dict: Structured analysis of professional appearance
+    """
+    try:
+        set_status(user_id, status, 4) 
+        
+       
+        file_service = B2FileService()
+        image_url = file_service.get_current_file_url(user_id)
+        
+        if not image_url:
+            return {"error": "Could not retrieve user's image"}
+        
+        # Specialized prompt for professional appearance analysis
+        analysis_prompt = f"""You are an expert professional image consultant. Analyze the person's appearance in the image considering the following context: {context}
+
+Evaluate the following aspects:
+
+1. **CLOTHING AND STYLE**:
+   - Appropriate for the mentioned context
+   - Quality and condition of garments
+   - Color combination
+   - Adequate level of formality
+
+2. **PERSONAL GROOMING**:
+   - Hair and hairstyle
+   - Visible hygiene and personal care
+   - Makeup (if applicable) appropriate for the context
+
+3. **POSTURE AND BODY LANGUAGE**:
+   - Body posture
+   - Facial expression
+   - Projected confidence
+
+4. **ENVIRONMENT AND PRESENTATION**:
+   - Appropriate background for video calls/professional photos
+   - Adequate lighting
+   - Professional framing
+
+Provide:
+- **Strengths**: 3-4 specific positive aspects
+- **Recommendations**: 3-4 concrete improvement suggestions
+- **Overall Rating**: From 1-10 for the mentioned context
+- **Specific Tips**: For the type of event/situation in the context
+
+Be constructive, specific, and professional in your observations."""
+
+        response = client.chat.completions.create(
+            model="gpt-4.1-mini",
+            messages=[{
+                "role": "user",
+                "content": [
+                    {"type": "text", "text": analysis_prompt},
+                    {
+                        "type": "image_url",
+                        "image_url": {
+                            "url": image_url,
+                        },
+                    },
+                ],
+            }],
+            max_tokens=500
+        )
+        
+        analysis_result = response.choices[0].message.content
+        
+        return {
+            "professional_analysis": analysis_result,
+            "context_analyzed": context,
+            "analysis_type": "professional_appearance",
+            "image_analyzed": True
+        }
+        
+    except Exception as e:
+        print(f"Error analyzing professional appearance: {str(e)}")
+        return {"error": str(e)}
+    
+
+def generate_training_report(training_type: str, training_data: str, user_id: int, status: str, use_synthetic_data: bool = False) -> Dict:
+    """
+    Generates a comprehensive training report in HTML format with visual elements,
+    saves it to the database, and returns it for display/PDF conversion.
+    
+    Args:
+        training_type (str): Type of training ("job_interview_simulation", "professional_appearance_analysis")
+        training_data (str): JSON string or text with training session data
+        user_id (int): User ID
+        status (str): Status message for tracking
+        use_synthetic_data (bool): Whether to generate synthetic data for testing
+        
+    Returns:
+        dict: Dictionary with the generated report and success status
+    """
+    try:
+        set_status(user_id, status, 4)  # 4 = skills trainer role
+        
+        # Get current time in Bogotá timezone (UTC-5)
+        bogota_tz = timezone(timedelta(hours=-5))
+        current_time = datetime.now(bogota_tz)
+        
+        # System prompt for the report generation agent
+        system_prompt = """You are a professional training report specialist who creates comprehensive, visually appealing HTML reports for skill development sessions. Your reports are designed to be converted to PDF and must be professional, detailed, and actionable.
+
+CRITICAL HTML REQUIREMENTS:
+1. Generate ONLY clean HTML code with embedded CSS - no DOCTYPE, no explanations
+2. Use professional color scheme: #2563eb (blue), #059669 (green), #dc2626 (red), #f59e0b (amber)
+3. Create a modern, clean design suitable for PDF conversion
+4. Include visual elements using CSS (progress bars, charts, icons)
+5. Make it print-friendly with proper page breaks
+
+REPORT STRUCTURE:
+1. **Header Section**: Training type, date, participant info
+2. **Executive Summary**: Overall performance overview with visual score
+3. **Session Details**: Specific activities, questions, responses (if applicable)
+4. **Performance Analysis**: Strengths and areas for improvement with visual indicators
+5. **Detailed Feedback**: Specific observations and recommendations
+6. **Action Plan**: Next steps and improvement suggestions
+7. **Progress Tracking**: Visual indicators and goals
+
+VISUAL ELEMENTS TO INCLUDE:
+- Progress bars and score indicators using CSS
+- Color-coded sections for different performance levels
+- Professional SVG icons embedded inline (target, star, chart, lightbulb, user, check, arrow, etc.)
+- Professional charts and graphs using CSS and SVG
+- Skill matrices and competency grids with SVG indicators
+- Timeline elements for improvement tracking with SVG elements
+
+DESIGN PRINCIPLES:
+- Clean, professional layout with proper spacing
+- Consistent typography and visual hierarchy
+- Use of white space for readability
+- Color coding for quick visual understanding
+- Print-friendly design (A4 page format)
+- Professional branding appropriate for Universidad del Norte
+
+CONTENT GUIDELINES:
+- Use encouraging but honest language
+- Provide specific, actionable feedback
+- Include measurable goals and objectives
+- Reference best practices and industry standards
+- Maintain constructive tone throughout
+- CRITICAL: Use only standard ASCII characters and CSS symbols (●, ▲, ★, ♦, →, ←, ↑, ↓) instead of Unicode emojis to avoid database encoding issues
+- CRITICAL: Use only basic ASCII characters and CSS symbols (●, ▲, ★, ♦, →, ←, ↑, ↓) - NO Unicode emojis
+
+OUTPUT: Return ONLY clean HTML code with embedded CSS styling. No explanations or additional text. IMPORTANT: Use only ASCII characters and basic symbols to ensure database compatibility. Ensure all content uses standard ASCII characters to avoid encoding issues.d objectives
+- Reference best practices and industry standards
+- Maintain constructive tone throughout
+- Include both qualitative and quantitative assessments
+
+OUTPUT: Return ONLY clean HTML code with embedded CSS styling. No explanations or additional text."""
+
+        # Determine if we should use synthetic data or real data
+        if use_synthetic_data:
+            data_instruction = "Generate realistic synthetic training data for demonstration purposes. Create a comprehensive example session with realistic responses, feedback, and performance metrics."
+        else:
+            data_instruction = f"Use the following real training session data: {training_data}"
+
+        # Create the user prompt based on training type
+        if training_type == "job_interview_simulation":
+            user_prompt = f"""Create a comprehensive job interview simulation report with the following details:
+
+TRAINING TYPE: Job Interview Simulation
+USER ID: {user_id}
+SESSION DATE: {current_time.strftime('%B %d, %Y at %I:%M %p')} (Bogotá time)
+
+DATA INSTRUCTION: {data_instruction}
+
+Generate a professional HTML report that includes:
+1. Interview session overview (position, duration, questions asked)
+2. Performance analysis with visual scoring (1-10 scale)
+3. Response quality assessment for each question
+4. Communication skills evaluation
+5. Professional presence assessment
+6. Strengths and improvement areas with specific examples
+7. Personalized action plan for skill development
+8. Next steps and practice recommendations
+
+Make the report visually engaging with:
+- Overall interview score with visual progress bar
+- Individual question performance charts
+- Skill competency matrix
+- Professional development roadmap
+- Color-coded feedback sections
+
+Ensure the report is comprehensive, actionable, and encouraging while maintaining professional standards."""
+
+        elif training_type == "professional_appearance_analysis":
+            user_prompt = f"""Create a comprehensive professional appearance analysis report with the following details:
+
+TRAINING TYPE: Professional Appearance Analysis
+USER ID: {user_id}
+SESSION DATE: {current_time.strftime('%B %d, %Y at %I:%M %p')} (Bogotá time)
+
+DATA INSTRUCTION: {data_instruction}
+
+Generate a professional HTML report that includes:
+1. Appearance assessment overview (context, occasion, analysis scope)
+2. Overall professional image score with visual indicators
+3. Detailed evaluation of clothing, grooming, posture, and environment
+4. Strengths in professional presentation
+5. Specific improvement recommendations
+6. Context-appropriate styling suggestions
+7. Professional image development plan
+8. Follow-up recommendations and resources
+
+Make the report visually engaging with:
+- Overall appearance score with visual rating system
+- Category-specific performance indicators (attire, grooming, posture)
+- Before/after improvement visualization concepts
+- Professional styling guide elements
+- Color-coded recommendation priorities
+
+Ensure the report is constructive, specific, and professionally encouraging."""
+
+        else:
+            # Generic training report
+            user_prompt = f"""Create a comprehensive training session report with the following details:
+
+TRAINING TYPE: {training_type}
+USER ID: {user_id}
+SESSION DATE: {current_time.strftime('%B %d, %Y at %I:%M %p')} (Bogotá time)
+
+DATA INSTRUCTION: {data_instruction}
+
+Generate a professional HTML report that includes:
+1. Training session overview and objectives
+2. Performance analysis with visual indicators
+3. Skills assessment and competency evaluation
+4. Detailed feedback and observations
+5. Strengths and areas for development
+6. Personalized improvement recommendations
+7. Action plan and next steps
+8. Progress tracking elements
+
+Make the report comprehensive, actionable, and visually professional."""
+
+        # Generate the report using OpenAI
+        response = client.chat.completions.create(
+            model="gpt-4.1",
+            messages=[
+                {"role": "system", "content": system_prompt},
+                {"role": "user", "content": user_prompt}
+            ],
+            temperature=0.7
+        )
+        
+        report_html = response.choices[0].message.content
+        
+        # Clean any markdown code block markers from the response
+        if report_html.startswith("```html"):
+            report_html = report_html.replace("```html", "", 1)
+        elif report_html.startswith("```"):
+            report_html = report_html.replace("```", "", 1)
+        
+        if report_html.endswith("```"):
+            report_html = report_html[:-3]
+        
+        report_html = report_html.strip()
+        
+        # Generate descriptive title for the report
+        if training_type == "job_interview_simulation":
+            title = f"Job Interview Simulation Report - {current_time.strftime('%B %d, %Y')}"
+        elif training_type == "professional_appearance_analysis":
+            title = f"Professional Appearance Analysis - {current_time.strftime('%B %d, %Y')}"
+        else:
+            title = f"{training_type.replace('_', ' ').title()} Report - {current_time.strftime('%B %d, %Y')}"
+        
+        # Save the report to the database
+        try:
+            user_instance = User.objects.get(id=user_id)
+            training_report = TrainingReport.objects.create(
+                user=user_instance,
+                title=title,
+                training_type=training_type,
+                report_html=report_html,
+                created_at=current_time
+            )
+            
+            return {
+                "pdf": report_html,
+                "report_id": training_report.id,
+                "title": title,
+                "created_at": current_time.isoformat(),
+                "message": f"Training report '{title}' generated and saved successfully"
+            }
+            
+        except User.DoesNotExist:
+            return {"error": f"User with ID {user_id} not found"}
+        except Exception as db_error:
+            print(f"Database error: {str(db_error)}")
+            # Still return the report even if DB save fails
+            return {
+                "pdf": report_html,
+                "title": title,
+                "created_at": current_time.isoformat(),
+                "message": f"Training report generated successfully (DB save failed: {str(db_error)})"
+            }
+        
+    except Exception as e:
+        print(f"Error generating training report: {str(e)}")
+        return {"error": str(e)}

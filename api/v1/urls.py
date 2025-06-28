@@ -10,6 +10,7 @@ urlpatterns = [
     path('status/', include('api.v1.status.urls')),
     path('researcher/', include('api.v1.researcher.urls')),
     path('uniguide/', include('api.v1.uniguide.urls')),
+    path('skills/', include('api.v1.skills.urls')),
     path('api-auth/', include('rest_framework.urls')), 
     path('schema/', SpectacularAPIView.as_view(), name='schema'),
     path('schema/swagger-ui/', SpectacularSwaggerView.as_view(url_name='schema'), name='swagger-ui'),
