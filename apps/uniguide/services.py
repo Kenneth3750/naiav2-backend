@@ -1,4 +1,4 @@
-from apps.uniguide.functions import send_email, query_university_rag, get_current_month_uni_calendar, get_virtual_campus_tour
+from apps.uniguide.functions import send_email, query_university_rag, get_current_month_uni_calendar, get_virtual_campus_tour, search_internet_for_uni_answers
 import datetime
 from datetime import timedelta, timezone
 import json
@@ -132,6 +132,31 @@ class UniGuideService:
                             "required": ["language", "user_id", "status"]
                         }
                     }
+                },
+                {
+                    "type": "function",
+                    "function": {
+                        "name": "search_internet_for_uni_answers",
+                        "description": "Search the internet for very specific information about Universidad del Norte that is not available in official administrative documents. Use ONLY for highly specific questions about campus facilities, architectural details, or very detailed information that requires direct observation. Do NOT use for academic policies, procedures, scholarships, or administrative processes (use query_university_rag for those).",
+                        "parameters": {
+                            "type": "object",
+                            "properties": {
+                                "query": {
+                                    "type": "string",
+                                    "description": "The specific question about Universidad del Norte that needs internet search"
+                                },
+                                "status": {
+                                    "type": "string", 
+                                    "description": "A concise description of the search task being performed, using conjugated verbs (e.g., 'Buscando información específica...', 'Searching for specific details...') in the same language as the user's question"
+                                },
+                                "user_id": {
+                                    "type": "integer",
+                                    "description": "The ID of the user requesting the search. Look at the first developer prompt to get the user_id"
+                                }
+                            },
+                            "required": ["query", "status", "user_id"]
+                        }
+                    }
                 }
         ]
 
@@ -139,7 +164,8 @@ class UniGuideService:
             "send_email": send_email,
             "query_university_rag": query_university_rag,
             "get_current_month_uni_calendar": get_current_month_uni_calendar,
-            "get_virtual_campus_tour": get_virtual_campus_tour
+            "get_virtual_campus_tour": get_virtual_campus_tour,
+            "search_internet_for_uni_answers": search_internet_for_uni_answers  
         }
 
         current_utc_time = datetime.datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S")
@@ -156,6 +182,7 @@ class UniGuideService:
         2. query_university_rag: Query the university's official information database about UniNorte policies, procedures, and services.
         3. get_current_month_uni_calendar: Get current month's official university events and activities from UniNorte calendar.
         4. get_virtual_campus_tour: Generate interactive virtual tour of university facilities with images and detailed information.
+        5. search_internet_for_uni_answers: Search internet for VERY SPECIFIC details about UniNorte that are not in official documents (architectural details, specific measurements, etc.)
 
         ALWAYS ROUTE TO "FUNCTION_NEEDED" WHEN:
         1. The user wants to send an email to any email with the information required by the user.
@@ -178,6 +205,12 @@ class UniGuideService:
         18. User asks "show me", "take me to", or "where is" regarding campus locations
         19. User mentions wanting to visit or learn about university buildings
         20. User asks about campus facilities, services locations, or university infrastructure
+        21. User asks VERY SPECIFIC or detailed questions about UniNorte facilities that are unlikely to be in official documents
+        22. User asks about architectural details, measurements, or physical characteristics of buildings
+        23. User asks "rebuscadas" (far-fetched) questions about campus that require specific observation
+        24. User asks about number of floors, windows, specific colors, exact measurements of campus elements
+        25. User asks about very detailed campus information that goes beyond general administrative knowledge
+
 
         IMMEDIATE FUNCTION ROUTING TRIGGERS:
         - Any email address mentioned in the user message
@@ -210,6 +243,12 @@ class UniGuideService:
         - Campus facility names: "biblioteca", "laboratorios", "polideportivo", "cafetería", "library", "labs"
         - Tour-related phrases: "recorrido", "tour", "visitar", "visit", "conocer", "explore"
         - Location requests: "llevarme a", "take me to", "mostrar", "show", "ver", "see"
+        - "¿Cuántos pisos tiene el edificio J?" → FUNCTION_NEEDED
+        - "¿Qué altura tiene la torre administrativa?" → FUNCTION_NEEDED  
+        - "¿De qué color son las bancas del parque central?" → FUNCTION_NEEDED
+        - "¿Cuántas ventanas tiene la biblioteca?" → FUNCTION_NEEDED
+        - "¿Cómo solicito una beca?" → FUNCTION_NEEDED
+        - "¿Cuáles son los requisitos de grado?" → FUNCTION_NEEDED
 
         CRITICAL EVENT DETECTION PATTERNS (ALWAYS → FUNCTION_NEEDED):
         - "wanted to go to [any event]" or "queria ir al [any event]"
@@ -404,6 +443,16 @@ class UniGuideService:
         - FEATURES: Multi-image galleries, detailed facility information, contact details, operating hours, services available
         - CRITICAL: Always use when user wants to explore, see, or learn about campus locations and facilities
 
+        5. search_internet_for_uni_answers:
+        - PURPOSE: Search the internet for VERY SPECIFIC architectural and physical details about UniNorte campus
+        - USE WHEN: User asks highly specific questions about physical characteristics, measurements, or architectural details that are unlikely to be in official administrative documents
+        - RETURNS: Specific information found through internet search about Universidad del Norte
+        - INFORMATION TYPE: Architectural details, number of floors, building measurements, specific colors, physical characteristics, construction details
+        - KEY INDICATORS: Questions about "how many floors", "what height", "what color", "how many windows", very detailed physical descriptions
+        - EXAMPLES: "¿Cuántos pisos tiene el edificio J?", "¿Qué altura tiene la torre administrativa?", "¿De qué color son las bancas del parque central?"
+        - CRITICAL: NEVER use for administrative, academic, or procedural questions - those belong to query_university_rag
+        - PRIORITY: Always try query_university_rag FIRST for any university information. Only use this function when the question is clearly about very specific physical/architectural details
+
         FUNCTION EXECUTION RULES:
         - NEVER announce that you "will" search or "will" create - IMMEDIATELY CALL the function
         - If multiple functions are needed, execute all of them in the optimal sequence
@@ -418,6 +467,30 @@ class UniGuideService:
         4. Use 3-4 messages to give a complete picture of the information
         5. Be INFORMATIVE and EDUCATIONAL - explain why the information matters
         6. Use VARIETY in animations and facial expressions to maintain engagement
+
+        FUNCTION PRIORITY AND SELECTION LOGIC:
+
+        PRIORITY 1 - ALWAYS TRY RAG FIRST for university information:
+        - Use query_university_rag for ALL administrative, academic, and procedural questions
+        - This includes: policies, procedures, scholarships, certificates, requirements, processes
+        - RAG contains verified and up-to-date official university information
+
+        PRIORITY 2 - Use internet search ONLY for very specific details:
+        - Use search_internet_for_uni_answers ONLY when the question is about very specific physical details
+        - This includes: architectural details, measurements, number of floors, specific colors, etc.
+        - These are "rebuscadas" (far-fetched) questions that require direct observation
+
+        CRITICAL RULES:
+        - NEVER call both query_university_rag AND search_internet_for_uni_answers for the same query
+        - If uncertain about information availability, ALWAYS try query_university_rag first
+        - Only use internet search for architectural/physical details unlikely to be in official documents
+
+        FUNCTION SELECTION EXAMPLES:
+        - "¿Cómo solicito una beca?" → query_university_rag ONLY
+        - "¿Cuáles son los requisitos de grado?" → query_university_rag ONLY  
+        - "¿Cuántos pisos tiene el edificio J?" → search_internet_for_uni_answers ONLY
+        - "¿Qué altura tiene la torre administrativa?" → search_internet_for_uni_answers ONLY
+        - "¿De qué color son las bancas del parque?" → search_internet_for_uni_answers ONLY
 
         RESULT INTERPRETATION:
         - "resolved_rag": University information from official database - synthesize and present as authoritative UniNorte information
