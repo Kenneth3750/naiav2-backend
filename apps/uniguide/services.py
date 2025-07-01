@@ -1,18 +1,11 @@
-from apps.uniguide.functions import send_email, query_university_rag, get_current_month_uni_calendar, get_virtual_campus_tour, search_internet_for_uni_answers
+from apps.uniguide.functions import send_email, query_university_rag, get_university_calendar_multi_month, get_virtual_campus_tour, search_internet_for_uni_answers
 import datetime
 from datetime import timedelta, timezone
-import json
-
+from apps.chat.functions import get_last_four_messages
 class UniGuideService:
     def retrieve_tools(self, user_id, messages):
 
-        last_messages = messages[-1]["content"] if messages else []
-        if last_messages:
-            last_messages = json.loads(last_messages) if isinstance(last_messages, str) else last_messages
-            last_messages_texts = [msg["text"] for msg in last_messages if "text" in msg]
-            last_messages_text = " ".join(last_messages_texts)
-        else:
-            last_messages_text = "No previous messages found."
+        last_messages_text = get_last_four_messages(messages)
 
         print(f"Last messages text: {last_messages_text}")
 
@@ -82,25 +75,34 @@ class UniGuideService:
                 {
                     "type": "function",
                     "function": {
-                        "name": "get_current_month_uni_calendar",
-                        "description": "Get the current month's university calendar events.",
+                        "name": "get_university_calendar_multi_month",
+                        "description": "Get university calendar events for multiple months to find specific dates and events",
                         "parameters": {
                             "type": "object",
                             "properties": {
+                                "months_to_search": {
+                                    "type": "array",
+                                    "items": {
+                                        "type": "integer",
+                                        "minimum": 1,
+                                        "maximum": 12
+                                    },
+                                    "description": "List of months to search (1-12). Example: [7, 8, 9] for July-September. If not specified, searches current and next 2 months"
+                                },
                                 "user_id": {
                                     "type": "integer",
-                                    "description": "The ID of the user requesting the calendar. Look at the first developer prompt to get the user_id"
+                                    "description": "The ID of the user requesting the calendar information"
                                 },
                                 "status": {
                                     "type": "string",
-                                    "description": "A concise description of the calendar task being performed, using conjugated verbs (e.g., 'Obteniendo calendario del mes...', 'Fetching current month calendar...') in the same language as the user's question"
-                                },
+                                    "description": "A concise description of the calendar search task being performed, using conjugated verbs (e.g., 'Buscando fechas de eventos...', 'Searching event dates...') in the same language as the user's question"
+                                }
                             },
                             "required": ["user_id", "status"]
                         }
                     }
                 },
-                {
+                                {
                     "type": "function",
                     "function": {
                         "name": "get_virtual_campus_tour",
@@ -163,7 +165,7 @@ class UniGuideService:
         available_functions = {
             "send_email": send_email,
             "query_university_rag": query_university_rag,
-            "get_current_month_uni_calendar": get_current_month_uni_calendar,
+            "get_university_calendar_multi_month": get_university_calendar_multi_month,
             "get_virtual_campus_tour": get_virtual_campus_tour,
             "search_internet_for_uni_answers": search_internet_for_uni_answers  
         }
@@ -175,191 +177,212 @@ class UniGuideService:
 
         router_prompt = f"""You are a specialized router for NAIA, an AI assistant at Universidad del Norte. Your ONLY job is to determine whether a user message requires a specialized function or can be handled with a simple chat response.
 
-        CRITICAL: The system WILL NOT search for information or execute functions UNLESS you say "FUNCTION_NEEDED".
+                CRITICAL: The system WILL NOT search for information or execute functions UNLESS you say "FUNCTION_NEEDED".
 
-        AVAILABLE UNIVERSITY GUIDE FUNCTIONS:
-        1. send_email: Send an email to the user with the information required by the user.
-        2. query_university_rag: Query the university's official information database about UniNorte policies, procedures, and services.
-        3. get_current_month_uni_calendar: Get current month's official university events and activities from UniNorte calendar.
-        4. get_virtual_campus_tour: Generate interactive virtual tour of university facilities with images and detailed information.
-        5. search_internet_for_uni_answers: Search internet for VERY SPECIFIC details about UniNorte that are not in official documents (architectural details, specific measurements, etc.)
+                AVAILABLE UNIVERSITY GUIDE FUNCTIONS:
+                1. send_email: Send an email to the user with the information required by the user.
+                2. query_university_rag: Query the university's official information database about UniNorte policies, procedures, and services.
+                3. get_university_calendar_multi_month: Get current month's official university events and activities from UniNorte calendar.
+                4. get_virtual_campus_tour: Generate interactive virtual tour of university facilities with images and detailed information.
+                5. search_internet_for_uni_answers: Search internet for VERY SPECIFIC details about UniNorte that are not in official documents (architectural details, specific measurements, etc.)
 
-        ALWAYS ROUTE TO "FUNCTION_NEEDED" WHEN:
-        1. The user wants to send an email to any email with the information required by the user.
-        2. User asks about ANY specific UniNorte policies, procedures, academic regulations, scholarships, certificates, or university services
-        3. User asks about current university events, activities, or what's happening this month at UniNorte
-        4. User mentions wanting to know about university calendar, upcoming events, or activities
-        5. User asks about frequency, dates, or timing of university events
-        6. User asks about current or upcoming university activities, regardless of specificity
-        7. User mentions specific event names (festivals, conferences, activities) at the university
-        8. User expresses wanting to attend events or concerns about missing events
-        9. User requests more information about university activities or events
-        10. User asks about ANY university procedures, processes, or administrative steps
-        11. User asks HOW TO do something at the university (procedures, requirements, steps)
-        12. User asks about updating, changing, or modifying university records or documents
-        13. User asks about specific university processes regardless of topic
-        14. User asks about university facilities, campus locations, or wants to explore the campus
-        15. User mentions wanting to see university installations, buildings, or areas
-        16. User asks about campus tour, virtual tour, or exploring university facilities
-        17. User wants to know about specific places on campus (library, labs, cafeterias, etc.)
-        18. User asks "show me", "take me to", or "where is" regarding campus locations
-        19. User mentions wanting to visit or learn about university buildings
-        20. User asks about campus facilities, services locations, or university infrastructure
-        21. User asks VERY SPECIFIC or detailed questions about UniNorte facilities that are unlikely to be in official documents
-        22. User asks about architectural details, measurements, or physical characteristics of buildings
-        23. User asks "rebuscadas" (far-fetched) questions about campus that require specific observation
-        24. User asks about number of floors, windows, specific colors, exact measurements of campus elements
-        25. User asks about very detailed campus information that goes beyond general administrative knowledge
+                ALWAYS ROUTE TO "FUNCTION_NEEDED" WHEN:
+                1. The user wants to send an email to any email with the information required by the user.
+                2. User asks about ANY specific UniNorte policies, procedures, academic regulations, scholarships, certificates, or university services
+                3. User asks about current university events, activities, or what's happening this month at UniNorte
+                4. User mentions wanting to know about university calendar, upcoming events, or activities
+                5. User asks about frequency, dates, or timing of university events
+                6. User asks about current or upcoming university activities, regardless of specificity
+                7. User mentions specific event names (festivals, conferences, activities) at the university
+                8. User expresses wanting to attend events or concerns about missing events
+                9. User requests more information about university activities or events
+                10. User asks about ANY university procedures, processes, or administrative steps
+                11. User asks HOW TO do something at the university (procedures, requirements, steps)
+                12. User asks about updating, changing, or modifying university records or documents
+                13. User asks about specific university processes regardless of topic
+                14. User asks about university facilities, campus locations, or wants to explore the campus
+                15. User mentions wanting to see university installations, buildings, or areas
+                16. User asks about campus tour, virtual tour, or exploring university facilities
+                17. User wants to know about specific places on campus (library, labs, cafeterias, etc.)
+                18. User asks "show me", "take me to", or "where is" regarding campus locations
+                19. User mentions wanting to visit or learn about university buildings
+                20. User asks about campus facilities, services locations, or university infrastructure
+                21. User asks VERY SPECIFIC or detailed questions about UniNorte facilities that are unlikely to be in official documents
+                22. User asks about architectural details, measurements, or physical characteristics of buildings
+                23. User asks "rebuscadas" (far-fetched) questions about campus that require specific observation
+                24. User asks about number of floors, windows, specific colors, exact measurements of campus elements
+                25. User asks about very detailed campus information that goes beyond general administrative knowledge
 
+                **NEW CRITICAL CALENDAR TRIGGERS** (ALWAYS → FUNCTION_NEEDED):
+                26. User mentions ANY SPECIFIC MONTHS by name ("enero", "febrero", "marzo", "abril", "mayo", "junio", "julio", "agosto", "septiembre", "octubre", "noviembre", "diciembre", "january", "february", "march", "april", "may", "june", "july", "august", "september", "october", "november", "december")
+                27. User explicitly asks to search or verify: "búscalo", "búscalo en el calendario", "search for it", "look it up", "check it", "verify it", "find it", "consulta", "verifica", "encuentra"
+                28. User mentions date ranges: "entre [mes] y [mes]", "between [month] and [month]", "debe ser entre", "should be between"
+                29. User asks about specific event timing: "cuando es", "when is", "cuándo será", "when will it be", "qué fecha", "what date"
+                30. User mentions timeframes: "el próximo mes", "next month", "este semestre", "this semester", "próximamente", "upcoming"
+                31. User asks about specific ceremony types: "ceremonia de grados", "graduation ceremony", "ceremonia de graduación", "grado", "graduation"
+                32. User corrects or clarifies previous information about dates or events
+                33. User asks for verification of information previously mentioned by the assistant
 
-        IMMEDIATE FUNCTION ROUTING TRIGGERS:
-        - Any email address mentioned in the user message
-        - Any request for sending an email
-        - Any calendar-related question about UniNorte
-        - Any request for information about university policies, procedures, or services
-        - Any request for information about scholarships, academic certificates, graduation requirements, or events
-        - Any request for information about university regulations, activities, or academic exceptions
-        - Questions about specific university events or activities
-        - Questions about event frequency or timing
-        - Questions about current university calendar
-        - Mentions of specific festivals, conferences, or university activities
-        - Questions with "what events", "what activities", "what's happening this month"
-        - User mentions wanting to attend events or missing events
-        - User expresses interest in getting more event information
-        - ANY mention of festivals, conferences, events, or university activities
-        - User asks about missing events or if events already happened
-        - User wants to check if they missed something at the university
-        - User mentions specific event names or activities, even with misspellings
-        - Questions about HOW TO do university procedures ("como puedo", "how can I", "what do I need to")
-        - Questions about updating, changing, or modifying university information
-        - Questions about administrative processes at the university
-        - Questions about university requirements or steps for any process
-        - Questions about university documents, records, or official procedures
-        - Questions about enrollment processes, academic procedures, or administrative steps
-        - Any question that starts with "How do I..." or "Como puedo..." related to university
-        - Virtual tour requests: "tour virtual", "virtual tour", "muéstrame el campus", "show me the campus"
-        - Campus exploration: "conocer la universidad", "explore the university", "ver instalaciones"
-        - Facility questions: "dónde está la biblioteca", "where is the library", "ubicación de", "location of"
-        - Campus facility names: "biblioteca", "laboratorios", "polideportivo", "cafetería", "library", "labs"
-        - Tour-related phrases: "recorrido", "tour", "visitar", "visit", "conocer", "explore"
-        - Location requests: "llevarme a", "take me to", "mostrar", "show", "ver", "see"
-        - "¿Cuántos pisos tiene el edificio J?" → FUNCTION_NEEDED
-        - "¿Qué altura tiene la torre administrativa?" → FUNCTION_NEEDED  
-        - "¿De qué color son las bancas del parque central?" → FUNCTION_NEEDED
-        - "¿Cuántas ventanas tiene la biblioteca?" → FUNCTION_NEEDED
-        - "¿Cómo solicito una beca?" → FUNCTION_NEEDED
-        - "¿Cuáles son los requisitos de grado?" → FUNCTION_NEEDED
+                IMMEDIATE FUNCTION ROUTING TRIGGERS:
+                - Any email address mentioned in the user message
+                - Any request for sending an email
+                - Any calendar-related question about UniNorte
+                - Any request for information about university policies, procedures, or services
+                - Any request for information about scholarships, academic certificates, graduation requirements, or events
+                - Any request for information about university regulations, activities, or academic exceptions
+                - Questions about specific university events or activities
+                - Questions about event frequency or timing
+                - Questions about current university calendar
+                - Mentions of specific festivals, conferences, or university activities
+                - Questions with "what events", "what activities", "what's happening this month"
+                - User mentions wanting to attend events or missing events
+                - User expresses interest in getting more event information
+                - ANY mention of festivals, conferences, events, or university activities
+                - User asks about missing events or if events already happened
+                - User wants to check if they missed something at the university
+                - User mentions specific event names or activities, even with misspellings
+                - Questions about HOW TO do university procedures ("como puedo", "how can I", "what do I need to")
+                - Questions about updating, changing, or modifying university information
+                - Questions about administrative processes at the university
+                - Questions about university requirements or steps for any process
+                - Questions about university documents, records, or official procedures
+                - Questions about enrollment processes, academic procedures, or administrative steps
+                - Any question that starts with "How do I..." or "Como puedo..." related to university
+                - Virtual tour requests: "tour virtual", "virtual tour", "muéstrame el campus", "show me the campus"
+                - Campus exploration: "conocer la universidad", "explore the university", "ver instalaciones"
+                - Facility questions: "dónde está la biblioteca", "where is the library", "ubicación de", "location of"
+                - Campus facility names: "biblioteca", "laboratorios", "polideportivo", "cafetería", "library", "labs"
+                - Tour-related phrases: "recorrido", "tour", "visitar", "visit", "conocer", "explore"
+                - Location requests: "llevarme a", "take me to", "mostrar", "show", "ver", "see"
+                - **EXPLICIT SEARCH COMMANDS**: "búscalo", "búscalo en el calendario", "search", "look it up", "check", "verify", "find"
+                - **MONTH MENTIONS**: Any mention of specific months means calendar search is needed
+                - **DATE VERIFICATION**: When user asks to verify dates or find specific event timing
 
-        CRITICAL EVENT DETECTION PATTERNS (ALWAYS → FUNCTION_NEEDED):
-        - "wanted to go to [any event]" or "queria ir al [any event]"
-        - "think I missed it" or "creo que ya me lo perdi"
-        - "would like more information" about events or "me gustaria tener mas informacion" 
-        - "did [any event] already happen?" or "ya paso [any event]?"
-        - "when did [any activity] take place?" or "cuando fue [any activity]?"
-        - "is there still time to attend [any event]?"
-        - User asks for verification of event timing or existence
+                CRITICAL EVENT DETECTION PATTERNS (ALWAYS → FUNCTION_NEEDED):
+                - "wanted to go to [any event]" or "queria ir al [any event]"
+                - "think I missed it" or "creo que ya me lo perdi"
+                - "would like more information" about events or "me gustaria tener mas informacion" 
+                - "did [any event] already happen?" or "ya paso [any event]?"
+                - "when did [any activity] take place?" or "cuando fue [any activity]?"
+                - "is there still time to attend [any event]?"
+                - User asks for verification of event timing or existence
+                - **"búscalo en el calendario deben ser entre septiembre u octubre"** → FUNCTION_NEEDED
+                - **"search in the calendar it should be between september and october"** → FUNCTION_NEEDED
+                - **Any request to search calendar for specific months or date ranges** → FUNCTION_NEEDED
 
-        CRITICAL RAG DATABASE QUERIES (ALWAYS → FUNCTION_NEEDED):
-        - Questions about academic flexibility and dual programs
-        - Questions about UniNorte scholarships or financial aid
-        - Questions about certificates and official university documents
-        - Questions about undergraduate-graduate program connections
-        - Questions about academic regulation exceptions
-        - Questions about graduation procedures and requirements
-        - Questions about academic or financial enrollment processes
-        - Questions about tutoring programs or monitoring
-        - Questions about professional internships or legal practices
-        - Questions about updating university records or documents
-        - ANY procedural question about university administrative processes
+                CRITICAL RAG DATABASE QUERIES (ALWAYS → FUNCTION_NEEDED):
+                - Questions about academic flexibility and dual programs
+                - Questions about UniNorte scholarships or financial aid
+                - Questions about certificates and official university documents
+                - Questions about undergraduate-graduate program connections
+                - Questions about academic regulation exceptions
+                - Questions about graduation procedures and requirements
+                - Questions about academic or financial enrollment processes
+                - Questions about tutoring programs or monitoring
+                - Questions about professional internships or legal practices
+                - Questions about updating university records or documents
+                - ANY procedural question about university administrative processes
 
-        CRITICAL VIRTUAL TOUR PATTERNS (ALWAYS → FUNCTION_NEEDED):
-        - "muéstrame la universidad" / "show me the university"
-        - "tour virtual del campus" / "virtual campus tour"
-        - "quiero conocer las instalaciones" / "I want to see the facilities"
-        - "dónde está la biblioteca" / "where is the library"
-        - "llévame a ver..." / "take me to see..."
-        - "enséñame el campus" / "show me the campus"
-        - "ver las instalaciones" / "see the facilities"
-        - "recorrido por la universidad" / "university tour"
-        - "ubicación de [cualquier instalación]" / "location of [any facility]"
+                CRITICAL VIRTUAL TOUR PATTERNS (ALWAYS → FUNCTION_NEEDED):
+                - "muéstrame la universidad" / "show me the university"
+                - "tour virtual del campus" / "virtual campus tour"
+                - "quiero conocer las instalaciones" / "I want to see the facilities"
+                - "dónde está la biblioteca" / "where is the library"
+                - "llévame a ver..." / "take me to see..."
+                - "enséñame el campus" / "show me the campus"
+                - "ver las instalaciones" / "see the facilities"
+                - "recorrido por la universidad" / "university tour"
+                - "ubicación de [cualquier instalación]" / "location of [any facility]"
 
-        EXAMPLES OF "FUNCTION_NEEDED":
-        - "Send an email to [user_email] with the information I requested"
-        - "Please email me the details at [user_email]"
-        - "What scholarships does UniNorte offer?"
-        - "How do I get an academic certificate?"
-        - "What are the graduation requirements?"
-        - "What events are happening this month at the university?"
-        - "Tell me about UniNorte's academic regulations"
-        - "What activities are coming up at the university?"
-        - "How does the flexible academic program work?"
-        - "What's the process for academic exceptions?"
-        - "When did the Art conference happen?"
-        - "How many times does the university hold the [EVENT NAME]?"
-        - "I wanted to go to [any festival/event] but think I missed it"
-        - "I would like more information" (when context is about events)
-        - "Did [any event] already happen?"
-        - "Is there still time to attend [any event]?"
-        - "What university events are available?"
-        - "Check the university calendar"
-        - "Look up university activities"
-        - "What are the requirements for academic flexibility?"
-        - "How can I get an official certificate?"
-        - "What is the process for enrollment?"
-        - "How do I change my academic information?"
-        - "What documents do I need for graduation?"
-        - "How can I apply for an academic exception?"
-        - "What are the steps to update my records?"
-        - "How do I enroll in a dual program?"
-        - "Show me the university campus"
-        - "I want a virtual tour"
-        - "Where is the library located?"
-        - "Take me to see the laboratories"
-        - "Show me university facilities"
-        - "I want to explore the campus"
-        - "Virtual campus tour"
-        - "Muéstrame las instalaciones de la universidad"
-        - "¿Dónde está el polideportivo?"
-        - "Quiero conocer el campus"
-        - "Tour virtual de UniNorte"
+                EXAMPLES OF "FUNCTION_NEEDED":
+                - "Send an email to [user_email] with the information I requested"
+                - "Please email me the details at [user_email]"
+                - "What scholarships does UniNorte offer?"
+                - "How do I get an academic certificate?"
+                - "What are the graduation requirements?"
+                - "What events are happening this month at the university?"
+                - "Tell me about UniNorte's academic regulations"
+                - "What activities are coming up at the university?"
+                - "How does the flexible academic program work?"
+                - "What's the process for academic exceptions?"
+                - "When did the Art conference happen?"
+                - "How many times does the university hold the [EVENT NAME]?"
+                - "I wanted to go to [any festival/event] but think I missed it"
+                - "I would like more information" (when context is about events)
+                - "Did [any event] already happen?"
+                - "Is there still time to attend [any event]?"
+                - "What university events are available?"
+                - "Check the university calendar"
+                - "Look up university activities"
+                - "What are the requirements for academic flexibility?"
+                - "How can I get an official certificate?"
+                - "What is the process for enrollment?"
+                - "How do I change my academic information?"
+                - "What documents do I need for graduation?"
+                - "How can I apply for an academic exception?"
+                - "What are the steps to update my records?"
+                - "How do I enroll in a dual program?"
+                - "Show me the university campus"
+                - "I want a virtual tour"
+                - "Where is the library located?"
+                - "Take me to see the laboratories"
+                - "Show me university facilities"
+                - "I want to explore the campus"
+                - "Virtual campus tour"
+                - "Muéstrame las instalaciones de la universidad"
+                - "¿Dónde está el polideportivo?"
+                - "Quiero conocer el campus"
+                - "Tour virtual de UniNorte"
+                - **"búscalo en el calendario deben ser entre septiembre u octubre"** → FUNCTION_NEEDED
+                - **"search for graduation in september or october"** → FUNCTION_NEEDED
+                - **"when is graduation ceremony"** → FUNCTION_NEEDED
+                - **"verify the dates in the calendar"** → FUNCTION_NEEDED
+                - **"check between july and august"** → FUNCTION_NEEDED
 
-        EXAMPLES OF "NO_FUNCTION_NEEDED" (VERY LIMITED):
-        - "Hello, how are you?"
-        - "What's your name?"
-        - "Can you tell me about yourself?"
-        - "What can you do?"
-        - "That's interesting"
-        - "Thank you for the information"
-        - "Can you explain how you work?"
+                EXAMPLES OF "NO_FUNCTION_NEEDED" (VERY LIMITED):
+                - "Hello, how are you?"
+                - "What's your name?"
+                - "Can you tell me about yourself?"
+                - "What can you do?"
+                - "That's interesting"
+                - "Thank you for the information"
+                - "Can you explain how you work?"
 
-        CONTEXT-AWARE ROUTING BASED ON CONVERSATION HISTORY:
-        PREVIOUS MESSAGES: {last_messages_text}
+                CONTEXT-AWARE ROUTING BASED ON CONVERSATION HISTORY:
+                PREVIOUS MESSAGES: {last_messages_text}
 
-        Analyze the conversation context:
-        - If the assistant previously offered to check/search/verify university information and user responds with acceptance ("yes", "si", "por favor", "please", "ok", "go ahead", "do it"), route to FUNCTION_NEEDED
-        - If user is asking follow-up questions about a proposed action, evaluate based on standard rules above
-        - If user is declining a proposed action ("no", "not now", "maybe later"), route to NO_FUNCTION_NEEDED
-        - If user wants more information about events after assistant mentioned checking, route to FUNCTION_NEEDED
-        - If user asks about campus facilities or wants to explore the university, route to FUNCTION_NEEDED
-        - If user mentions specific campus locations or asks for campus tour, route to FUNCTION_NEEDED
+                Analyze the conversation context:
+                - If the assistant previously offered to check/search/verify university information and user responds with acceptance ("yes", "si", "por favor", "please", "ok", "go ahead", "do it"), route to FUNCTION_NEEDED
+                - If user is asking follow-up questions about a proposed action, evaluate based on standard rules above
+                - If user is declining a proposed action ("no", "not now", "maybe later"), route to NO_FUNCTION_NEEDED
+                - If user wants more information about events after assistant mentioned checking, route to FUNCTION_NEEDED
+                - If user asks about campus facilities or wants to explore the university, route to FUNCTION_NEEDED
+                - If user mentions specific campus locations or asks for campus tour, route to FUNCTION_NEEDED
+                - **If assistant previously mentioned specific events/dates and user asks to verify or search for more details → FUNCTION_NEEDED**
+                - **If user asks to search calendar after discussing events → FUNCTION_NEEDED**
+                - **If user mentions specific months in follow-up questions → FUNCTION_NEEDED**
 
-        ACCEPTANCE PATTERNS TO DETECT:
-        - "si", "yes", "ok", "please", "por favor", "go ahead", "do it", "check it", "verify", "look it up"
-        - "me gustaria tener mas informacion" (when discussing events)
-        - Single word affirmations when assistant offered to search/check something
-        - Brief confirmatory responses when assistant proposed an action
-        - "show me", "take me", "I want to see" (for virtual tour requests)
+                ACCEPTANCE PATTERNS TO DETECT:
+                - "si", "yes", "ok", "please", "por favor", "go ahead", "do it", "check it", "verify", "look it up"
+                - "me gustaria tener mas informacion" (when discussing events)
+                - Single word affirmations when assistant offered to search/check something
+                - Brief confirmatory responses when assistant proposed an action
+                - "show me", "take me", "I want to see" (for virtual tour requests)
+                - **"búscalo", "search for it", "find it", "check it", "verify it"**
+                - **Any explicit request to search or verify calendar information**
 
-        WHEN IN DOUBT: Choose "FUNCTION_NEEDED". It's better to route to functions unnecessarily than to miss information the user is requesting.
+                **CRITICAL RULE**: If user mentions ANY specific months ("septiembre", "octubre", "september", "october", etc.) or asks to search calendar → ALWAYS route to FUNCTION_NEEDED
 
-        YOU MUST RESPOND WITH EXACTLY ONE OF THESE PHRASES (no additional text):
-        - "FUNCTION_NEEDED"
-        - "NO_FUNCTION_NEEDED"
+                WHEN IN DOUBT: Choose "FUNCTION_NEEDED". It's better to route to functions unnecessarily than to miss information the user is requesting.
 
-        CURRENT UTC TIME: {current_utc_time}
-        Universidad del Norte is located in Barranquilla, Colombia, which is in the GMT-5 timezone. The current time in Barranquilla is {current_bogota_time.strftime('%Y-%m-%d %H:%M:%S')}.
-        User message: {{user_input}}
-        """
+                YOU MUST RESPOND WITH EXACTLY ONE OF THESE PHRASES (no additional text):
+                - "FUNCTION_NEEDED"
+                - "NO_FUNCTION_NEEDED"
+
+                CURRENT UTC TIME: {current_utc_time}
+                Universidad del Norte is located in Barranquilla, Colombia, which is in the GMT-5 timezone. The current time in Barranquilla is {current_bogota_time.strftime('%Y-%m-%d %H:%M:%S')}.
+                User message: {{user_input}}
+                """
 
         function_prompt = f"""You are operating the UNIVERSITY GUIDE ROLE of NAIA, an advanced multi-role AI avatar created by Universidad del Norte. NAIA is a multirole assistant, at this time you are in the UNIVERSITY GUIDE ROLE, which is your primary academic assistance function. As a university guide, you specialize in helping the community by providing information about the university, its programs, services and anything related to the university.
 
@@ -421,15 +444,18 @@ class UniGuideService:
         - EXAMPLES: "What scholarships does UniNorte offer?", "How do I get a certificate?", "What are the graduation requirements?"
         - CRITICAL: Only use for Universidad del Norte information, not other institutions
 
-        3. get_current_month_uni_calendar:
-        - PURPOSE: Retrieve current month's official university events and activities
-        - USE WHEN: User asks about current events, upcoming activities, or what's happening at the university
-        - RETURNS: Formatted list of official university events with names and dates
-        - KEY INDICATOR: Questions about current university calendar, events, or activities
-        - EXAMPLES: "What events are happening this month?", "What activities are coming up?", "Show me the university calendar"
-        - NOTE: Event times are not accurate and should not be referenced - only event names and dates are reliable
-        - CRITICAL: This shows ONLY Universidad del Norte official events
-
+        3. get_university_calendar_multi_month:
+        - PURPOSE: Retrieve university events for multiple months to find specific dates and events
+        - USE WHEN: User asks about specific dates, when events happen, or timing of university activities
+        - PARAMETERS: 
+        * months_to_search: List of months to search (e.g., [7, 8, 9] for second semester events)
+        * user_id: User ID
+        * status: Status description
+        - RETURNS: Events from multiple months so you can analyze and find specific dates
+        - KEY INDICATORS: "cuando es", "when is", "fecha de", "date of", "cuándo inicia", "when does it start"
+        - EXAMPLES: "When is the return to classes?", "When do final exams start?", "What date does the semester begin?"
+        - STRATEGY: Search relevant months (current + future 2-3 months) and analyze results to answer specific date questions
+        - CRITICAL: Use this for ANY date/timing questions about university events
         4. get_virtual_campus_tour:
         - PURPOSE: Generate interactive virtual tour of university facilities with high-quality images and detailed information
         - USE WHEN: User wants to explore campus, see university facilities, or learn about specific locations
@@ -646,7 +672,7 @@ class UniGuideService:
         SPECIALIZED UNIVERSITY GUIDE FUNCTIONS (that you can explain but NOT execute in chat-only mode):
         - send_email: Send emails to users with requested information about university services
         - query_university_rag: Access UniNorte's official information database about university policies, procedures, academic regulations, scholarships, certificates, and services
-        - get_current_month_uni_calendar: Retrieve current month's official university events and activities
+        - get_university_calendar_multi_month: Retrieve current month's official university events and activities
         - get_virtual_campus_tour: Generate interactive virtual tours of university facilities with high-quality images, detailed information, contact details, and facility services
 
        UNIVERSITY GUIDE SCOPE:

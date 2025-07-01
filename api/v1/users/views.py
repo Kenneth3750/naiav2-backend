@@ -5,7 +5,6 @@ from rest_framework import status
 from .serializers import UserSerializer
 from django.utils.decorators import method_decorator
 from django.views.decorators.cache import cache_page
-from rest_framework.permissions import IsAuthenticated
 from drf_spectacular.utils import extend_schema, OpenApiParameter, OpenApiExample
 from drf_spectacular.types import OpenApiTypes
 from drf_spectacular.openapi import OpenApiResponse

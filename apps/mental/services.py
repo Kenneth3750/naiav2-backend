@@ -1,19 +1,12 @@
 from apps.mental.functions import mental_health_screening_tool, cae_info_for_user, personalized_wellness_plan
 import datetime
-import json
+from apps.chat.functions import get_last_four_messages
 from datetime import timedelta, timezone
 
 class MentalHealthService:
     def retrieve_tools(self, user_id, messages):
 
-        last_messages = messages[-1]["content"] if messages else []
-        if last_messages:
-            last_messages = json.loads(last_messages) if isinstance(last_messages, str) else last_messages
-            last_messages_texts = [msg["text"] for msg in last_messages if "text" in msg]
-            last_messages_text = " ".join(last_messages_texts)
-        else:
-            last_messages_text = "No previous messages found."
-
+        last_messages_text = get_last_four_messages(messages)
         print(f"Last messages text: {last_messages_text}")
 
         tools = [

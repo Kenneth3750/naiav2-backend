@@ -3,7 +3,6 @@ import os
 from typing import Dict
 from apps.status.services import set_status
 from serpapi import GoogleSearch
-import json
 from html import escape
 
 load_dotenv()

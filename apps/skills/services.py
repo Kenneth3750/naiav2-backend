@@ -1,5 +1,4 @@
 import datetime
-import json
 from datetime import timedelta, timezone
 from apps.chat.functions import get_last_four_messages
 from apps.skills.repositories import SkillsTrainerRepository

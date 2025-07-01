@@ -1,3 +1,3 @@
-from django.contrib import admin # no qa
+from django.contrib import admin # noqa
 
 # Register your models here.

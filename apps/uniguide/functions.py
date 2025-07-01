@@ -11,11 +11,15 @@ from langchain_openai import OpenAIEmbeddings
 import tempfile
 from selenium import webdriver
 from selenium.webdriver.chrome.options import Options
+from selenium.webdriver.support.ui import WebDriverWait
+from selenium.webdriver.support import expected_conditions as EC
+from selenium.webdriver.common.by import By
 from bs4 import BeautifulSoup
 import time
 from services.files import B2FileService
 from datetime import datetime, timezone, timedelta
 import json
+
 load_dotenv()
 
 DEFAULT_FROM_EMAIL=os.getenv("DEFAULT_FROM_EMAIL")
@@ -233,26 +237,22 @@ def query_university_rag(user_id: int, question: str, k: int = 3, status:str = "
     except Exception as e:
         print(f"Error retrieving documents: {str(e)}")
         return {"error": str(e)}
+    
 
-
-def get_current_month_uni_calendar(user_id: int, status: str) -> str:
-    """ Scrape the current month's events from the Universidad del Norte calendar.
-    Returns:
-        str: Formatted string of events with their names and dates.
+def get_university_calendar_multi_month(user_id: int, months_to_search: list, status: str) -> dict:
+    """
+    Get university calendar events for multiple months to find specific events
+    
+    Args:
+        user_id: User ID
+        months_to_search: List of months to search (e.g., [7, 8, 9] for July-September)
+        status: Status to show to user
     """
     driver = None
-    try: 
+    try:
         set_status(user_id, status, 2)
-        url = 'https://outlook.office365.com/calendar/published/82dc57e4303e46d490fec6d6df9e41c6@uninorte.edu.co/ca0af55ded00488eb89bac6079a9675a7730392440685253853/calendar.html'
-
-
-        gmt_minus_5 = timezone(timedelta(hours=-5))
-
-        current_bogota_time = datetime.now(gmt_minus_5)
-        current_day = current_bogota_time.strftime('%Y-%m-%d')
-        print(f"Current day in GMT-5: {current_day}")
-
-        # Configuración más robusta de Chrome
+        
+        # Same driver configuration as current function
         options = Options()
         options.add_argument('--headless')
         options.add_argument('--no-sandbox')
@@ -261,71 +261,140 @@ def get_current_month_uni_calendar(user_id: int, status: str) -> str:
         options.add_argument('--disable-web-security')
         options.add_argument('--disable-extensions')
         options.add_argument('--disable-plugins')
-        options.add_argument('--disable-images')  
+        options.add_argument('--disable-images')
         options.add_argument('--window-size=1920,1080')
-        options.add_argument('--remote-debugging-port=0') 
+        options.add_argument('--remote-debugging-port=0')
         options.add_argument('--disable-logging')
         options.add_argument('--disable-gpu-logging')
         
-
         driver = webdriver.Chrome(options=options)
-        
-
         driver.set_page_load_timeout(30)
         driver.implicitly_wait(10)
-
-        driver.get(url)
-        time.sleep(2)  
-
-        page_source = driver.page_source
-        soup = BeautifulSoup(page_source, 'html.parser')
-
-        divs = soup.find_all('div', role='button')
-        print(f"Found {len(divs)} events.")
-
-        formatted_events = ""
-        for div in divs:
-            if div.get('aria-label') is not None:
-                title = div.get("aria-label").strip().replace('\n', ' ').split(",")
-                formatted_events += f"EVENT NAME: {title[0].strip()}, DATE: {title[2].strip()}\n"
-            elif div.get('title') is not None:
-                title = div.get("title").strip().replace('\n', ' ').split(",")
-                formatted_events += f"EVENT NAME: {title[0].strip()}, DATE: {title[1].strip()}\n"
-            else:
-                print("No title or aria-label found for a div.")
-
-        print("number of formatted events:", len(formatted_events.split('\n')) - 1)
-        formatted_events += f"\n\nCurrent day in GMT-5: {current_day}, Use this date to compare with the events above.\n"
         
-        return {"current_month_calendar": formatted_events}
-    
+        url = 'https://outlook.office365.com/calendar/published/82dc57e4303e46d490fec6d6df9e41c6@uninorte.edu.co/ca0af55ded00488eb89bac6079a9675a7730392440685253853/calendar.html'
+        driver.get(url)
+        
+        # Wait for calendar to load
+        WebDriverWait(driver, 10).until(
+            EC.presence_of_element_located((By.CLASS_NAME, "ms-CommandBar"))
+        )
+        
+        all_events = {}
+        gmt_minus_5 = timezone(timedelta(hours=-5))
+        current_date = datetime.now(gmt_minus_5)
+        current_month = current_date.month
+        current_year = current_date.year
+        
+        month_names = ["", "January", "February", "March", "April", "May", "June", 
+                      "July", "August", "September", "October", "November", "December"]
+        
+        for target_month in months_to_search:
+            months_diff = target_month - current_month
+            
+            # Navigate to target month
+            for _ in range(abs(months_diff)):
+                if months_diff > 0:
+                    next_button = WebDriverWait(driver, 5).until(
+                        EC.element_to_be_clickable((By.CSS_SELECTOR, "button[title*='siguiente']"))
+                    )
+                    next_button.click()
+                elif months_diff < 0:
+                    prev_button = WebDriverWait(driver, 5).until(
+                        EC.element_to_be_clickable((By.CSS_SELECTOR, "button[title*='anterior']"))
+                    )
+                    prev_button.click()
+                time.sleep(1)
+            
+            # Extract events from this month using multiple selectors
+            time.sleep(2)
+            page_source = driver.page_source
+            soup = BeautifulSoup(page_source, 'html.parser')
+            
+            month_events = []
+            
+            # Method 1: Original method with role='button'
+            divs_role_button = soup.find_all('div', role='button')
+            for div in divs_role_button:
+                if div.get('aria-label') is not None:
+                    title = div.get("aria-label").strip().replace('\n', ' ').split(",")
+                    event_text = f"EVENT: {title[0].strip()}, DATE: {title[2].strip()}"
+                    if event_text not in month_events:
+                        month_events.append(event_text)
+                elif div.get('title') is not None:
+                    title = div.get("title").strip().replace('\n', ' ').split(",")
+                    event_text = f"EVENT: {title[0].strip()}, DATE: {title[1].strip()}"
+                    if event_text not in month_events:
+                        month_events.append(event_text)
+            
+            # Method 2: Look for divs with data-calitemid (specific event containers)
+            event_containers = soup.find_all('div', {'data-calitemid': True})
+            for container in event_containers:
+                # Look for the inner div with title or aria-label
+                inner_div = container.find('div', {'title': True})
+                if inner_div and inner_div.get('title'):
+                    title = inner_div.get('title').strip().replace('\n', ' ').split(",")
+                    event_text = f"EVENT: {title[0].strip()}, DATE: {title[1].strip()}"
+                    if event_text not in month_events:
+                        month_events.append(event_text)
+                
+                # Also check for aria-label in inner divs
+                inner_div_aria = container.find('div', {'aria-label': True})
+                if inner_div_aria and inner_div_aria.get('aria-label'):
+                    title = inner_div_aria.get('aria-label').strip().replace('\n', ' ').split(",")
+                    event_text = f"EVENT: {title[0].strip()}, DATE: {title[2].strip()}"
+                    if event_text not in month_events:
+                        month_events.append(event_text)
+            
+            # Method 3: Look for spans with class 'xWbuA' (event text content)
+            event_spans = soup.find_all('span', class_='xWbuA')
+            for span in event_spans:
+                # Get the parent container to find date info
+                parent_container = span.find_parent('div', {'data-calitemid': True})
+                if parent_container:
+                    # Look for title or aria-label in the parent
+                    title_div = parent_container.find('div', {'title': True})
+                    aria_div = parent_container.find('div', {'aria-label': True})
+                    
+                    if title_div:
+                        title = title_div.get('title').strip().replace('\n', ' ').split(",")
+                        event_text = f"EVENT: {span.get_text().strip()}, DATE: {title[1].strip()}"
+                        if event_text not in month_events:
+                            month_events.append(event_text)
+                    elif aria_div:
+                        title = aria_div.get('aria-label').strip().replace('\n', ' ').split(",")
+                        event_text = f"EVENT: {span.get_text().strip()}, DATE: {title[2].strip()}"
+                        if event_text not in month_events:
+                            month_events.append(event_text)
+            
+            all_events[month_names[target_month]] = month_events
+            
+            # Reset to current month for next iteration
+            current_month = target_month
+        
+        # Format all events
+        formatted_events = f"UNIVERSITY EVENTS FOR {current_year}:\n\n"
+        for month_name, events in all_events.items():
+            formatted_events += f"{month_name.upper()}:\n"
+            for event in events:
+                formatted_events += f"  {event}\n"
+            formatted_events += "\n"
+
+        print(f"Calendar events retrieved: {formatted_events}")
+        
+        return {"calendar_events": formatted_events}
+        
     except Exception as e:
-        print(f"Error scraping calendar: {str(e)}")
+        print(f"Error getting calendar: {str(e)}")
         return {"error": str(e)}
     
     finally:
-        if driver is not None:
+        if driver:
             try:
                 driver.quit()
-                print("WebDriver cerrado correctamente")
-            except Exception as cleanup_error:
-                print(f"Error cerrando WebDriver: {cleanup_error}")
-                try:
-                    import psutil
-                    import os
-                    
-                    # Buscar y matar procesos de Chrome/ChromeDriver
-                    for proc in psutil.process_iter(['pid', 'name']):
-                        try:
-                            if 'chrome' in proc.info['name'].lower() or 'chromedriver' in proc.info['name'].lower():
-                                proc.kill()
-                                print(f"Proceso {proc.info['name']} (PID: {proc.info['pid']}) terminado forzadamente")
-                        except (psutil.NoSuchProcess, psutil.AccessDenied):
-                            continue
-                except ImportError:
-                    print("psutil no disponible para cleanup manual")
-                except Exception as manual_cleanup_error:
-                    print(f"Error en cleanup manual: {manual_cleanup_error}")
+            except Exception as e:
+                print(f"Error closing driver: {str(e)}")
+                pass
+
 
 def get_virtual_campus_tour(area_filter: str = None, place_name: str = None, language: str = "Spanish", user_id: int = 0, status: str = "") -> dict:
     """
