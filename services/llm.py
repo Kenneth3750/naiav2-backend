@@ -54,14 +54,22 @@ class LLMService:
                 ],
             }
         else:
+            print(f"IMAGEN DEBUG: Iniciando procesamiento de imagen con URL: {image_url}")
             try:
+                print(f"IMAGEN DEBUG: Realizando petición GET a la imagen...")
                 response = requests.get(image_url, timeout=5, stream=True)
+                print(f"IMAGEN DEBUG: Status code de la respuesta: {response.status_code}")
+                print(f"IMAGEN DEBUG: Headers de la respuesta: {dict(response.headers)}")
+                
                 if response.status_code >= 200 and response.status_code < 300:
+                    print(f"IMAGEN DEBUG: Imagen descargada exitosamente, codificando en base64...")
                     image_data = base64.b64encode(response.content).decode('utf-8')
+                    print(f"IMAGEN DEBUG: Base64 generado, longitud: {len(image_data)} caracteres")
                     
                     content_type = response.headers.get('Content-Type', 'image/jpeg')
+                    print(f"IMAGEN DEBUG: Content-Type detectado: {content_type}")
                     
-                    return {
+                    final_message = {
                         "role": "user", 
                         "content": [
                             {
@@ -77,10 +85,31 @@ class LLMService:
                             },
                         ],
                     }
+                    print(f"IMAGEN DEBUG: Mensaje final construido exitosamente con imagen")
+                    return final_message
                 else:
-                    print(f"No se pudo acceder a la imagen. Código de estado: {response.status_code}")
+                    print(f"IMAGEN DEBUG: No se pudo acceder a la imagen. Código de estado: {response.status_code}")
+                    print(f"IMAGEN DEBUG: Contenido de la respuesta: {response.text[:200]}...")
+            except requests.exceptions.Timeout as e:
+                print(f"IMAGEN DEBUG: Timeout al acceder a la imagen: {str(e)}")
+            except requests.exceptions.RequestException as e:
+                print(f"IMAGEN DEBUG: Error de requests al acceder a la imagen: {str(e)}")
             except Exception as e:
-                print(f"Error al procesar la imagen: {str(e)}")
+                print(f"IMAGEN DEBUG: Error inesperado al procesar la imagen: {str(e)}")
+                print(f"IMAGEN DEBUG: Tipo de error: {type(e)}")
+                import traceback
+                print(f"IMAGEN DEBUG: Traceback completo: {traceback.format_exc()}")
+                
+            print("IMAGEN DEBUG: Fallback - continuando sin imagen debido a error")
+            return {
+                "role": "user",
+                "content": [
+                    {
+                        "type": "text",
+                        "text": user_input
+                    }
+                ],
+            }
                 
             print("Fallback: continuando sin imagen debido a error")
             return {

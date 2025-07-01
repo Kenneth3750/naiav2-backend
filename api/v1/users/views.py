@@ -172,6 +172,7 @@ class UserDetail(APIView):
         
         if email is not None:
             user = self.user_service.get_user_by_email(email)
+            print(f"Fetching user by email: {email}")
         else:
             user = self.user_service.get_user_by_id(user_id)
             
