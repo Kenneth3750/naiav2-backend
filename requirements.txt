@@ -186,7 +186,6 @@ python-dateutil
 python-dotenv==1.1.0
 python-slugify==8.0.4
 pytz==2025.1
-pywin32==308
 PyYAML==6.0.2
 pyzmq
 redis==5.2.1
