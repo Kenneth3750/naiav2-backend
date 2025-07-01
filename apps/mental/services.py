@@ -180,13 +180,11 @@ class MentalHealthService:
         - Expressions of interest in personalized mental health plans or assessments
         - Requests for coping strategies for emotional difficulties
         - Questions about scheduling mental health appointments
-
-        CONTEXT-AWARE ROUTING BASED ON CONVERSATION HISTORY:
-        PREVIOUS MESSAGES: {last_messages_text}
+        - CRITICAL: If the conversation history shows that a mental health screening guide was already generated (look for phrases like "GUÍA DE CONVERSACIÓN", "CONVERSATION GUIDE", or function call results), route to NO_FUNCTION_NEEDED to allow NAIA to continue using the existing guide
+        - If user is responding to questions from an active screening conversation, route to NO_FUNCTION_NEEDED
 
         Analyze the conversation context:
         - If the assistant previously offered mental health support and user responds with acceptance ("yes", "si", "por favor", "please", "ok", "help me"), route to FUNCTION_NEEDED
-        - If user is sharing more details about their emotional state after initial discussion, route to FUNCTION_NEEDED
         - If user is declining support ("no", "not now", "maybe later"), route to NO_FUNCTION_NEEDED
         - If user wants to proceed with assessment after discussion, route to FUNCTION_NEEDED
         - If user asks follow-up questions about CAE or mental health services, route to FUNCTION_NEEDED
