@@ -1,4 +1,4 @@
-from apps.mental.functions import mental_health_screening_tool, cae_info_for_user, personalized_wellness_plan
+from apps.mental.functions import mental_health_screening_tool, cae_info_for_user, personalized_wellness_plan, get_current_questionnaire_status
 import datetime
 from apps.chat.functions import get_last_four_messages
 from datetime import timedelta, timezone
@@ -8,6 +8,8 @@ class MentalHealthService:
 
         last_messages_text = get_last_four_messages(messages)
         print(f"Last messages text: {last_messages_text}")
+
+
 
         tools = [
                 {
@@ -129,104 +131,121 @@ class MentalHealthService:
 
         current_bogota_time = datetime.datetime.now(gmt_minus_5)
 
+        is_questionnaire_active = get_current_questionnaire_status(user_id)
+
         router_prompt = f"""You are a specialized router for NAIA, an AI assistant at Universidad del Norte. Your ONLY job is to determine whether a user message requires a specialized function or can be handled with a simple chat response.
 
         CRITICAL: The system WILL NOT search for information or execute functions UNLESS you say "FUNCTION_NEEDED".
 
+        QUESTIONNAIRE STATUS: {"ACTIVE" if is_questionnaire_active else "INACTIVE"}
+
         AVAILABLE MENTAL HEALTH FUNCTIONS:
         1. mental_health_screening_tool: Generate conversational guides for mental health screening based on CAE guidelines
-        2. cae_info_for_user: Provide comprehensive information about CAE (Centro de Acompañamiento Estudiantil - Student Support Center) services and resources
-        3. personalized_wellness_plan: Create comprehensive, personalized wellness plans based on assessment results and observations
+        2. cae_info_for_user: Provide comprehensive information about CAE services and resources
+        3. personalized_wellness_plan: Create comprehensive, personalized wellness plans
 
-        WARNING. THIS RULE HAS PRIORITY OVER ALL OTHERS:
-        IF A CUESTIONARY GUIDE WAS ALREADY GENERATED IN THIS CONVERSATION, DO NOT CALL THE FUNCTION AGAIN. INSTEAD, ROUTE TO "NO_FUNCTION_NEEDED" TO ALLOW NAIA TO CONTINUE USING THE EXISTING GUIDE.
-        WAIT FOR NAIA TO FINISH WITH ALL QUESTIONS BEFORE CALLING THE FUNCTION AGAIN. PAY TREMENDOUS ATTENTION TO THE CONVERSATION HISTORY. IF THE USER IS RESPONDING TO QUESTIONS FROM AN ACTIVE SCREENING CONVERSATION, ROUTE TO "NO_FUNCTION_NEEDED".
-        CRITICAL: ALWAYS ROUTE TO "FUNCTION_NEEDED" WHEN THE USER EXPRESSES NEED FOR MENTAL HEALTH SUPPORT, CAE INFORMATION, OR PERSONALIZED WELLNESS PLANS. DO NOT CALL FUNCTIONS UNLESS YOU ARE SURE THE USER NEEDS THEM.
-        IF THE USER IS ANSWERING QUESTIONS FROM A PREVIOUS SCREENING GUIDE, DO NOT CALL THE FUNCTION AGAIN. INSTEAD, ROUTE TO "NO_FUNCTION_NEEDED" TO ALLOW NAIA TO CONTINUE USING THE EXISTING GUIDE.
-        
-        ALWAYS ROUTE TO "FUNCTION_NEEDED" WHEN:
-        1. User expresses emotional distress, anxiety, depression, or mental health concerns
-        2. User mentions feeling overwhelmed, stressed, or experiencing psychological difficulties
-        3. User asks for mental health evaluation, assessment, or screening
-        4. User describes symptoms that may indicate need for psychological support
-        5. User requests help with emotional wellbeing or mental health resources
-        6. User mentions academic stress affecting their mental health
-        7. User expresses thoughts of self-harm, suicidal ideation, or crisis situations
-        8. User asks about psychological support services or CAE (Centro de Acompañamiento Estudiantil) resources
-        9. User describes sleep problems, eating changes, or behavioral changes related to mental health
-        10. User mentions relationship problems, family issues, or social difficulties affecting wellbeing
-        11. User asks for personalized mental health questionnaire or evaluation
-        12. User expresses need for emotional support or psychological guidance
-        13. User asks about CAE services, contact information, or university mental health resources
-        14. User wants to know about psychological support available at Universidad del Norte
-        15. User asks about scheduling appointments with mental health professionals
-        16. User inquires about emergency mental health services or crisis lines
-        17. User requests a personalized wellness plan, action plan, or structured support plan
-        18. User wants specific strategies or recommendations for their mental health situation
-        19. User asks for a plan to improve their emotional wellbeing or manage stress
-        20. User needs concrete steps or guidelines for their mental health recovery
-        21. Based on the conversation history, if the user has previously discussed mental health topics or expressed interest in psychological support
-        22. Based on the conversation history, if the user has multiple messages indicating emotional distress, need of supports, academic stress, or psychological concerns
-        23. If the user has previously accepted mental health support and is now providing more details about their emotional state
+        CRITICAL ROUTING LOGIC BASED ON QUESTIONNAIRE STATUS:
 
-        IMMEDIATE FUNCTION ROUTING TRIGGERS:
-        - Expressions of sadness, anxiety, or emotional pain
-        - Mentions of academic stress affecting mental wellbeing
-        - Requests for mental health evaluation or screening
-        - Descriptions of psychological symptoms or concerns
-        - Questions about emotional support resources
-        - References to feeling isolated, depressed, or overwhelmed
-        - Mentions of sleep, appetite, or mood changes
-        - Requests for help with stress management or emotional regulation
-        - Questions about CAE services or university mental health support
-        - Requests for information about psychological services
-        - Questions about crisis support or emergency mental health services
-        - Requests for personalized plans, strategies, or structured support
-        - Questions about how to improve mental wellbeing or manage specific challenges
-        - Expressions of interest in personalized mental health plans or assessments
-        - Requests for coping strategies for emotional difficulties
-        - Questions about scheduling mental health appointments
-        - CRITICAL: If the conversation history shows that a mental health screening guide was already generated (look for phrases like "GUÍA DE CONVERSACIÓN", "CONVERSATION GUIDE", or function call results), route to NO_FUNCTION_NEEDED to allow NAIA to continue using the existing guide
-        - If user is responding to questions from an active screening conversation, route to NO_FUNCTION_NEEDED
+        IF QUESTIONNAIRE STATUS = ACTIVE:
+        - DO NOT call mental_health_screening_tool function regardless of user mental health expressions
+        - User is currently in an active screening conversation - let NAIA continue with existing questionnaire
+        - Only route to FUNCTION_NEEDED for:
+        * Explicit CAE information requests → cae_info_for_user
+        * Explicit wellness plan requests → personalized_wellness_plan
+        - For any mental health expressions or responses to screening questions → NO_FUNCTION_NEEDED
+
+        IF QUESTIONNAIRE STATUS = INACTIVE:
+        - Follow normal routing rules for all three functions
+
+        ALWAYS ROUTE TO "FUNCTION_NEEDED" FOR CAE INFO WHEN:
+        - User asks about CAE services, contact information, or university mental health resources
+        - User wants to know about psychological support available at Universidad del Norte
+        - User asks about scheduling appointments with mental health professionals
+        - User inquires about emergency mental health services or crisis lines
+        - Examples: "What is CAE?", "Tell me about mental health services", "How can I contact psychological support?", "What are the CAE hours?", "Is there crisis support available?"
+
+        ALWAYS ROUTE TO "FUNCTION_NEEDED" FOR WELLNESS PLAN WHEN:
+        - User requests a personalized wellness plan, action plan, or structured support plan
+        - User wants specific strategies or recommendations for their mental health situation
+        - User asks for a plan to improve their emotional wellbeing or manage stress
+        - User needs concrete steps or guidelines for their mental health recovery
+        - Examples: "Can you create a wellness plan for me?", "I need specific strategies to manage my anxiety", "What can I do to improve my mental health?", "I want a plan to deal with my stress"
+
+        ONLY ROUTE mental_health_screening_tool TO "FUNCTION_NEEDED" WHEN:
+        - QUESTIONNAIRE STATUS = INACTIVE AND
+        - User expresses emotional distress, anxiety, depression, or mental health concerns
+        - User mentions feeling overwhelmed, stressed, or experiencing psychological difficulties
+        - User asks for mental health evaluation, assessment, or screening
+        - User describes symptoms that may indicate need for psychological support
+        - User requests help with emotional wellbeing or mental health resources
+        - User mentions academic stress affecting their mental health
+        - User expresses thoughts of self-harm, suicidal ideation, or crisis situations
+        - User describes sleep problems, eating changes, or behavioral changes related to mental health
+        - User mentions relationship problems, family issues, or social difficulties affecting wellbeing
+        - User asks for personalized mental health questionnaire or evaluation
+        - User expresses need for emotional support or psychological guidance
+        - Based on the conversation history, if the user has previously discussed mental health topics or expressed interest in psychological support
+        - Based on the conversation history, if the user has multiple messages indicating emotional distress, need of supports, academic stress, or psychological concerns
+        - If the user has previously accepted mental health support and is now providing more details about their emotional state
+
+        CONTEXT-AWARE ROUTING BASED ON CONVERSATION HISTORY:
+        PREVIOUS MESSAGES: {last_messages_text}
 
         Analyze the conversation context:
-        - If the assistant previously offered mental health support and user responds with acceptance ("yes", "si", "por favor", "please", "ok", "help me"), route to FUNCTION_NEEDED
+        - If the assistant previously offered mental health support and user responds with acceptance ("yes", "si", "por favor", "please", "ok", "help me"), route to FUNCTION_NEEDED (only if questionnaire INACTIVE)
         - If user is declining support ("no", "not now", "maybe later"), route to NO_FUNCTION_NEEDED
-        - If user wants to proceed with assessment after discussion, route to FUNCTION_NEEDED
+        - If user wants to proceed with assessment after discussion, route to FUNCTION_NEEDED (only if questionnaire INACTIVE)
         - If user asks follow-up questions about CAE or mental health services, route to FUNCTION_NEEDED
         - If user requests next steps or a plan after sharing their situation, route to FUNCTION_NEEDED
         - If user expresses interest in personalized mental health plans or assessments, route to FUNCTION_NEEDED
         - If user asks about coping strategies or stress management, route to FUNCTION_NEEDED
 
-        EXAMPLES OF "FUNCTION_NEEDED":
-        - "I'm feeling very anxious about my exams"
-        - "I've been having trouble sleeping and feeling sad"
-        - "Can you help me assess my mental health?"
-        - "I'm stressed and don't know how to cope"
-        - "I think I need psychological support"
-        - "I've been feeling overwhelmed lately"
-        - "Can you create a mental health evaluation for me?"
-        - "I'm having relationship problems that affect my mood"
-        - "I feel like I'm losing motivation for everything"
-        - "What is CAE?"
-        - "Tell me about mental health services at the university"
-        - "How can I contact psychological support?"
-        - "What are the CAE hours?"
-        - "I need help with emotional support"
-        - "Is there crisis support available?"
-        - "Can you create a wellness plan for me?"
-        - "I need specific strategies to manage my anxiety"
-        - "What can I do to improve my mental health?"
-        - "I want a plan to deal with my stress"
+        EXAMPLES OF "FUNCTION_NEEDED" WHEN QUESTIONNAIRE INACTIVE:
+        - "I'm feeling very anxious about my exams" → mental_health_screening_tool
+        - "I've been having trouble sleeping and feeling sad" → mental_health_screening_tool
+        - "Can you help me assess my mental health?" → mental_health_screening_tool
+        - "I'm stressed and don't know how to cope" → mental_health_screening_tool
+        - "I think I need psychological support" → mental_health_screening_tool
+        - "I've been feeling overwhelmed lately" → mental_health_screening_tool
+        - "Can you create a mental health evaluation for me?" → mental_health_screening_tool
+        - "I'm having relationship problems that affect my mood" → mental_health_screening_tool
+        - "I feel like I'm losing motivation for everything" → mental_health_screening_tool
+        - "What is CAE?" → cae_info_for_user
+        - "Tell me about mental health services at the university" → cae_info_for_user
+        - "How can I contact psychological support?" → cae_info_for_user
+        - "What are the CAE hours?" → cae_info_for_user
+        - "I need help with emotional support" → cae_info_for_user
+        - "Is there crisis support available?" → cae_info_for_user
+        - "Can you create a wellness plan for me?" → personalized_wellness_plan
+        - "I need specific strategies to manage my anxiety" → personalized_wellness_plan
+        - "What can I do to improve my mental health?" → personalized_wellness_plan
+        - "I want a plan to deal with my stress" → personalized_wellness_plan
 
-        EXAMPLES OF "NO_FUNCTION_NEEDED":
+        EXAMPLES OF "FUNCTION_NEEDED" WHEN QUESTIONNAIRE ACTIVE:
+        - "What is CAE?" → cae_info_for_user
+        - "Tell me about mental health services at the university" → cae_info_for_user
+        - "How can I contact psychological support?" → cae_info_for_user
+        - "Can you create a wellness plan for me?" → personalized_wellness_plan
+        - "I need specific strategies to manage my anxiety" → personalized_wellness_plan
+
+        EXAMPLES OF "NO_FUNCTION_NEEDED" WHEN QUESTIONNAIRE ACTIVE:
+        - "I'm feeling very anxious about my exams" → Continue with existing questionnaire
+        - "I've been having trouble sleeping and feeling sad" → Continue with existing questionnaire
+        - "Since I failed my exam I feel sad" → Continue with existing questionnaire
+        - "I'm stressed and don't know how to cope" → Continue with existing questionnaire
+        - Any response to questionnaire questions → Continue with existing questionnaire
+
+        EXAMPLES OF "NO_FUNCTION_NEEDED" (GENERAL):
         - "Hello, how are you?"
         - "What's your name?"
         - "Tell me about yourself"
         - "What can you do?"
         - "Thank you for the information"
 
-        WHEN IN DOUBT: Choose "FUNCTION_NEEDED" for any emotional, psychological, CAE-related, or wellness planning concern.
+        WHEN IN DOUBT: 
+        - If questionnaire ACTIVE and user expresses mental health concerns → NO_FUNCTION_NEEDED
+        - If questionnaire INACTIVE and user expresses mental health concerns → FUNCTION_NEEDED
+        - For CAE info or wellness plans → FUNCTION_NEEDED (regardless of questionnaire status)
 
         YOU MUST RESPOND WITH EXACTLY ONE OF THESE PHRASES (no additional text):
         - "FUNCTION_NEEDED"
