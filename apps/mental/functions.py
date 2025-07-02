@@ -4,6 +4,8 @@ from typing import Dict
 from apps.status.services import set_status
 from openai import OpenAI
 from serpapi import GoogleSearch
+from apps.chat.repositories import redis_pool
+import redis
 load_dotenv()
 
 openai_api_key = os.getenv("open_ai")
@@ -527,6 +529,7 @@ def mental_health_screening_tool(user_id: int, status: str, user_specific_situat
     """
     try:
         set_status(user_id, status, 6)
+        update_questionnaire_status(user_id)
         
         # Agent specialized in creating conversational mental health guides
         agent_prompt = """You are a specialized mental health conversation guide generator for Universidad del Norte's NAIA assistant. Your task is to create a structured conversational guide that allows NAIA to conduct a professional, empathetic mental health screening based on CAE (Centro de Acompañamiento Estudiantil) guidelines.
@@ -711,3 +714,26 @@ def personalized_wellness_plan(user_id: int, status: str, user_specific_situatio
     except Exception as e:
         print(f"Error generating personalized wellness plan: {str(e)}")
         return {"error": str(e)}
+
+
+def update_questionnaire_status(user_id: int) -> str:
+    try:
+        r = redis.Redis(connection_pool=redis_pool)
+        key = f"questionnaire_status_{user_id}"
+        status = r.set(key, 1, ex=1800)
+        return status
+    except Exception as e:
+        print(f"Error updating questionnaire status: {str(e)}")
+        return f"Error: {str(e)}"
+
+def get_current_questionnaire_status(user_id: int) -> bool:
+    try:
+        r = redis.Redis(connection_pool=redis_pool)
+        key = f"questionnaire_status_{user_id}"
+        status = r.get(key)
+        if status is None:
+            return False
+        return True
+    except Exception as e:
+        print(f"Error retrieving questionnaire status: {str(e)}")
+        return f"Error: {str(e)}"
