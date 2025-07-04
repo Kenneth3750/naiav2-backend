@@ -4,7 +4,9 @@ from typing import Dict
 from apps.status.services import set_status
 from serpapi import GoogleSearch
 from html import escape
-
+from apps.users.services import UserService
+import requests 
+import json
 load_dotenv()
 
 def get_current_news(location: str, user_id: int, status: str, query: str, language: str) -> Dict:
@@ -767,3 +769,653 @@ def get_weather(location: str, user_id: int, status: str) -> Dict:
     except Exception as e:
         print(f"Error obteniendo clima: {str(e)}")
         return {"error": str(e)}
+    
+
+def send_email_on_behalf_of_user(to_email_or_name: str, subject: str, body: str, user_id: int, status: str = "Enviando correo...") -> dict:
+    """
+    Sends an email on behalf of the user using Microsoft Graph API with their OAuth token.
+    Can accept either an email address or a contact name. If a name is provided and multiple
+    contacts are found, returns the options for the user to choose.
+    
+    Args:
+        to_email_or_name (str): The recipient's email address or name
+        subject (str): The email subject
+        body (str): The email body content
+        user_id (int): The ID of the user sending the email
+        status (str): Status message for tracking. Defaults to "Enviando correo..."
+        
+    Returns:
+        dict: A dictionary containing either success message, contact options, or error details
+    """
+    # Validate required fields
+    if not to_email_or_name or not subject or not body:
+        return {"error": "Recipient, subject, and body are required"}
+        
+    if not user_id:
+        return {"error": "User ID is required"}
+    
+    try:
+        # Set status for tracking
+        if user_id:
+            set_status(user_id, status, 3)  # role_id 3 for Personal Assistant
+        
+        recipient_input = to_email_or_name.strip()
+        
+        # Check if input is already an email address
+        email_pattern = r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$'
+        if re.match(email_pattern, recipient_input):
+            # Direct email - send immediately
+            return _send_email_direct(recipient_input, subject, body, user_id)
+        
+        # Input is a name - search for contacts
+        print(f"Searching contacts for name: {recipient_input}")
+        search_result = search_contacts_by_name(recipient_input, user_id, "Buscando contacto...")
+        
+        if "error" in search_result:
+            return search_result
+        
+        contacts = search_result.get("contacts", [])
+        
+        if len(contacts) == 0:
+            return {
+                "error": f"No se encontraron contactos que coincidan con '{recipient_input}'. Por favor verifica el nombre o usa el email directo."
+            }
+        
+        elif len(contacts) == 1:
+            # Single contact found - send directly
+            contact = contacts[0]
+            print(f"Single contact found: {contact['displayName']} - {contact['email']}")
+            return _send_email_direct(contact['email'], subject, body, user_id, contact['displayName'])
+        
+        else:
+            # Multiple contacts found - return options for user selection
+            contact_display = display_contact_options(contacts, recipient_input)
+            return {
+                "multiple_contacts": True,
+                "contacts": contacts,
+                "display": contact_display,
+                "message": f"Encontré {len(contacts)} contactos que coinciden con '{recipient_input}'. Por favor selecciona uno para continuar con el envío del correo.",
+                "subject": subject, 
+                "body": body
+            }
+    
+    except Exception as e:
+        error_msg = f"Unexpected error while processing email request: {str(e)}"
+        print(f"Unexpected error: {error_msg}")
+        return {"error": error_msg}
+
+
+def _send_email_direct(email: str, subject: str, body: str, user_id: int, recipient_name: str = None) -> dict:
+    """
+    Internal function to send email directly to a specific email address.
+    
+    Args:
+        email (str): The recipient's email address
+        subject (str): The email subject
+        body (str): The email body content
+        user_id (int): The ID of the user sending the email
+        recipient_name (str): Optional recipient name for logging
+        
+    Returns:
+        dict: A dictionary containing either success message or error details
+    """
+    try:
+        # Get user's Microsoft Graph token
+        user_service = UserService()
+        access_token = user_service.get_user_token(user_id)
+        
+        if not access_token:
+            return {"error": "No access token found for user. Please authenticate with Microsoft first."}
+        
+        # Microsoft Graph API endpoint for sending emails
+        graph_url = "https://graph.microsoft.com/v1.0/me/sendMail"
+        
+        # Prepare the email payload according to Microsoft Graph API format
+        email_payload = {
+            "message": {
+                "subject": subject,
+                "body": {
+                    "contentType": "Text",
+                    "content": body
+                },
+                "toRecipients": [
+                    {
+                        "emailAddress": {
+                            "address": email,
+                            "name": recipient_name if recipient_name else ""
+                        }
+                    }
+                ]
+            },
+            "saveToSentItems": True
+        }
+        
+        # Set up headers with authentication
+        headers = {
+            "Authorization": f"Bearer {access_token}",
+            "Content-Type": "application/json"
+        }
+        
+        recipient_display = f"{recipient_name} ({email})" if recipient_name else email
+        print(f"Sending email to {recipient_display} on behalf of user {user_id}")
+        print(f"Subject: {subject}")
+        
+        # Make the API call to Microsoft Graph
+        response = requests.post(
+            graph_url,
+            headers=headers,
+            data=json.dumps(email_payload),
+            timeout=30
+        )
+        
+        # Check response status
+        if response.status_code == 202:
+            # 202 Accepted - Email queued successfully
+            print(f"Email sent successfully to {recipient_display}")
+            success_message = f"Correo enviado exitosamente a {recipient_display}"
+            return {"success": success_message}
+        
+        elif response.status_code == 401:
+            # Unauthorized - Token might be expired or invalid
+            error_msg = "Authentication failed. Please refresh your Microsoft login."
+            print(f"Authentication error: {response.text}")
+            return {"error": error_msg}
+        
+        elif response.status_code == 403:
+            # Forbidden - Insufficient permissions
+            error_msg = "Insufficient permissions to send email. Please check your Microsoft account permissions."
+            print(f"Permission error: {response.text}")
+            return {"error": error_msg}
+        
+        else:
+            # Other errors
+            error_detail = ""
+            try:
+                error_response = response.json()
+                error_detail = error_response.get('error', {}).get('message', response.text)
+            except:
+                error_detail = response.text
+            
+            error_msg = f"Failed to send email: {error_detail}"
+            print(f"Microsoft Graph API error: {response.status_code} - {error_detail}")
+            return {"error": error_msg}
+    
+    except requests.exceptions.Timeout:
+        error_msg = "Request timeout while sending email"
+        print(f"Timeout error: {error_msg}")
+        return {"error": error_msg}
+    
+    except requests.exceptions.RequestException as e:
+        error_msg = "Network error while sending email"
+        print(f"Request error: {str(e)}")
+        return {"error": error_msg}
+    
+    except Exception as e:
+        error_msg = f"Unexpected error while sending email: {str(e)}"
+        print(f"Unexpected error: {error_msg}")
+        return {"error": error_msg}
+
+def search_contacts_by_name(name: str, user_id: int, status: str = "Buscando contactos...") -> dict:
+    """
+    Searches for contacts by name using Microsoft Graph API.
+    Searches in people, contacts, and organizational directory.
+    
+    Args:
+        name (str): The name to search for
+        user_id (int): The ID of the user making the search
+        status (str): Status message for tracking. Defaults to "Buscando contactos..."
+        
+    Returns:
+        dict: A dictionary containing either contact results or error details
+        Format: {
+            "contacts": [
+                {
+                    "id": "unique_id",
+                    "displayName": "Full Name",
+                    "email": "email@domain.com",
+                    "jobTitle": "Position",
+                    "department": "Department",
+                    "source": "people|contacts|directory"
+                }
+            ],
+            "count": number_of_results
+        }
+    """
+    # Validate required fields
+    if not name or not name.strip():
+        return {"error": "Name is required for contact search"}
+        
+    if not user_id:
+        return {"error": "User ID is required"}
+    
+    try:
+        # Set status for tracking
+        if user_id:
+            set_status(user_id, status, 3)  # role_id 3 for Personal Assistant
+        
+        # Get user's Microsoft Graph token
+        user_service = UserService()
+        access_token = user_service.get_user_token(user_id)
+        
+        if not access_token:
+            return {"error": "No access token found for user. Please authenticate with Microsoft first."}
+        
+        # Set up headers with authentication
+        headers = {
+            "Authorization": f"Bearer {access_token}",
+            "Content-Type": "application/json"
+        }
+        
+        all_contacts = []
+        search_name = name.strip().lower()
+        
+        print(f"Searching contacts for: {name}")
+        
+        # 1. Search in People (frequent contacts and suggestions)
+        try:
+            people_url = f"https://graph.microsoft.com/v1.0/me/people?$search=\"{name}\""
+            people_response = requests.get(people_url, headers=headers, timeout=15)
+            
+            if people_response.status_code == 200:
+                people_data = people_response.json()
+                for person in people_data.get('value', []):
+                    # Extract primary email
+                    email_addresses = person.get('emailAddresses', [])
+                    if email_addresses and email_addresses[0].get('address'):
+                        contact = {
+                            "id": f"people_{person.get('id', '')}",
+                            "displayName": person.get('displayName', ''),
+                            "email": email_addresses[0].get('address', ''),
+                            "jobTitle": person.get('jobTitle', ''),
+                            "department": person.get('department', ''),
+                            "source": "people"
+                        }
+                        all_contacts.append(contact)
+            else:
+                print(f"People search failed: {people_response.status_code}")
+        
+        except requests.exceptions.RequestException as e:
+            print(f"Error searching people: {str(e)}")
+        
+        # 2. Search in Contacts
+        try:
+            contacts_url = f"https://graph.microsoft.com/v1.0/me/contacts?$filter=contains(displayName,'{name}') or contains(givenName,'{name}') or contains(surname,'{name}')"
+            contacts_response = requests.get(contacts_url, headers=headers, timeout=15)
+            
+            if contacts_response.status_code == 200:
+                contacts_data = contacts_response.json()
+                for contact_item in contacts_data.get('value', []):
+                    # Extract primary email
+                    email_addresses = contact_item.get('emailAddresses', [])
+                    if email_addresses and email_addresses[0].get('address'):
+                        contact = {
+                            "id": f"contact_{contact_item.get('id', '')}",
+                            "displayName": contact_item.get('displayName', ''),
+                            "email": email_addresses[0].get('address', ''),
+                            "jobTitle": contact_item.get('jobTitle', ''),
+                            "department": contact_item.get('department', ''),
+                            "source": "contacts"
+                        }
+                        all_contacts.append(contact)
+            else:
+                print(f"Contacts search failed: {contacts_response.status_code}")
+        
+        except requests.exceptions.RequestException as e:
+            print(f"Error searching contacts: {str(e)}")
+        
+        # 3. Search in Organization Directory (if permissions allow)
+        try:
+            # Search for users in the organization
+            users_url = f"https://graph.microsoft.com/v1.0/users?$filter=startswith(displayName,'{name}') or startswith(givenName,'{name}') or startswith(surname,'{name}')&$select=id,displayName,mail,jobTitle,department,userPrincipalName"
+            users_response = requests.get(users_url, headers=headers, timeout=15)
+            
+            if users_response.status_code == 200:
+                users_data = users_response.json()
+                for user in users_data.get('value', []):
+                    # Use mail or userPrincipalName
+                    email = user.get('mail') or user.get('userPrincipalName', '')
+                    if email:
+                        contact = {
+                            "id": f"user_{user.get('id', '')}",
+                            "displayName": user.get('displayName', ''),
+                            "email": email,
+                            "jobTitle": user.get('jobTitle', ''),
+                            "department": user.get('department', ''),
+                            "source": "directory"
+                        }
+                        all_contacts.append(contact)
+            else:
+                print(f"Directory search failed: {users_response.status_code}")
+                # Don't treat directory search failure as fatal error
+        
+        except requests.exceptions.RequestException as e:
+            print(f"Error searching directory: {str(e)}")
+            # Don't treat directory search failure as fatal error
+        
+        # Remove duplicates based on email address
+        unique_contacts = {}
+        for contact in all_contacts:
+            email = contact['email'].lower()
+            if email not in unique_contacts:
+                unique_contacts[email] = contact
+            else:
+                # Keep the one from the most reliable source
+                existing_source = unique_contacts[email]['source']
+                current_source = contact['source']
+                # Priority: people > contacts > directory
+                if (current_source == 'people' and existing_source != 'people') or \
+                   (current_source == 'contacts' and existing_source == 'directory'):
+                    unique_contacts[email] = contact
+        
+        # Convert back to list and sort by name
+        final_contacts = list(unique_contacts.values())
+        final_contacts.sort(key=lambda x: x['displayName'].lower())
+        
+        # Filter results to ensure they actually match the search term
+        # This helps with false positives from broad API searches
+        filtered_contacts = []
+        for contact in final_contacts:
+            display_name_lower = contact['displayName'].lower()
+            if search_name in display_name_lower or \
+               any(search_name in part.lower() for part in contact['displayName'].split()):
+                filtered_contacts.append(contact)
+        
+        print(f"Found {len(filtered_contacts)} unique contacts matching '{name}'")
+        
+        return {
+            "contacts": filtered_contacts,
+            "count": len(filtered_contacts)
+        }
+    
+    except requests.exceptions.Timeout:
+        error_msg = "Request timeout while searching contacts"
+        print(f"Timeout error: {error_msg}")
+        return {"error": error_msg}
+    
+    except requests.exceptions.RequestException as e:
+        error_msg = "Network error while searching contacts"
+        print(f"Request error: {str(e)}")
+        return {"error": error_msg}
+    
+    except Exception as e:
+        error_msg = f"Unexpected error while searching contacts: {str(e)}"
+        print(f"Unexpected error: {error_msg}")
+        return {"error": error_msg}
+
+
+def display_contact_options(contacts: list, search_name: str) -> str:
+    """
+    Creates a formatted display of contact options for the user to choose from.
+    
+    Args:
+        contacts (list): List of contact dictionaries
+        search_name (str): The original search name
+        
+    Returns:
+        str: Formatted HTML string with contact options
+    """
+    if not contacts:
+        return f"<p>No se encontraron contactos que coincidan con '{search_name}'</p>"
+    
+    if len(contacts) == 1:
+        contact = contacts[0]
+        return f"""
+        <div style="font-family: Arial, sans-serif; max-width: 500px; margin: 20px auto; padding: 20px; border: 1px solid #ddd; border-radius: 8px;">
+            <h3 style="color: #9333ea; margin-bottom: 15px;">✓ Contacto encontrado</h3>
+            <div style="background-color: #f8f9fa; padding: 15px; border-radius: 6px; border-left: 4px solid #9333ea;">
+                <strong>{contact['displayName']}</strong><br>
+                <span style="color: #666;">{contact['email']}</span><br>
+                {f"<small style='color: #888;'>{contact['jobTitle']}</small>" if contact['jobTitle'] else ""}
+                {f"<small style='color: #888;'> - {contact['department']}</small>" if contact['department'] else ""}
+            </div>
+            <p style="margin-top: 15px; color: #666;">Puedes proceder con el envío del correo.</p>
+        </div>
+        """
+    
+    # Multiple contacts found
+    html = f"""
+    <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 20px auto; padding: 20px; border: 1px solid #ddd; border-radius: 8px;">
+        <h3 style="color: #9333ea; margin-bottom: 15px;">📧 Contactos encontrados para "{search_name}"</h3>
+        <p style="margin-bottom: 20px; color: #666;">Encontré {len(contacts)} contactos. Selecciona uno:</p>
+        <div style="space-y: 10px;">
+    """
+    
+    for i, contact in enumerate(contacts, 1):
+        # Extract username from email for easier reference
+        username = contact['email'].split('@')[0] if '@' in contact['email'] else ''
+        
+        html += f"""
+        <div style="background-color: #f8f9fa; padding: 15px; margin-bottom: 10px; border-radius: 6px; border-left: 4px solid #9333ea;">
+            <div style="display: flex; align-items: center; justify-content: space-between;">
+                <div>
+                    <strong style="font-size: 16px; color: #333;">#{i}. {contact['displayName']}</strong><br>
+                    <span style="color: #666; font-size: 14px;">{contact['email']}</span><br>
+                    {f"<small style='color: #888;'>{contact['jobTitle']}</small>" if contact['jobTitle'] else ""}
+                    {f"<small style='color: #888;'> - {contact['department']}</small>" if contact['department'] else ""}
+                </div>
+                <div style="text-align: right; font-size: 12px; color: #9333ea;">
+                    <div>Opción {i}</div>
+                    {f"<div>@{username}</div>" if username else ""}
+                </div>
+            </div>
+        </div>
+        """
+    
+    html += """
+        </div>
+        <div style="background-color: #e8f4fd; padding: 15px; margin-top: 20px; border-radius: 6px;">
+            <h4 style="margin: 0 0 10px 0; color: #1d4ed8;">💡 Formas de seleccionar:</h4>
+            <ul style="margin: 0; padding-left: 20px; color: #333;">
+                <li><strong>Por número:</strong> "el segundo", "opción 3", "número 1"</li>
+                <li><strong>Por nombre completo:</strong> usar el nombre exacto mostrado</li>
+                <li><strong>Por username:</strong> usar solo la parte antes del @</li>
+            </ul>
+        </div>
+    </div>
+    """
+    
+    return html
+
+
+def read_calendar_events(start_date: str, end_date: str, user_id: int, status: str = "Consultando calendario...") -> dict:
+    """
+    Reads calendar events for the specified date range using Microsoft Graph API.
+    
+    Args:
+        start_date (str): Start date in YYYY-MM-DD format
+        end_date (str): End date in YYYY-MM-DD format
+        user_id (int): The ID of the user requesting calendar information
+        status (str): Status message for tracking. Defaults to "Consultando calendario..."
+        
+    Returns:
+        dict: A dictionary containing calendar events and HTML display
+    """
+    # Validate required fields
+    if not start_date or not end_date:
+        return {"error": "Start date and end date are required"}
+        
+    if not user_id:
+        return {"error": "User ID is required"}
+    
+    try:
+        # Set status for tracking
+        if user_id:
+            set_status(user_id, status, 3)  # role_id 3 for Personal Assistant
+        
+        # Get user's Microsoft Graph token
+        user_service = UserService()
+        access_token = user_service.get_user_token(user_id)
+        
+        if not access_token:
+            return {"error": "No access token found for user. Please authenticate with Microsoft first."}
+        
+        # Format dates for Microsoft Graph API
+        start_iso = f"{start_date}T00:00:00"
+        end_iso = f"{end_date}T23:59:59"
+        
+        # Set up headers with authentication
+        headers = {
+            "Authorization": f"Bearer {access_token}",
+            "Content-Type": "application/json"
+        }
+        
+        # Microsoft Graph API endpoint for calendar events
+        calendar_url = f"https://graph.microsoft.com/v1.0/me/events?$filter=start/dateTime ge '{start_iso}' and end/dateTime le '{end_iso}'&$orderby=start/dateTime&$select=id,subject,start,end,location,body,attendees,importance,isAllDay,webLink"
+        
+        print(f"Fetching calendar events from {start_date} to {end_date}")
+        
+        response = requests.get(calendar_url, headers=headers, timeout=30)
+        
+        if response.status_code == 200:
+            events_data = response.json()
+            events = events_data.get('value', [])
+            
+            # Generate HTML display
+            html_display = _generate_calendar_html(events, start_date, end_date)
+            
+            print(f"Found {len(events)} events")
+            
+            return {
+                "events": events,
+                "display": html_display,
+                "total_events": len(events),
+                "start_date": start_date,
+                "end_date": end_date,
+                "success": "Calendar events retrieved successfully"
+            }
+        
+        elif response.status_code == 401:
+            error_msg = "Authentication failed. Please refresh your Microsoft login."
+            print(f"Authentication error: {response.text}")
+            return {"error": error_msg}
+        
+        elif response.status_code == 403:
+            error_msg = "Insufficient permissions to read calendar. Please check your Microsoft account permissions."
+            print(f"Permission error: {response.text}")
+            return {"error": error_msg}
+        
+        else:
+            error_detail = ""
+            try:
+                error_response = response.json()
+                error_detail = error_response.get('error', {}).get('message', response.text)
+            except:
+                error_detail = response.text
+            
+            error_msg = f"Failed to read calendar: {error_detail}"
+            print(f"Microsoft Graph API error: {response.status_code} - {error_detail}")
+            return {"error": error_msg}
+    
+    except requests.exceptions.Timeout:
+        error_msg = "Request timeout while reading calendar"
+        print(f"Timeout error: {error_msg}")
+        return {"error": error_msg}
+    
+    except requests.exceptions.RequestException as e:
+        error_msg = "Network error while reading calendar"
+        print(f"Request error: {str(e)}")
+        return {"error": error_msg}
+    
+    except Exception as e:
+        error_msg = f"Unexpected error while reading calendar: {str(e)}"
+        print(f"Unexpected error: {error_msg}")
+        return {"error": error_msg}
+
+
+def _generate_calendar_html(events: list, start_date: str, end_date: str) -> str:
+    """Generate HTML display for calendar events."""
+    
+    if not events:
+        return f"""
+        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 20px auto; padding: 20px; border: 1px solid #ddd; border-radius: 8px;">
+            <h3 style="color: #9333ea; margin-bottom: 15px;">📅 Calendario</h3>
+            <p style="color: #666; text-align: center; padding: 40px 20px;">No tienes eventos programados del {start_date} al {end_date}</p>
+        </div>
+        """
+    
+    html = f"""
+    <div style="font-family: Arial, sans-serif; max-width: 700px; margin: 20px auto; padding: 20px; border: 1px solid #ddd; border-radius: 8px;">
+        <h3 style="color: #9333ea; margin-bottom: 20px;">📅 Tu Calendario</h3>
+        <p style="margin-bottom: 20px; color: #666;">Del {start_date} al {end_date} - {len(events)} eventos</p>
+        <div style="space-y: 15px;">
+    """
+    
+    current_date = None
+    
+    for event in events:
+        # Parse event date and time  
+        start_str = event.get('start', {}).get('dateTime', '')
+        end_str = event.get('end', {}).get('dateTime', '')
+        
+        print(f"DEBUG - Raw datetime string: {start_str}")
+        
+        try:
+            from datetime import datetime, timedelta
+            # Microsoft Graph returns UTC time, convert to Colombia (UTC-5)
+            if 'T' in start_str:
+                # Clean the string and parse
+                clean_start = start_str.split('.')[0]  # Remove microseconds
+                clean_end = end_str.split('.')[0]      # Remove microseconds
+                
+                start_utc = datetime.fromisoformat(clean_start)
+                end_utc = datetime.fromisoformat(clean_end)
+                
+                # Convert UTC to Colombia time (subtract 5 hours)
+                start_local = start_utc - timedelta(hours=5)
+                end_local = end_utc - timedelta(hours=5)
+            else:
+                start_local = datetime.now()
+                end_local = datetime.now()
+        except Exception as e:
+            print(f"Error parsing datetime: {e}, start_str: {start_str}")
+            from datetime import datetime
+            start_local = datetime.now()
+            end_local = datetime.now()
+        
+        event_date = start_local.strftime('%Y-%m-%d')
+        
+        # Add date separator if new day
+        if current_date != event_date:
+            current_date = event_date
+            formatted_date = start_local.strftime('%A, %d de %B')
+            html += f"""
+            <div style="background-color: #f1f5f9; padding: 10px; margin: 20px 0 10px 0; border-radius: 6px; font-weight: bold; color: #475569;">
+                {formatted_date}
+            </div>
+            """
+        
+        # Format time
+        if event.get('isAllDay', False):
+            time_str = "Todo el día"
+        else:
+            start_time_str = start_local.strftime('%H:%M')
+            end_time_str = end_local.strftime('%H:%M')
+            time_str = f"{start_time_str} - {end_time_str}"
+        
+        # Get location
+        location = event.get('location', {}).get('displayName', '') if isinstance(event.get('location'), dict) else event.get('location', '')
+        
+        # Get attendees count
+        attendees_count = len(event.get('attendees', []))
+        
+        html += f"""
+        <div style="background-color: #f8f9fa; padding: 15px; margin-bottom: 15px; border-radius: 6px; border-left: 4px solid #9333ea;">
+            <div style="margin-bottom: 8px;">
+                <strong style="font-size: 16px; color: #333;">{event.get('subject', 'Sin título')}</strong>
+            </div>
+            <div style="color: #666; font-size: 14px; margin-bottom: 5px;">
+                🕒 {time_str}
+            </div>
+            {f'<div style="color: #666; font-size: 14px; margin-bottom: 5px;">📍 {location}</div>' if location else ''}
+            {f'<div style="color: #666; font-size: 14px;">👥 {attendees_count} asistentes</div>' if attendees_count > 0 else ''}
+        </div>
+        """
+    
+    html += """
+        </div>
+    </div>
+    """
+    
+    return html
+
+

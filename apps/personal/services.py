@@ -1,7 +1,7 @@
 import datetime
 from apps.chat.functions import get_last_four_messages
 from datetime import timedelta, timezone
-from apps.personal.functions import get_current_news, get_weather
+from apps.personal.functions import get_current_news, get_weather, send_email_on_behalf_of_user, search_contacts_by_name, read_calendar_events
 class PersonalAssistantService:
     def retrieve_tools(self, user_id, messages):
 
@@ -47,40 +47,186 @@ class PersonalAssistantService:
             }
             },
             {
-            "type": "function",
-            "function": {
-                "name": "get_weather",
-                "description": "Gets weather information for a specific location with modern and attractive visualization.",
-                "parameters": {
-                "type": "object",
-                "properties": {
-                    "location": {
-                    "type": "string",
-                    "description": "The location to get weather for (city, country, or region). Example: 'Barranquilla', 'Bogotá', 'Medellín'"
+                "type": "function",
+                "function": {
+                    "name": "get_weather",
+                    "description": "Gets weather information for a specific location with modern and attractive visualization.",
+                    "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "location": {
+                        "type": "string",
+                        "description": "The location to get weather for (city, country, or region). Example: 'Barranquilla', 'Bogotá', 'Medellín'"
+                        },
+                        "user_id": {
+                        "type": "integer",
+                        "description": "The ID of the user requesting the weather. Look in the first developer prompt to get the user_id"
+                        },
+                        "status": {
+                        "type": "string",
+                        "description": "A concise description of the task being performed, using conjugated verbs (e.g., 'Checking weather for...', 'Getting weather for...') in the same language as the user's question"
+                        }
                     },
-                    "user_id": {
-                    "type": "integer",
-                    "description": "The ID of the user requesting the weather. Look in the first developer prompt to get the user_id"
-                    },
-                    "status": {
-                    "type": "string",
-                    "description": "A concise description of the task being performed, using conjugated verbs (e.g., 'Checking weather for...', 'Getting weather for...') in the same language as the user's question"
+                    "required": ["location", "user_id", "status"]
                     }
-                },
-                "required": ["location", "user_id", "status"]
                 }
-            }
+            },
+            {
+                "type": "function",
+                "function": {
+                    "name": "send_email_on_behalf_of_user",
+                    "description": "Sends an email on behalf of the user using their Microsoft Graph API token. Perfect for professional correspondence, meeting requests, follow-ups, and any email communication the user needs to send.",
+                    "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "to_email": {
+                        "type": "string",
+                        "description": "The recipient's email address"
+                        },
+                        "subject": {
+                        "type": "string",
+                        "description": "The subject of the email to send"
+                        },
+                        "body": {
+                        "type": "string",
+                        "description": "The body content of the email to send"
+                        },
+                        "user_id": {
+                        "type": "integer",
+                        "description": "The ID of the user requesting the email. Look at the first developer prompt to get the user_id"
+                        },
+                        "status": {
+                        "type": "string",
+                        "description": "A concise description of the email task being performed, using conjugated verbs (e.g., 'Enviando correo a...', 'Sending email to...') in the same language as the user's question"
+                        }
+                    },
+                    "required": [
+                        "to_email",
+                        "subject", 
+                        "body",
+                        "user_id",
+                        "status"
+                    ]
+                    }
+                }
+            },
+            {
+                "type": "function",
+                "function": {
+                    "name": "send_email_on_behalf_of_user",
+                    "description": "Sends an email on behalf of the user using their Microsoft Graph API token. Can accept either an email address or a contact name. If a name is provided and multiple contacts are found, it will show options for the user to choose from. The AI can then identify the user's selection and call this function again with the specific email.",
+                    "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "to_email_or_name": {
+                        "type": "string",
+                        "description": "The recipient's email address OR the name of the contact. Examples: 'juan.perez@uninorte.edu.co' or 'Juan Pérez' or 'Dr. García'. When user selects from multiple options (e.g., 'el segundo', 'opción 1'), use the specific email address of that contact."
+                        },
+                        "subject": {
+                        "type": "string",
+                        "description": "The subject of the email to send"
+                        },
+                        "body": {
+                        "type": "string",
+                        "description": "The body content of the email to send"
+                        },
+                        "user_id": {
+                        "type": "integer",
+                        "description": "The ID of the user requesting the email. Look at the first developer prompt to get the user_id"
+                        },
+                        "status": {
+                        "type": "string",
+                        "description": "A concise description of the email task being performed, using conjugated verbs (e.g., 'Enviando correo a...', 'Sending email to...') in the same language as the user's question"
+                        }
+                    },
+                    "required": [
+                        "to_email_or_name",
+                        "subject", 
+                        "body",
+                        "user_id",
+                        "status"
+                    ]
+                    }
+                }
+            },
+            {
+                "type": "function",
+                "function": {
+                    "name": "search_contacts_by_name",
+                    "description": "Searches for contacts by name using Microsoft Graph API. Useful when the user specifically wants to find someone's contact information without sending an email immediately.",
+                    "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "name": {
+                        "type": "string",
+                        "description": "The name to search for. Can be partial name, first name, last name, or full name. Example: 'Juan', 'Pérez', 'Dr. García'"
+                        },
+                        "user_id": {
+                        "type": "integer",
+                        "description": "The ID of the user making the search. Look at the first developer prompt to get the user_id"
+                        },
+                        "status": {
+                        "type": "string",
+                        "description": "A concise description of the search task being performed, using conjugated verbs (e.g., 'Buscando contacto...', 'Searching for contact...') in the same language as the user's question"
+                        }
+                    },
+                    "required": [
+                        "name",
+                        "user_id",
+                        "status"
+                    ]
+                    }
+                }
+            },
+            {
+                "type": "function",
+                "function": {
+                    "name": "read_calendar_events",
+                    "description": "Reads and displays calendar events for a specified date range. Shows events in a visual format. Perfect for schedule management and planning.",
+                    "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "start_date": {
+                        "type": "string",
+                        "description": "Start date in YYYY-MM-DD format. Calculate this based on the user's request and current Bogotá date from the prompt."
+                        },
+                        "end_date": {
+                        "type": "string",
+                        "description": "End date in YYYY-MM-DD format. Calculate this based on the user's request and current Bogotá date from the prompt."
+                        },
+                        "user_id": {
+                        "type": "integer",
+                        "description": "The ID of the user requesting calendar information. Look at the first developer prompt to get the user_id"
+                        },
+                        "status": {
+                        "type": "string",
+                        "description": "A concise description of the task being performed, using conjugated verbs (e.g., 'Consultando calendario...', 'Checking calendar...', 'Revisando eventos...') in the same language as the user's question"
+                        }
+                    },
+                    "required": [
+                        "start_date",
+                        "end_date",
+                        "user_id",
+                        "status"
+                    ]
+                    }
+                }
             }
         ]
 
         available_functions = {
             "get_current_news": get_current_news,
-            "get_weather": get_weather
+            "get_weather": get_weather,
+            "send_email_on_behalf_of_user": send_email_on_behalf_of_user,
+            "search_contacts_by_name": search_contacts_by_name,
+            "read_calendar_events": read_calendar_events
         }
 
         current_utc_time = datetime.datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S")
         gmt_minus_5 = timezone(timedelta(hours=-5))
         current_bogota_time = datetime.datetime.now(gmt_minus_5)
+        current_bogota_weekday = current_bogota_time.strftime("%A").lower()
+
 
         router_prompt = f"""You are a specialized router for NAIA, an AI assistant at Universidad del Norte. Your ONLY job is to determine whether a user message requires a specialized function or can be handled with a simple chat response.
 
@@ -98,6 +244,19 @@ class PersonalAssistantService:
         6. User mentions wanting to stay informed about a location
         7. User asks about current events, breaking news, or recent developments
         8. User requests climate or meteorological information
+        9. User requests to send an email
+        10. User wants to compose or write an email
+        11. User asks to draft email content
+        12. User mentions sending correspondence or messages
+        13. User requests email composition assistance
+        14. User wants to find someone's contact information
+        15. User asks to search for contacts or people
+        16. User wants to look up email addresses
+        17. User asks about their calendar or schedule
+        18. User wants to see upcoming events or appointments
+        19. User requests to check their agenda
+        20. User asks about meetings, events, or commitments
+        21. User wants to review their schedule for a specific time period
 
         IMMEDIATE FUNCTION ROUTING TRIGGERS:
         - "¿Qué noticias hay de...?" / "What news is there about...?"
@@ -108,6 +267,26 @@ class PersonalAssistantService:
         - "Últimas noticias de..." / "Latest news from..."
         - "¿Qué está pasando en...?" / "What's happening in...?"
         - "Clima actual de..." / "Current weather in..."
+        - "Envía un correo..." / "Send an email..."
+        - "Manda un email..." / "Send an email..."
+        - "Redacta un correo..." / "Draft an email..."
+        - "Escribe un email..." / "Write an email..."
+        - "Necesito enviar un correo..." / "I need to send an email..."
+        - "Ayúdame a enviar..." / "Help me send..."
+        - "Componer un correo..." / "Compose an email..."
+        - "Mandar un mensaje..." / "Send a message..."
+        - "Busca el contacto de..." / "Find the contact for..."
+        - "¿Cuál es el email de...?" / "What's the email of...?"
+        - "Encuentra a..." / "Find..."
+        - "Contacto de..." / "Contact for..."
+        - "¿Qué tengo hoy?" / "What do I have today?"
+        - "Muestra mi calendario..." / "Show my calendar..."
+        - "¿Cuál es mi agenda?" / "What's my schedule?"
+        - "Eventos de esta semana" / "This week's events"
+        - "¿Tengo reuniones?" / "Do I have meetings?"
+        - "Mi horario de..." / "My schedule for..."
+        - "¿Qué eventos tengo?" / "What events do I have?"
+        - "Calendario de mañana" / "Tomorrow's calendar"
 
         CONTEXT-AWARE ROUTING BASED ON CONVERSATION HISTORY:
         PREVIOUS MESSAGES: {last_messages_text}
@@ -127,6 +306,21 @@ class PersonalAssistantService:
         - "¿Qué tiempo hace hoy en la universidad?"
         - "Weather forecast for northern Colombia"
         - "¿Qué está pasando en el Caribe?"
+        - "Envía un correo a mi profesor"
+        - "Send an email to my colleague"
+        - "Necesito mandar un email urgente"
+        - "Redacta un correo de seguimiento"
+        - "Help me compose an email"
+        - "Write an email to the administration"
+        - "Busca el contacto de Dr. García"
+        - "Find Juan Pérez's email"
+        - "¿Cuál es el email de la secretaria?"
+        - "¿Qué tengo hoy en mi calendario?"
+        - "Show me my schedule for this week"
+        - "¿Tengo reuniones mañana?"
+        - "What events do I have today?"
+        - "Muestra mi agenda de esta semana"
+        - "Check my calendar for tomorrow"
 
         WHEN IN DOUBT: Choose "FUNCTION_NEEDED" for any task that a personal assistant would typically handle within a university context.
 
@@ -134,8 +328,8 @@ class PersonalAssistantService:
         - "FUNCTION_NEEDED"
         - "NO_FUNCTION_NEEDED"
 
-        CURRENT UTC TIME: {current_utc_time}
-        Universidad del Norte is located in Barranquilla, Colombia, which is in the GMT-5 timezone. The current time in Barranquilla is {current_bogota_time.strftime('%Y-%m-%d %H:%M:%S')}.
+        CURRENT UTC TIME: {current_utc_time} 
+        Universidad del Norte is located in Barranquilla, Colombia, which is in the GMT-5 timezone. The current time in Barranquilla is {current_bogota_time.strftime('%Y-%m-%d %H:%M:%S')}. CURRENT BARRANQUILLA WEEKDAY: {current_bogota_weekday}
         User message: {{user_input}}
         """
 
@@ -193,6 +387,34 @@ class PersonalAssistantService:
         - KEY INDICATOR: Menciones de "clima", "weather", "tiempo", "temperatura", "lluvia", "sol"
         - EXAMPLES: "¿Cómo está el clima en Medellín?", "What's the weather like today?"
         - CRITICAL: Usar para cualquier consulta relacionada con condiciones meteorológicas
+        
+        3. send_email_on_behalf_of_user:
+        - PURPOSE: Enviar correos electrónicos en nombre del usuario usando su token de Microsoft Graph
+        - USE WHEN: Usuario quiere enviar un correo electrónico, redactar un mensaje, o necesita ayuda con correspondencia
+        - KEY INDICATOR: Menciones de "enviar correo", "mandar email", "redactar mensaje", "escribir email"
+        - EXAMPLES: "Envía un correo a mi profesor", "Help me write an email to my colleague"
+        - CRITICAL: Usar para cualquier tarea relacionada con el envío de correos electrónicos
+
+        4. search_contacts_by_name:
+        - PURPOSE: Buscar contactos por nombre usando Microsoft Graph API
+        - USE WHEN: Usuario quiere encontrar información de contacto de alguien sin enviar un correo inmediatamente
+        - KEY INDICATOR: Menciones de "buscar contacto", "encontrar email", "contacto de", "cuál es el email de"
+        - EXAMPLES: "Busca el contacto de Juan Pérez", "What's the email of Dr. García?"
+        - CRITICAL: Usar para buscar información de contacto antes de enviar un correo
+
+        5. read_calendar_events:
+        - PURPOSE: Leer y mostrar eventos del calendario para un rango de fechas específico
+        - USE WHEN: Usuario quiere ver su agenda, eventos próximos, o compromisos
+        - KEY INDICATOR: Menciones de "mi calendario", "agenda", "eventos", "revisar mi horario"
+        - IMPORTANT: Debes usar la información sobre la fecha actual en Barranquilla en la sección de "CURRENT BARRANQUILLA WEEKDAY" del prompt para poder calcular las fechas de inicio y fin de la función.
+        Esto para que el usuario pueda definr estas fechas sin necesidad de especificarlas. Por ejemplo si te dice "¿Qué tengo esta semana?" o "¿Qué eventos tengo hoy?", debes calcular las fechas de inicio y fin de la semana actual o del día actual.
+        Si te preguntan por un evento en especifico como "¿Cuándo es mi próxima reunión?", debes calcular la fecha de la próxima reunión y usarla como fecha de inicio y fin. Como aqui es ambiguo saber si la reunión es hoy o en el futuro, debes usar la fecha de hoy como inicio y la de fin debes usar una venta de tiempo considerable, dependiendo del tipo de evento, para saber si es un evento que ocurre hoy o en el futuro.
+        En caso tal no haya el evento debes decirle al usuario que en la ventana de tiempo [indicas la ventana de tiempo que usaste] no hay ningun evento [evento especifico indicado por el usuario] en su calendario.
+        No solo debes usar esta función para eventos futuros, sino también para eventos pasados, como por ejemplo si el usuario te pregunta "¿Cuando fue mi última reunión?" o "¿Qué eventos tuve la semana pasada?". En estos casos debes calcular las fechas de inicio y fin de la semana pasada o del día anterior, dependiendo de la pregunta del usuario.
+        Caulquier pregunta que el usuario haga sobre eventos del calendario, debes usar esta función para calcular las fechas de inicio y fin de la ventana de tiempo que el usuario te indica. No importa si es evento pasado, presente o futuro, siempre debes calcular las fechas de inicio y fin de la ventana de tiempo que el usuario te indica, o las que tú creas mas adecuadas en caso tal no te indique una ventana de tiempo especifica, pero siempre que tu la hagas por ti mismo debes indicarle al usuario el rango de fechas que usaste para calcular los eventos.
+        - EXAMPLES: "¿Qué tengo hoy en mi calendario?", "Show me my schedule for this week", "Cuando es mi próxima reunión?"
+        - CRITICAL: Usar para cualquier consulta relacionada con eventos del calendario
+        
 
         RESULT INTERPRETATION:
         - "display": Contenido visual mostrado en pantalla - explicar brevemente pero no repetir detalles
@@ -223,8 +445,8 @@ class PersonalAssistantService:
         USER CONTEXT:
         You are talking to user ID {user_id}. Include this ID in all function calls.
 
-        CURRENT UTC TIME: {current_utc_time}
-        Universidad del Norte is located in Barranquilla, Colombia, which is in the GMT-5 timezone. The current time in Barranquilla is {current_bogota_time.strftime('%Y-%m-%d %H:%M:%S')}.
+        CURRENT UTC TIME: {current_utc_time} -
+        Universidad del Norte is located in Barranquilla, Colombia, which is in the GMT-5 timezone. The current time in Barranquilla is {current_bogota_time.strftime('%Y-%m-%d %H:%M:%S')}. CURRENT BARRANQUILLA WEEKDAY: {current_bogota_weekday}
         CRITICAL: Regardless of function output complexity, ALWAYS ensure your final response is a properly formatted JSON array with messages. NO EXCEPTIONS.
         """
 
@@ -299,6 +521,8 @@ class PersonalAssistantService:
         SPECIALIZED PERSONAL ASSISTANT FUNCTIONS (that you can explain but NOT execute in chat-only mode):
         - get_current_news: Obtener noticias actuales con visualización moderna y atractiva
         - get_weather: Consultar información del clima con presentación visual elegante
+        - send_email_on_behalf_of_user: Enviar correos electrónicos en nombre del usuario usando su token de Microsoft Graph
+        - search_contacts_by_name: Buscar contactos por nombre usando Microsoft Graph API, útil para encontrar información de contacto sin enviar un correo inmediatamente
 
         NEWS AND WEATHER CAPABILITIES:
         - Access to current news from any location worldwide
@@ -348,7 +572,8 @@ class PersonalAssistantService:
 
         Remember: NEVER return raw text - ALWAYS use JSON format and maintain your personal assistant role with professional efficiency and warmth.
         CURRENT UTC TIME: {current_utc_time}
-        Universidad del Norte is located in Barranquilla, Colombia, which is in the GMT-5 timezone. The current time in Barranquilla is {current_bogota_time.strftime('%Y-%m-%d %H:%M:%S')}.
+        Universidad del Norte is located in Barranquilla, Colombia, which is in the GMT-5 timezone. The current time in Barranquilla is {current_bogota_time.strftime('%Y-%m-%d %H:%M:%S')}. CURRENT BARRANQUILLA WEEKDAY: {current_bogota_weekday}
+        User message: {{user_input}}
         """
 
         prompts = {
@@ -358,3 +583,6 @@ class PersonalAssistantService:
         }
 
         return tools, available_functions, prompts
+    
+
+
