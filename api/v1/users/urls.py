@@ -1,5 +1,5 @@
 from django.urls import path
-from .views import UserDetail, UserList
+from .views import UserDetail, UserList, UserToken
 
 
 
@@ -8,5 +8,6 @@ from .views import UserDetail, UserList
 urlpatterns = [
     path('', UserList.as_view(), name='user-create'),
     path('get/', UserDetail.as_view(), name='user-detail'),
+    path('token/', UserToken.as_view(), name='user-token'),
 ]
 

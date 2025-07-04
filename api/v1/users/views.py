@@ -193,3 +193,56 @@ class UserDetail(APIView):
             },
             status=status.HTTP_200_OK
         )
+    
+
+class UserToken(APIView):
+    def __init__(self):
+        self.user_service = UserService()
+
+    @extend_schema(
+        summary="Create or update user token",
+        description="Creates or updates the token for the user",
+        request=UserSerializer,
+        responses={
+            200: OpenApiResponse(
+                description="Token created or updated successfully",
+                examples=[
+                    OpenApiExample(
+                        "Successful Response",
+                        value={"status": "Token created or updated successfully"}
+                    )
+                ]
+            ),
+            400: OpenApiResponse(
+                description="Bad request",
+                examples=[
+                    OpenApiExample(
+                        "Validation Error",
+                        value={"status": "Invalid user ID or token"}
+                    )
+                ]
+            )
+        },
+        tags=["Users"]
+    )
+    def post(self, request):
+        user_id = request.data.get('user_id')
+        token = request.data.get('token')
+        
+        if not user_id or not token:
+            return Response(
+                {"status": "Invalid user ID or token"},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        try:
+            self.user_service.create_or_update_user_token(user_id, token)
+            return Response(
+                {"status": "Token created or updated successfully"},
+                status=status.HTTP_200_OK
+            )
+        except Exception as e:
+            return Response(
+                {"status": str(e)},
+                status=status.HTTP_400_BAD_REQUEST
+            )

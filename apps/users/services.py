@@ -15,5 +15,16 @@ class UserService():
             raise e
     def get_user_by_email(self, email):
         return self.user_repository.get_user_by_email(email)
+    
+    def create_or_update_user_token(self, user_id, token):
+        try:
+            self.user_repository.create_or_update_user_token(user_id, token)
+        except Exception as e:
+            raise e
+    def get_user_token(self, user_id):
+        try:
+            return self.user_repository.get_user_token(user_id)
+        except Exception as e:
+            raise e
 
         
