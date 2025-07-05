@@ -70,7 +70,8 @@ Has solicitado recuperar tu contraseña para acceder a NAIA Uninorte.
                 message=message,
                 from_email=self.from_email,
                 recipient_list=[recipient_email],
-                fail_silently=False
+                fail_silently=False,
+                reply_to=['naia@uninorte.edu.co']
             )
             
             return {

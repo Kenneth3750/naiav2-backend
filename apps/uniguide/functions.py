@@ -69,6 +69,7 @@ def send_email(to_email: str, subject: str, body: str, status: str = "", user_id
         msg["Subject"] = subject
         msg["From"] = f"NAIA Uninorte <{DEFAULT_FROM_EMAIL}>"
         msg["To"] = to_email
+        msg["Reply-To"] = "naia@uninorte.edu.co"
 
         with smtplib.SMTP_SSL('smtp.gmail.com', 465) as server:
             print("Iniciando conexión con el servidor de correo")
