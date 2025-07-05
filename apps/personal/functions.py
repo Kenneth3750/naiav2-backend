@@ -1419,3 +1419,161 @@ def _generate_calendar_html(events: list, start_date: str, end_date: str) -> str
     return html
 
 
+def create_calendar_event(title: str, start_datetime: str, end_datetime: str, user_id: int, description: str = "", status: str = "Creando recordatorio...") -> dict:
+    """
+    Creates a calendar event/reminder using Microsoft Graph API.
+    
+    Args:
+        title (str): Title of the event/reminder
+        start_datetime (str): Start date and time in YYYY-MM-DDTHH:MM format (Colombia time)
+        end_datetime (str): End date and time in YYYY-MM-DDTHH:MM format (Colombia time)
+        user_id (int): The ID of the user creating the event
+        description (str): Optional description for the event. Defaults to ""
+        status (str): Status message for tracking. Defaults to "Creando recordatorio..."
+        
+    Returns:
+        dict: A dictionary containing either success message or error details
+    """
+    # Validate required fields
+    if not title or not start_datetime or not end_datetime:
+        return {"error": "Title, start datetime, and end datetime are required"}
+        
+    if not user_id:
+        return {"error": "User ID is required"}
+    
+    try:
+        # Set status for tracking
+        if user_id:
+            set_status(user_id, status, 3)  # role_id 3 for Personal Assistant
+        
+        # Get user's Microsoft Graph token
+        user_service = UserService()
+        access_token = user_service.get_user_token(user_id)
+        
+        if not access_token:
+            return {"error": "No access token found for user. Please authenticate with Microsoft first."}
+        
+        # Validate datetime format
+        try:
+            from datetime import datetime
+            start_dt = datetime.fromisoformat(start_datetime)
+            end_dt = datetime.fromisoformat(end_datetime)
+            
+            # Ensure end time is after start time
+            if end_dt <= start_dt:
+                return {"error": "End time must be after start time"}
+        except:
+            return {"error": "Invalid datetime format. Use YYYY-MM-DDTHH:MM format"}
+        
+        # Prepare the event payload for Microsoft Graph API
+        event_payload = {
+            "subject": title,
+            "start": {
+                "dateTime": start_datetime,
+                "timeZone": "America/Bogota"
+            },
+            "end": {
+                "dateTime": end_datetime,
+                "timeZone": "America/Bogota"
+            },
+            "body": {
+                "contentType": "text",
+                "content": description if description else ""
+            },
+            "isReminderOn": True,
+            "reminderMinutesBeforeStart": 15
+        }
+        
+        # Set up headers with authentication
+        headers = {
+            "Authorization": f"Bearer {access_token}",
+            "Content-Type": "application/json"
+        }
+        
+        # Microsoft Graph API endpoint for creating events
+        events_url = "https://graph.microsoft.com/v1.0/me/events"
+        
+        print(f"Creating calendar event: {title} from {start_datetime} to {end_datetime}")
+        
+        # Make the API call to Microsoft Graph
+        response = requests.post(
+            events_url,
+            headers=headers,
+            data=json.dumps(event_payload),
+            timeout=30
+        )
+        
+        # Check response status
+        if response.status_code == 201:
+            # 201 Created - Event created successfully
+            event_data = response.json()
+            event_id = event_data.get('id', '')
+            web_link = event_data.get('webLink', '')
+            
+            print(f"Event created successfully with ID: {event_id}")
+            
+            # Format success message
+            start_formatted = start_dt.strftime('%d de %B a las %H:%M')
+            success_message = f"Recordatorio '{title}' creado exitosamente para el {start_formatted}"
+            
+            return {
+                "success": success_message,
+                "event_id": event_id,
+                "title": title,
+                "start_datetime": start_datetime,
+                "end_datetime": end_datetime,
+                "web_link": web_link,
+                "message": "Event created successfully"
+            }
+        
+        elif response.status_code == 401:
+            # Unauthorized - Token might be expired or invalid
+            error_msg = "Authentication failed. Please refresh your Microsoft login."
+            print(f"Authentication error: {response.text}")
+            return {"error": error_msg}
+        
+        elif response.status_code == 403:
+            # Forbidden - Insufficient permissions
+            error_msg = "Insufficient permissions to create calendar events. Please check your Microsoft account permissions."
+            print(f"Permission error: {response.text}")
+            return {"error": error_msg}
+        
+        elif response.status_code == 400:
+            # Bad Request - Invalid data
+            try:
+                error_response = response.json()
+                error_detail = error_response.get('error', {}).get('message', 'Invalid event data')
+            except:
+                error_detail = "Invalid event data"
+            
+            error_msg = f"Cannot create event: {error_detail}"
+            print(f"Bad request error: {response.text}")
+            return {"error": error_msg}
+        
+        else:
+            # Other errors
+            error_detail = ""
+            try:
+                error_response = response.json()
+                error_detail = error_response.get('error', {}).get('message', response.text)
+            except:
+                error_detail = response.text
+            
+            error_msg = f"Failed to create event: {error_detail}"
+            print(f"Microsoft Graph API error: {response.status_code} - {error_detail}")
+            return {"error": error_msg}
+    
+    except requests.exceptions.Timeout:
+        error_msg = "Request timeout while creating event"
+        print(f"Timeout error: {error_msg}")
+        return {"error": error_msg}
+    
+    except requests.exceptions.RequestException as e:
+        error_msg = "Network error while creating event"
+        print(f"Request error: {str(e)}")
+        return {"error": error_msg}
+    
+    except Exception as e:
+        error_msg = f"Unexpected error while creating event: {str(e)}"
+        print(f"Unexpected error: {error_msg}")
+        return {"error": error_msg}

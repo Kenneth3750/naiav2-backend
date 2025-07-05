@@ -1,7 +1,7 @@
 import datetime
 from apps.chat.functions import get_last_four_messages
 from datetime import timedelta, timezone
-from apps.personal.functions import get_current_news, get_weather, send_email_on_behalf_of_user, search_contacts_by_name, read_calendar_events
+from apps.personal.functions import get_current_news, get_weather, send_email_on_behalf_of_user, search_contacts_by_name, read_calendar_events, create_calendar_event
 class PersonalAssistantService:
     def retrieve_tools(self, user_id, messages):
 
@@ -211,6 +211,49 @@ class PersonalAssistantService:
                     ]
                     }
                 }
+            },
+            {
+                "type": "function",
+                "function": {
+                    "name": "create_calendar_event",
+                    "description": "Creates a personal reminder or event in the user's calendar. Perfect for setting up personal appointments, deadlines, study sessions, or any personal reminders. Does not involve other people.",
+                    "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "title": {
+                        "type": "string",
+                        "description": "Title or subject of the reminder/event. Examples: 'Estudiar para examen de matemáticas', 'Recordatorio: entregar proyecto', 'Cita médica', 'Llamar a mamá'"
+                        },
+                        "start_datetime": {
+                        "type": "string",
+                        "description": "Start date and time in YYYY-MM-DDTHH:MM format (Colombia time). Calculate this based on the user's request and current date/time from the prompt. Example: '2025-07-10T14:30'"
+                        },
+                        "end_datetime": {
+                        "type": "string",
+                        "description": "End date and time in YYYY-MM-DDTHH:MM format (Colombia time). Calculate this based on the user's request. If not specified, default to 1 hour after start time. Example: '2025-07-10T15:30'"
+                        },
+                        "user_id": {
+                        "type": "integer",
+                        "description": "The ID of the user creating the event. Look at the first developer prompt to get the user_id"
+                        },
+                        "description": {
+                        "type": "string",
+                        "description": "Optional description or notes for the event. Can include additional details, location, or any relevant information."
+                        },
+                        "status": {
+                        "type": "string",
+                        "description": "A concise description of the task being performed, using conjugated verbs (e.g., 'Creando recordatorio...', 'Creating reminder...', 'Agendando evento...') in the same language as the user's question"
+                        }
+                    },
+                    "required": [
+                        "title",
+                        "start_datetime",
+                        "end_datetime",
+                        "user_id",
+                        "status"
+                    ]
+                    }
+                }
             }
         ]
 
@@ -219,7 +262,8 @@ class PersonalAssistantService:
             "get_weather": get_weather,
             "send_email_on_behalf_of_user": send_email_on_behalf_of_user,
             "search_contacts_by_name": search_contacts_by_name,
-            "read_calendar_events": read_calendar_events
+            "read_calendar_events": read_calendar_events,
+            "create_calendar_event": create_calendar_event
         }
 
         current_utc_time = datetime.datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S")
@@ -257,6 +301,11 @@ class PersonalAssistantService:
         19. User requests to check their agenda
         20. User asks about meetings, events, or commitments
         21. User wants to review their schedule for a specific time period
+        22. User wants to create a reminder or event
+        23. User asks to schedule something personal
+        24. User wants to add something to their calendar
+        25. User requests to set up an appointment or reminder
+        26. User wants to create a personal event or note
 
         IMMEDIATE FUNCTION ROUTING TRIGGERS:
         - "¿Qué noticias hay de...?" / "What news is there about...?"
@@ -287,6 +336,14 @@ class PersonalAssistantService:
         - "Mi horario de..." / "My schedule for..."
         - "¿Qué eventos tengo?" / "What events do I have?"
         - "Calendario de mañana" / "Tomorrow's calendar"
+        - "Crea un recordatorio..." / "Create a reminder..."
+        - "Agregar al calendario..." / "Add to calendar..."
+        - "Agenda una cita..." / "Schedule an appointment..."
+        - "Recordarme que..." / "Remind me to..."
+        - "Pon un evento..." / "Put an event..."
+        - "Necesito recordar..." / "I need to remember..."
+        - "Crear evento..." / "Create event..."
+        - "Añadir recordatorio..." / "Add reminder..."
 
         CONTEXT-AWARE ROUTING BASED ON CONVERSATION HISTORY:
         PREVIOUS MESSAGES: {last_messages_text}
@@ -321,6 +378,12 @@ class PersonalAssistantService:
         - "What events do I have today?"
         - "Muestra mi agenda de esta semana"
         - "Check my calendar for tomorrow"
+        - "Crea un recordatorio para mañana a las 3 PM"
+        - "Recordarme que tengo cita médica el viernes"
+        - "Agenda estudiar matemáticas para el lunes"
+        - "Add a reminder to call mom tomorrow"
+        - "Create an event for my presentation next week"
+        - "Put a reminder to submit the project"
 
         WHEN IN DOUBT: Choose "FUNCTION_NEEDED" for any task that a personal assistant would typically handle within a university context.
 
@@ -328,8 +391,8 @@ class PersonalAssistantService:
         - "FUNCTION_NEEDED"
         - "NO_FUNCTION_NEEDED"
 
-        CURRENT UTC TIME: {current_utc_time} 
-        Universidad del Norte is located in Barranquilla, Colombia, which is in the GMT-5 timezone. The current time in Barranquilla is {current_bogota_time.strftime('%Y-%m-%d %H:%M:%S')}. CURRENT BARRANQUILLA WEEKDAY: {current_bogota_weekday}
+        CURRENT UTC TIME: {current_utc_time}
+        Universidad del Norte is located in Barranquilla, Colombia, which is in the GMT-5 timezone. The current time in Barranquilla is {current_bogota_time.strftime('%Y-%m-%d %H:%M:%S')}.
         User message: {{user_input}}
         """
 
@@ -414,7 +477,13 @@ class PersonalAssistantService:
         Caulquier pregunta que el usuario haga sobre eventos del calendario, debes usar esta función para calcular las fechas de inicio y fin de la ventana de tiempo que el usuario te indica. No importa si es evento pasado, presente o futuro, siempre debes calcular las fechas de inicio y fin de la ventana de tiempo que el usuario te indica, o las que tú creas mas adecuadas en caso tal no te indique una ventana de tiempo especifica, pero siempre que tu la hagas por ti mismo debes indicarle al usuario el rango de fechas que usaste para calcular los eventos.
         - EXAMPLES: "¿Qué tengo hoy en mi calendario?", "Show me my schedule for this week", "Cuando es mi próxima reunión?"
         - CRITICAL: Usar para cualquier consulta relacionada con eventos del calendario
-        
+
+        6. create_calendar_event:
+        - PURPOSE: Crear un recordatorio o evento personal en el calendario del usuario. Esta función no debe usarse para eventos que involucren a otras personas, sino solo para recordatorios personales o eventos que el usuario quiera agendar.
+        - USE WHEN: Usuario quiere crear un recordatorio, agendar una cita personal, o establecer un evento en su calendario
+        - KEY INDICATOR: Menciones de "crear recordatorio", "agendar evento", "poner cita", "añadir recordatorio", "create event", "set reminder"
+        - EXAMPLES: "Crea un recordatorio para mañana a las 3 PM", "Add a reminder to call mom tomorrow", "Agendar estudiar matemáticas para el lunes"
+        - CRITICAL: Usar para cualquier tarea relacionada con la creación de recordatorios o eventos personales
 
         RESULT INTERPRETATION:
         - "display": Contenido visual mostrado en pantalla - explicar brevemente pero no repetir detalles
@@ -452,6 +521,10 @@ class PersonalAssistantService:
 
         chat_prompt = f"""You are NAIA, a sophisticated AI avatar created by Universidad del Norte in Barranquilla, Colombia. You are currently operating in your PERSONAL ASSISTANT ROLE, specializing in providing professional secretary and administrative support within the university environment.
 
+        CRITICAL: You are part of a larger system that involves a router and a function executor. This prompt does NOT execute functionsdirectl but you can suggests the user to use the functions available in the system according to the user's needs.
+        In that case, you must never say something like "I will execute the function" or "I will call the function". Instead, you must say something like "I can help you by doing this" or "I can assist you with that" and then provide the user with the information they need to use the function. NEVER use code name like "get_current_news" or "send_email_on_behalf_of_user" in your responses. Instead, use natural language to describe the function and how it can help the user.
+        
+        
         IMPORTANT: You CAN see and analyze images. Make natural, contextual visual observations that enhance the conversation - NOT forced descriptions. Examples:
         - If greeting someone: "I like your green shirt!" or comment on their appearance naturally
         - If discussing studying and see a messy room: "Organizing your space might help with focus"
@@ -523,7 +596,8 @@ class PersonalAssistantService:
         - get_weather: Consultar información del clima con presentación visual elegante
         - send_email_on_behalf_of_user: Enviar correos electrónicos en nombre del usuario usando su token de Microsoft Graph
         - search_contacts_by_name: Buscar contactos por nombre usando Microsoft Graph API, útil para encontrar información de contacto sin enviar un correo inmediatamente
-
+        - read_calendar_events: Leer y mostrar eventos del calendario para un rango de fechas específico, útil para la gestión de horarios y planificación
+        
         NEWS AND WEATHER CAPABILITIES:
         - Access to current news from any location worldwide
         - Modern, visually appealing news presentation with breaking news highlights
