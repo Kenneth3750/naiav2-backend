@@ -19,7 +19,9 @@ import time
 from services.files import B2FileService
 from datetime import datetime, timezone, timedelta
 import json
-
+from serpapi import GoogleSearch
+from typing import Dict
+from apps.researcher.functions import generate_image_carousel_html
 load_dotenv()
 
 DEFAULT_FROM_EMAIL=os.getenv("DEFAULT_FROM_EMAIL")
@@ -380,9 +382,9 @@ def get_university_calendar_multi_month(user_id: int, months_to_search: list, st
                 formatted_events += f"  {event}\n"
             formatted_events += "\n"
 
-        print(f"Calendar events retrieved: {formatted_events}")
-        
-        return {"calendar_events": formatted_events}
+        caldendar_html = generate_calendar_html(all_events, current_year)
+
+        return {"calendar_events": formatted_events, "graph": caldendar_html}
         
     except Exception as e:
         print(f"Error getting calendar: {str(e)}")
@@ -1847,12 +1849,15 @@ Return ONLY the JSON response."""
         }
     
 
-def search_internet_for_uni_answers(query: str, status: str, user_id: int):
+def search_internet_for_uni_answers(query: str, status: str, user_id: int, image_query: str ) -> Dict:
     """"
     Use LLM with internet connectivity to search for answers about Universidad del Norte
     """
     try:
         set_status(user_id, status, 2)
+        api_key = os.getenv("SERPAPI_KEY")
+        if not api_key:
+            raise ValueError("SERPAPI_KEY not found in .env file")
         system_prompt = """You are an assistant specialized in searching for specific information about Universidad del Norte (UniNorte) in Barranquilla, Colombia via the internet.
 
         MAIN OBJECTIVE:
@@ -1893,7 +1898,144 @@ def search_internet_for_uni_answers(query: str, status: str, user_id: int):
         answer = response.choices[0].message.content
         print(f"Search result: {answer}")
 
-        return {"answer": answer}
+
+        image_params = {
+            "engine": "google_images",
+            "q": image_query,
+            "api_key": api_key,
+        }
+
+        search_results = GoogleSearch(image_params)
+        image_html = generate_image_carousel_html(search_results.get_dict().get("images_results", []))
+
+        return {"answer": answer, "graph": image_html}
     except Exception as e:
         print(f"Error in search_internet_for_uni_answers: {str(e)}")
         return {"error": str(e), "answer": None}
+
+def generate_calendar_html(all_events, year):
+    from datetime import datetime
+    import re
+    
+    def parse_event_date(date_str):
+        """Parse various date formats and return a datetime object for sorting"""
+        try:
+            # Remove extra spaces and normalize
+            date_str = re.sub(r'\s+', ' ', date_str.strip())
+            
+            # Common Spanish date patterns
+            spanish_months = {
+                'enero': 1, 'febrero': 2, 'marzo': 3, 'abril': 4, 'mayo': 5, 'junio': 6,
+                'julio': 7, 'agosto': 8, 'septiembre': 9, 'octubre': 10, 'noviembre': 11, 'diciembre': 12
+            }
+            
+            # Pattern: "15 de septiembre de 2024" or "15 de septiembre"
+            pattern1 = r'(\d{1,2})\s+de\s+(\w+)(?:\s+de\s+(\d{4}))?'
+            match = re.search(pattern1, date_str.lower())
+            if match:
+                day = int(match.group(1))
+                month_name = match.group(2)
+                year_val = int(match.group(3)) if match.group(3) else year
+                
+                if month_name in spanish_months:
+                    month = spanish_months[month_name]
+                    return datetime(year_val, month, day)
+            
+            # Pattern: "2024-09-15" or "15/09/2024" or "15-09-2024"
+            date_patterns = [
+                r'(\d{4})-(\d{1,2})-(\d{1,2})',  # YYYY-MM-DD
+                r'(\d{1,2})/(\d{1,2})/(\d{4})',  # DD/MM/YYYY
+                r'(\d{1,2})-(\d{1,2})-(\d{4})'   # DD-MM-YYYY
+            ]
+            
+            for pattern in date_patterns:
+                match = re.search(pattern, date_str)
+                if match:
+                    if 'yyyy' in pattern.lower():  # YYYY-MM-DD
+                        year_val, month, day = map(int, match.groups())
+                    else:  # DD/MM/YYYY or DD-MM-YYYY
+                        day, month, year_val = map(int, match.groups())
+                    
+                    if 1 <= month <= 12 and 1 <= day <= 31:
+                        return datetime(year_val, month, day)
+            
+            # If all else fails, return a default date for sorting purposes
+            return datetime(year, 1, 1)
+            
+        except:
+            # Return a default date if parsing fails
+            return datetime(year, 1, 1)
+    
+    html = f"""
+    <div style="max-height: 600px; overflow-y: auto; font-family: Arial, sans-serif;">
+        <h2 style="color: #124072; text-align: center; margin-bottom: 20px;">
+            📅 Eventos Universitarios {year}
+        </h2>
+    """
+    
+    for i, (month_name, events) in enumerate(all_events.items()):
+        # Sort events by date within each month
+        events_with_dates = []
+        for event in events:
+            # Parse event text: "EVENT: name, DATE: date"
+            parts = event.split(", DATE: ")
+            event_name = parts[0].replace("EVENT: ", "")
+            event_date_str = parts[1] if len(parts) > 1 else "Fecha TBD"
+            
+            # Parse date for sorting
+            parsed_date = parse_event_date(event_date_str)
+            
+            events_with_dates.append({
+                'name': event_name,
+                'date_str': event_date_str,
+                'parsed_date': parsed_date,
+                'original': event
+            })
+        
+        # Sort by parsed date
+        events_with_dates.sort(key=lambda x: x['parsed_date'])
+        
+        is_first = i == 0
+        html += f"""
+        <details {"open" if is_first else ""} style="margin-bottom: 15px; border: 1px solid #e5e7eb; border-radius: 8px; overflow: hidden;">
+            <summary style="background: #124072; color: white; padding: 15px; cursor: pointer; font-weight: bold;">
+                📅 {month_name} ({len(events_with_dates)} eventos)
+            </summary>
+            <div style="padding: 15px; background: #f9fafb;">
+        """
+        
+        for event_data in events_with_dates:
+            # Format date for display (keep original if it's already formatted nicely)
+            display_date = event_data['date_str']
+            
+            # Try to format date nicely if it was successfully parsed
+            if event_data['parsed_date'].year != year or event_data['parsed_date'] != datetime(year, 1, 1):
+                try:
+                    # Format as "Lunes, 15 de septiembre"
+                    spanish_days = ['lunes', 'martes', 'miércoles', 'jueves', 'viernes', 'sábado', 'domingo']
+                    spanish_months_full = ['enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio',
+                                         'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre']
+                    
+                    weekday = spanish_days[event_data['parsed_date'].weekday()]
+                    day = event_data['parsed_date'].day
+                    month = spanish_months_full[event_data['parsed_date'].month - 1]
+                    
+                    display_date = f"{weekday.capitalize()}, {day} de {month}"
+                except:
+                    # Keep original date string if formatting fails
+                    pass
+            
+            html += f"""
+            <div style="background: white; padding: 12px; margin-bottom: 8px; border-radius: 6px; border-left: 4px solid #00aeda; box-shadow: 0 1px 3px rgba(0,0,0,0.1);">
+                <div style="font-weight: 600; color: #124072; margin-bottom: 4px;">{event_data['name']}</div>
+                <div style="color: #6b7280; font-size: 14px;">🗓️ {display_date}</div>
+            </div>
+            """
+        
+        html += """
+            </div>
+        </details>
+        """
+    
+    html += "</div>"
+    return html
