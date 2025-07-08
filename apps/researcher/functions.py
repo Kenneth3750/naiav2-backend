@@ -927,15 +927,16 @@ def send_email(to_email: str, subject: str, body: str, status: str = "", user_id
     
     try:
         if user_id:
-            set_status(user_id, status or "Sending email...", 1)
+            set_status(user_id, status or "Sending email...", 2)
 
         if not all([DEFAULT_FROM_EMAIL, EMAIL_HOST_PASSWORD]):
             raise ValueError("DEFAULT_FROM_EMAIL and EMAIL_HOST_PASSWORD must be set in the environment variables")
         
         msg = MIMEText(body)
         msg["Subject"] = subject
-        msg["From"] = DEFAULT_FROM_EMAIL
+        msg["From"] = f"NAIA Uninorte <{DEFAULT_FROM_EMAIL}>"
         msg["To"] = to_email
+        msg["Reply-To"] = "naia@uninorte.edu.co"
 
         with smtplib.SMTP_SSL('smtp.gmail.com', 465) as server:
             print("Iniciando conexión con el servidor de correo")
