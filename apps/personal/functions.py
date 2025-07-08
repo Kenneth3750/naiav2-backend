@@ -1577,3 +1577,287 @@ def create_calendar_event(title: str, start_datetime: str, end_datetime: str, us
         error_msg = f"Unexpected error while creating event: {str(e)}"
         print(f"Unexpected error: {error_msg}")
         return {"error": error_msg}
+    
+
+def read_user_emails(user_id: int, max_emails: int = 10, unread_only: bool = False, search_query: str = None, status: str = "Consultando emails...") -> dict:
+    """
+    Reads user emails using Microsoft Graph API without marking them as read.
+    
+    Args:
+        user_id (int): The ID of the user requesting email information
+        max_emails (int): Maximum number of emails to retrieve (default: 10, max: 50)
+        unread_only (bool): If True, only returns unread emails (default: False)
+        search_query (str): Search query for subject, sender, or content (optional)
+        status (str): Status message for tracking. Defaults to "Consultando emails..."
+        
+    Returns:
+        dict: A dictionary containing emails and HTML display or error information
+    """
+    # Validate required fields
+    if not user_id:
+        return {"error": "User ID is required"}
+    
+    # Limit max_emails to prevent performance issues
+    if max_emails > 50:
+        max_emails = 50
+    elif max_emails < 1:
+        max_emails = 10
+    
+    try:
+        # Set status for tracking
+        if user_id:
+            set_status(user_id, status, 3)  # role_id 3 for Personal Assistant
+        
+        # Get user's Microsoft Graph token
+        user_service = UserService()
+        access_token = user_service.get_user_token(user_id)
+        
+        if not access_token:
+            return {"error": "No access token found for user. Please authenticate with Microsoft first."}
+        
+        # Build Microsoft Graph API URL for emails
+        graph_url = "https://graph.microsoft.com/v1.0/me/messages"
+        
+        # Build query parameters
+        params = {
+            "$top": max_emails,
+            "$select": "id,subject,from,receivedDateTime,bodyPreview,isRead,hasAttachments,importance,webLink"
+        }
+        
+        # Add unread filter if requested
+        filters = []
+        if unread_only:
+            filters.append("isRead eq false")
+        
+        # Add search query if provided
+        if search_query and search_query.strip():
+            params["$search"] = f'"{search_query.strip()}"'
+            # NOTE: Microsoft Graph API doesn't allow $filter or $orderBy with $search
+            # So we'll filter unread emails locally and results won't be sorted by date
+        else:
+            # Only use $filter and $orderBy when there's no search query
+            params["$orderby"] = "receivedDateTime desc"  # Most recent first
+            if filters:
+                params["$filter"] = " and ".join(filters)
+        
+        # Set up headers with authentication
+        headers = {
+            "Authorization": f"Bearer {access_token}",
+            "Content-Type": "application/json"
+        }
+        
+        print(f"Fetching emails for user {user_id}")
+        if unread_only:
+            print("Filtering for unread emails only")
+        if search_query:
+            print(f"Searching for: {search_query}")
+        
+        # Make the API call to Microsoft Graph
+        response = requests.get(
+            graph_url,
+            headers=headers,
+            params=params,
+            timeout=30
+        )
+        
+        # Check response status
+        if response.status_code == 200:
+            # Success - process emails
+            emails_data = response.json()
+            emails = emails_data.get('value', [])
+            if search_query and unread_only:
+                emails = [email for email in emails if not email.get('isRead', True)]
+            
+            print(f"Retrieved {len(emails)} emails")
+            
+            if not emails:
+                # No emails found
+                message = "No hay emails"
+                if unread_only:
+                    message += " no leídos"
+                if search_query:
+                    message += f" que coincidan con '{search_query}'"
+                message += " en este momento."
+                
+                return {
+                    "emails": [],
+                    "count": 0,
+                    "display": f'<div style="padding: 20px; text-align: center; color: #666;"><p>{message}</p></div>'
+                }
+            
+            # Generate HTML display
+            html_display = _generate_emails_html(emails, unread_only, search_query, max_emails)
+            
+            return {
+                "emails": emails,
+                "count": len(emails),
+                "display": html_display
+            }
+        
+        elif response.status_code == 401:
+            # Unauthorized - Token might be expired or invalid
+            error_msg = "Authentication failed. Please refresh your Microsoft login."
+            print(f"Authentication error: {response.text}")
+            return {"error": error_msg}
+        
+        elif response.status_code == 403:
+            error_msg = "Insufficient permissions to read emails. Please check your Microsoft account permissions."
+            print(f"Permission error: {response.text}")
+            return {"error": error_msg}
+        
+        else:
+            # Other errors
+            error_detail = ""
+            try:
+                error_response = response.json()
+                error_detail = error_response.get('error', {}).get('message', response.text)
+            except:
+                error_detail = response.text
+            
+            error_msg = f"Failed to read emails: {error_detail}"
+            print(f"Microsoft Graph API error: {response.status_code} - {error_detail}")
+            return {"error": error_msg}
+    
+    except requests.exceptions.Timeout:
+        error_msg = "Request timeout while reading emails"
+        print(f"Timeout error: {error_msg}")
+        return {"error": error_msg}
+    
+    except requests.exceptions.RequestException as e:
+        error_msg = "Network error while reading emails"
+        print(f"Request error: {str(e)}")
+        return {"error": error_msg}
+    
+    except Exception as e:
+        error_msg = f"Unexpected error while reading emails: {str(e)}"
+        print(f"Unexpected error: {error_msg}")
+        return {"error": error_msg}
+
+
+def _generate_emails_html(emails: list, unread_only: bool, search_query: str, max_emails: int) -> str:
+    """Generate HTML display for emails."""
+    
+    # Create header based on filters applied
+    header_parts = []
+    if unread_only:
+        header_parts.append("No Leídos")
+    if search_query:
+        header_parts.append(f"Búsqueda: '{search_query}'")
+    
+    header_title = "📧 Emails"
+    if header_parts:
+        header_title += f" ({', '.join(header_parts)})"
+    
+    html = f"""
+    <div style="max-width: 800px; margin: 0 auto; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;">
+        <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 20px; border-radius: 12px 12px 0 0; text-align: center;">
+            <h2 style="margin: 0; font-size: 1.4rem; font-weight: 600;">{header_title}</h2>
+            <p style="margin: 8px 0 0 0; opacity: 0.9; font-size: 0.9rem;">
+                Mostrando {len(emails)} de {max_emails} emails máximo
+            </p>
+        </div>
+        
+        <div style="background: white; border-radius: 0 0 12px 12px; box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);">
+    """
+    
+    for i, email in enumerate(emails):
+        # Extract sender information
+        sender_info = email.get('from', {})
+        sender_email_addr = sender_info.get('emailAddress', {})
+        sender_name = sender_email_addr.get('name', 'Remitente desconocido')
+        sender_email = sender_email_addr.get('address', '')
+        
+        # Format date
+        received_date = email.get('receivedDateTime', '')
+        formatted_date = ""
+        if received_date:
+            try:
+                from datetime import datetime
+                # Parse ISO 8601 date
+                date_obj = datetime.fromisoformat(received_date.replace('Z', '+00:00'))
+                # Format for display
+                formatted_date = date_obj.strftime("%d/%m/%Y %H:%M")
+            except:
+                formatted_date = received_date[:16]  # Fallback
+        
+        # Email properties
+        subject = email.get('subject', 'Sin asunto')
+        body_preview = email.get('bodyPreview', '')[:150] + '...' if email.get('bodyPreview', '') else 'Sin contenido'
+        is_read = email.get('isRead', True)
+        has_attachments = email.get('hasAttachments', False)
+        importance = email.get('importance', 'normal')
+        web_link = email.get('webLink', '')
+        
+        # Styling based on read status
+        email_bg = "#f8fafc" if is_read else "#fef3c7"
+        border_left = "4px solid #e5e7eb" if is_read else "4px solid #f59e0b"
+        subject_weight = "500" if is_read else "600"
+        
+        # Importance indicator
+        importance_icon = ""
+        if importance == "high":
+            importance_icon = "🔴 "
+        elif importance == "low":
+            importance_icon = "🔵 "
+        
+        # Attachment indicator
+        attachment_icon = "📎 " if has_attachments else ""
+        
+        # Unread indicator
+        unread_indicator = ""
+        if not is_read:
+            unread_indicator = '<span style="display: inline-block; width: 8px; height: 8px; background: #f59e0b; border-radius: 50%; margin-left: 8px;"></span>'
+        
+        html += f"""
+            <div style="border-left: {border_left}; background: {email_bg}; padding: 16px 20px; {'' if i == len(emails) - 1 else 'border-bottom: 1px solid #e5e7eb;'}">
+                <div style="display: flex; justify-content: between; align-items: flex-start; margin-bottom: 8px;">
+                    <div style="flex: 1;">
+                        <div style="display: flex; align-items: center; margin-bottom: 4px;">
+                            <h4 style="margin: 0; font-size: 1rem; font-weight: {subject_weight}; color: #1f2937; line-height: 1.3;">
+                                {importance_icon}{attachment_icon}{subject[:80] + '...' if len(subject) > 80 else subject}
+                            </h4>
+                            {unread_indicator}
+                        </div>
+                        <div style="display: flex; align-items: center; margin-bottom: 8px; font-size: 0.875rem; color: #6b7280;">
+                            <span style="font-weight: 500;">{sender_name}</span>
+                            {f' <span style="color: #9ca3af;">({sender_email})</span>' if sender_email and sender_email != sender_name else ''}
+                            <span style="margin: 0 8px; color: #d1d5db;">•</span>
+                            <span>{formatted_date}</span>
+                        </div>
+                    </div>
+                </div>
+                
+                <div style="color: #4b5563; font-size: 0.875rem; line-height: 1.4; margin-bottom: 12px;">
+                    {body_preview}
+                </div>
+                
+                <div style="display: flex; justify-content: space-between; align-items: center;">
+                    <div style="display: flex; gap: 12px; font-size: 0.75rem; color: #6b7280;">
+                        <span>{'✉️ No leído' if not is_read else '📖 Leído'}</span>
+                        {f'<span>📎 {attachment_icon.strip()}</span>' if has_attachments else ''}
+                        {f'<span>⚠️ {importance.title()}</span>' if importance != 'normal' else ''}
+                    </div>
+                    {f'<a href="{web_link}" target="_blank" style="font-size: 0.75rem; color: #3b82f6; text-decoration: none; padding: 4px 8px; background: #eff6ff; border-radius: 4px; border: 1px solid #bfdbfe;">Ver en Outlook</a>' if web_link else ''}
+                </div>
+            </div>
+        """
+    
+    html += """
+        </div>
+        
+        <div style="background-color: #f1f5f9; padding: 15px; margin-top: 16px; border-radius: 8px; font-size: 0.875rem;">
+            <div style="display: flex; align-items: center; margin-bottom: 8px;">
+                <span style="font-size: 1.2rem; margin-right: 8px;">💡</span>
+                <strong style="color: #334155;">Información importante:</strong>
+            </div>
+            <ul style="margin: 0; padding-left: 20px; color: #475569; line-height: 1.5;">
+                <li><strong>Los emails NO se marcan como leídos</strong> automáticamente</li>
+                <li>Usa el enlace "Ver en Outlook" para abrir y responder emails</li>
+                <li>Los emails no leídos aparecen con fondo amarillo y punto naranja</li>
+                <li>Puedes buscar por asunto, remitente o contenido</li>
+            </ul>
+        </div>
+    </div>
+    """
+    
+    return html

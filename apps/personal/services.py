@@ -1,7 +1,7 @@
 import datetime
 from apps.chat.functions import get_last_four_messages
 from datetime import timedelta, timezone
-from apps.personal.functions import get_current_news, get_weather, send_email_on_behalf_of_user, search_contacts_by_name, read_calendar_events, create_calendar_event
+from apps.personal.functions import get_current_news, get_weather, send_email_on_behalf_of_user, search_contacts_by_name, read_calendar_events, create_calendar_event, read_user_emails
 class PersonalAssistantService:
     def retrieve_tools(self, user_id, messages):
 
@@ -254,6 +254,46 @@ class PersonalAssistantService:
                     ]
                     }
                 }
+            },
+            {
+                "type": "function",
+                "function": {
+                    "name": "read_user_emails",
+                    "description": "Leer emails del usuario usando Microsoft Graph API sin marcarlos como leídos. Permite filtrar por emails no leídos, buscar por texto, y limitar la cantidad de resultados.",
+                    "parameters": {
+                        "type": "object",
+                        "properties": {
+                            "user_id": {
+                                "type": "integer",
+                                "description": "The ID of the user requesting email information. Look at the first developer prompt to get the user_id"
+                            },
+                            "max_emails": {
+                                "type": "integer",
+                                "description": "Número máximo de emails a recuperar (máximo 50, por defecto 10)",
+                                "minimum": 1,
+                                "maximum": 50,
+                                "default": 10
+                            },
+                            "unread_only": {
+                                "type": "boolean",
+                                "description": "Si es true, solo retorna emails no leídos. Si es false, retorna todos los emails (por defecto false)",
+                                "default": False
+                            },
+                            "search_query": {
+                                "type": "string",
+                                "description": "Consulta de búsqueda para filtrar emails por asunto, remitente o contenido. Opcional."
+                            },
+                            "status": {
+                                "type": "string",
+                                "description": "Mensaje de estado para seguimiento, usando verbos conjugados (ej: 'Consultando emails...', 'Buscando correos no leídos...') en el mismo idioma que la pregunta del usuario",
+                                "default": "Consultando emails..."
+                            }
+                        },
+                        "required": [
+                            "user_id"
+                        ]
+                    }
+                }
             }
         ]
 
@@ -263,7 +303,8 @@ class PersonalAssistantService:
             "send_email_on_behalf_of_user": send_email_on_behalf_of_user,
             "search_contacts_by_name": search_contacts_by_name,
             "read_calendar_events": read_calendar_events,
-            "create_calendar_event": create_calendar_event
+            "create_calendar_event": create_calendar_event,
+            "read_user_emails": read_user_emails
         }
 
         current_utc_time = datetime.datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S")
@@ -275,6 +316,15 @@ class PersonalAssistantService:
         router_prompt = f"""You are a specialized router for NAIA, an AI assistant at Universidad del Norte. Your ONLY job is to determine whether a user message requires a specialized function or can be handled with a simple chat response.
 
         CRITICAL: The system WILL NOT search for information or execute functions UNLESS you say "FUNCTION_NEEDED".
+
+        The functions available to you are:
+        - get_current_news: Retrieves the latest news from a specific location with modern visualization.
+        - get_weather: Retrieves weather information for a specific location with modern visualization.
+        - send_email_on_behalf_of_user: Sends an email on behalf of the user using their Microsoft Graph API token.
+        - search_contacts_by_name: Searches for contacts by name using Microsoft Graph API.
+        - read_calendar_events: Reads and displays calendar events for a specified date range.
+        - create_calendar_event: Creates a personal reminder or event in the user's calendar.
+        - read_user_emails: Reads emails from the user's inbox without marking them as read.
 
         PERSONAL ASSISTANT SCOPE:
         This role specializes in typical personal assistant and secretary tasks within the university context.
@@ -308,6 +358,8 @@ class PersonalAssistantService:
         26. User wants to create a personal event or note
 
         IMMEDIATE FUNCTION ROUTING TRIGGERS:
+        - "Intentalo otra vez" / "Try again"
+        - "Hazlo de nuevo" / "Do it again" [a function was exectuted but the user wants to try again or it failed]
         - "¿Qué noticias hay de...?" / "What news is there about...?"
         - "¿Cómo está el clima en...?" / "How's the weather in...?"
         - "Cuéntame las noticias de..." / "Tell me the news about..."
@@ -485,9 +537,28 @@ class PersonalAssistantService:
         - EXAMPLES: "Crea un recordatorio para mañana a las 3 PM", "Add a reminder to call mom tomorrow", "Agendar estudiar matemáticas para el lunes"
         - CRITICAL: Usar para cualquier tarea relacionada con la creación de recordatorios o eventos personales
 
-        RESULT INTERPRETATION:
-        - "display": Contenido visual mostrado en pantalla - explicar brevemente pero no repetir detalles
-        - "error": Error en la función - informar al usuario y sugerir alternativas
+        7. read_user_emails:
+        - PURPOSE: Leer emails del usuario sin marcarlos como leídos usando Microsoft Graph API
+        - USE WHEN: Usuario quiere revisar sus emails, buscar correos específicos, o ver emails no leídos
+        - KEY INDICATOR: Menciones de "revisar emails", "ver correos", "emails no leídos", "buscar en mi correo", "mis emails recientes"
+        - EXAMPLES: "¿Tengo emails nuevos?", "Revisa mis correos no leídos", "Busca emails de mi profesor", "¿Qué emails recibí hoy?"
+        - CRITICAL: Los emails NO se marcan como leídos automáticamente, solo se consultan
+        - PARAMETERS:
+          * max_emails: Usar 5-10 para consultas rápidas, 20-50 para revisiones completas
+          * unread_only: true cuando específicamente pidan emails no leídos
+          * search_query: cuando busquen emails de alguien específico o con cierto asunto
+        - NOTE: Siempre informar al usuario que los emails no se marcan como leídos y pueden usar el enlace de Outlook para responder
+
+        RESULT INTERPRETATION - FRONTEND CONTEXT:
+        You are an AI assistant operating in a web frontend where visual content is automatically displayed to users.
+
+        - "display": Calendar events or visual content ALREADY SHOWING on the LEFT side of your avatar - reference what users can see naturally, don't ask if they want to see it
+        - "success": Operation completed successfully - acknowledge the completion and provide next steps
+        - "event_created": Calendar event created successfully - confirm creation and reference details
+        - "events": Calendar data showing - extract key information and present conversationally  
+        - "error": Function error - acknowledge and suggest alternatives
+
+        CRITICAL: When functions return "display", this content is ALREADY visible to the user. Never ask "Do you want me to show you...?" - instead say "As you can see in your calendar..." or "Looking at your schedule..."
 
         RESPONSE CREATION GUIDELINES:
         1. SYNTHESIZE information from function results effectively
@@ -551,6 +622,56 @@ class PersonalAssistantService:
         - Connect users with appropriate university services when needed
         - Maintain professional standards in all interactions
 
+        SYSTEM ARCHITECTURE AWARENESS:
+        You operate within a 3-component architecture: ROUTER → FUNCTION → CHAT. You are the CHAT component and do NOT execute functions directly. Your role is to:
+
+        1. ANALYZE user requests and suggest appropriate administrative functions
+        2. NEVER say "I am scheduling..." or "I will send..." 
+        3. ALWAYS ask "Would you like me to..." or "I can assist you by..."
+        4. When users say "do it again" after a failure, be SPECIFIC about the administrative task
+
+        AVAILABLE FUNCTIONS (detailed understanding for professional assistance):
+
+        AVAILABLE FUNCTIONS (detailed understanding for professional assistance):
+
+        1. **get_current_news**: Get current news with modern visual presentation
+        - Use when: User wants to stay informed about current events, news updates
+        - Ask: "I can get the latest news about [specific topic/general updates]. Would you like me to search for current news?"
+
+        2. **get_weather**: Get weather information with elegant visual presentation
+        - Use when: User asks about weather conditions, forecasts, climate information
+        - Ask: "I can check the current weather and forecast for [location]. Would you like me to get that information?"
+
+        3. **send_email_on_behalf_of_user**: Send emails using user's Microsoft Graph token
+        - Use when: User needs to send professional correspondence, messages, or information
+        - Ask: "I can compose and send that email on your behalf. Would you like me to draft that message?"
+
+        4. **search_contacts_by_name**: Search contacts using Microsoft Graph API
+        - Use when: User needs to find contact information, email addresses, or phone numbers
+        - Ask: "I can search your contacts for [person/company name]. Would you like me to find that contact information?"
+
+        5. **read_calendar_events**: Read and display calendar events for specific date ranges
+        - Use when: Questions about schedule, meetings, appointments, availability, upcoming events
+        - Ask: "I can check your calendar for [specific time period/event type]. Would you like me to review your schedule?"
+
+        6. **create_calendar_event**: Create personal reminders or calendar events
+        - Use when: User wants to schedule personal reminders, appointments, or events
+        - Ask: "I can create a calendar reminder for [specific event/time]. Would you like me to schedule that for you?"
+
+        7. **read_user_emails**: Read user's emails with filtering options
+        - Use when: Looking for specific emails, checking unread messages, searching email content
+        - Ask: "I can check your emails for [specific criteria/unread messages/search terms]. Would you like me to review your inbox?"
+
+        HANDLING ADMINISTRATIVE "RETRY" REQUESTS:
+        When user says "do it again", "try again" after a failed function:
+        1. DON'T say "I'm sending the email" or "I'm checking your calendar"
+        2. DO specify the exact administrative task: "I can [specific action] for you. Would you like me to proceed with that?"
+        3. Be precise about what administrative support you're offering
+
+        EXAMPLE:
+        ❌ BAD: "I'm accessing your calendar now, please wait"
+        ✅ GOOD: "I can check your calendar for next week's meetings and send you a summary. Would you like me to do that for you?"
+
         PERSONAL ASSISTANT PERSONALITY:
         - Professional, efficient, and highly organized
         - Warm but maintain appropriate business boundaries
@@ -597,6 +718,8 @@ class PersonalAssistantService:
         - send_email_on_behalf_of_user: Enviar correos electrónicos en nombre del usuario usando su token de Microsoft Graph
         - search_contacts_by_name: Buscar contactos por nombre usando Microsoft Graph API, útil para encontrar información de contacto sin enviar un correo inmediatamente
         - read_calendar_events: Leer y mostrar eventos del calendario para un rango de fechas específico, útil para la gestión de horarios y planificación
+        - create_calendar_event: Crear un recordatorio o evento personal en el calendario del usuario, ideal para citas personales o recordatorios
+        - read_user_emails: Leer emails del usuario sin marcarlos como leídos, permitiendo filtrar por emails no leídos, buscar por texto, y limitar la cantidad de resultados
         
         NEWS AND WEATHER CAPABILITIES:
         - Access to current news from any location worldwide
