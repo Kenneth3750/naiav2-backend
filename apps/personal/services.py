@@ -75,45 +75,6 @@ class PersonalAssistantService:
                 "type": "function",
                 "function": {
                     "name": "send_email_on_behalf_of_user",
-                    "description": "Sends an email on behalf of the user using their Microsoft Graph API token. Perfect for professional correspondence, meeting requests, follow-ups, and any email communication the user needs to send.",
-                    "parameters": {
-                    "type": "object",
-                    "properties": {
-                        "to_email": {
-                        "type": "string",
-                        "description": "The recipient's email address"
-                        },
-                        "subject": {
-                        "type": "string",
-                        "description": "The subject of the email to send"
-                        },
-                        "body": {
-                        "type": "string",
-                        "description": "The body content of the email to send"
-                        },
-                        "user_id": {
-                        "type": "integer",
-                        "description": "The ID of the user requesting the email. Look at the first developer prompt to get the user_id"
-                        },
-                        "status": {
-                        "type": "string",
-                        "description": "A concise description of the email task being performed, using conjugated verbs (e.g., 'Enviando correo a...', 'Sending email to...') in the same language as the user's question"
-                        }
-                    },
-                    "required": [
-                        "to_email",
-                        "subject", 
-                        "body",
-                        "user_id",
-                        "status"
-                    ]
-                    }
-                }
-            },
-            {
-                "type": "function",
-                "function": {
-                    "name": "send_email_on_behalf_of_user",
                     "description": "Sends an email on behalf of the user using their Microsoft Graph API token. Can accept either an email address or a contact name. If a name is provided and multiple contacts are found, it will show options for the user to choose from. The AI can then identify the user's selection and call this function again with the specific email.",
                     "parameters": {
                     "type": "object",
@@ -475,6 +436,17 @@ class PersonalAssistantService:
         }}
         ]
 
+        ## CRITICAL RULES FOR JSON RESPONSES
+        **FORBIDDEN:** Include links, URLs or web addresses in your JSON responses. All your responses will be converted to audio via TTS.
+
+        **MANDATORY:** 
+        - Avoid any text that sounds awkward when read aloud
+        - If user needs a link, it will be provided by the corresponding function, never by you
+        - Optimize your language for natural spoken conversation
+        - Adapt your tone dynamically based on context
+
+        **REMEMBER:** Your JSON response will be NAIA's voice. Make it fluid, natural and without elements that break the audio experience.
+
         ⚠️ CRITICAL: NAME RECOGNITION INSTRUCTIONS ⚠️
         Always recognize variants of your name due to speech recognition errors. If the user says any of these names, understand they are referring to you:
         - "Naya", "Nadia", "Maya", "Anaya", "Nayla", "Anaia"
@@ -564,7 +536,7 @@ class PersonalAssistantService:
         1. SYNTHESIZE information from function results effectively
         2. REFERENCE the visual content shown on screen without repeating all details
         3. Provide CONTEXT and importance of the information retrieved
-        4. Use 3-4 messages to give a complete overview
+        4. Use 3-7 messages to give a complete overview
         5. Be INFORMATIVE about what the user can see on their screen
         6. Maintain PROFESSIONAL yet friendly assistant tone
 
@@ -704,6 +676,18 @@ class PersonalAssistantService:
         }}
         ]
 
+        ## CRITICAL RULES FOR JSON RESPONSES
+        **FORBIDDEN:** Include links, URLs or web addresses in your JSON responses. All your responses will be converted to audio via TTS.
+
+        **MANDATORY:** 
+        - Avoid any text that sounds awkward when read aloud
+        - If user needs a link, it will be provided by the corresponding function, never by you
+        - Optimize your language for natural spoken conversation
+        - Adapt your tone dynamically based on context
+
+        **REMEMBER:** Your JSON response will be NAIA's voice. Make it fluid, natural and without elements that break the audio experience.
+
+
         CONVERSATION FLOW GUIDELINES:
         1. FOCUS AND CLARITY: Ask only ONE question per ENTIRE JSON ARRAY response
         2. PROFESSIONAL EFFICIENCY: Be helpful and direct in your assistance
@@ -729,7 +713,7 @@ class PersonalAssistantService:
 
         MANDATORY JSON ARRAY RESPONSE RULES:
         1. ALL responses must be valid JSON arrays in the format shown above
-        2. Include 2-3 JSON objects per array for natural conversation flow
+        2. Include 2-7 JSON objects per array for natural conversation flow
         3. Keep each JSON object professional and focused (1-3 sentences)
         4. Choose facial expressions that match professional context
         5. Use the same language as the user

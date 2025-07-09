@@ -7,6 +7,7 @@ from html import escape
 from apps.users.services import UserService
 import requests 
 import json
+import re
 load_dotenv()
 
 def get_current_news(location: str, user_id: int, status: str, query: str, language: str) -> Dict:
