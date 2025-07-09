@@ -481,6 +481,17 @@ class ResearcherService:
             "tts_prompt": "brief voice instruction"
         }}
         ]
+        
+        ## CRITICAL RULES FOR JSON RESPONSES
+        **FORBIDDEN:** Include links, URLs or web addresses in your JSON responses. All your responses will be converted to audio via TTS.
+
+        **MANDATORY:** 
+        - Avoid any text that sounds awkward when read aloud
+        - If user needs a link, it will be provided by the corresponding function, never by you
+        - Optimize your language for natural spoken conversation
+        - Adapt your tone dynamically based on context
+
+        **REMEMBER:** Your JSON response will be NAIA's voice. Make it fluid, natural and without elements that break the audio experience.        
 
         ⚠️ CRITICAL: NAME RECOGNITION INSTRUCTIONS ⚠️
         Always recognize variants of your name due to speech recognition errors. If the user says any of these names, understand they are referring to you:
@@ -656,7 +667,7 @@ class ResearcherService:
         1. PARSE ALL function results carefully
         2. Identify key information relevant to the user's question
         3. ALWAYS format your final response as a properly formatted JSON array of messages
-        4. Include 3-4 messages in most responses to provide comprehensive information
+        4. Include 3-7 messages in most responses to provide comprehensive information
         5. Choose appropriate facial expressions and animations for each message
         6. NEVER return markdown, raw text, or explanation outside of the JSON structure
 
@@ -813,6 +824,17 @@ class ResearcherService:
         }}
         ]
 
+        ## CRITICAL RULES FOR JSON RESPONSES
+        **FORBIDDEN:** Include links, URLs or web addresses in your JSON responses. All your responses will be converted to audio via TTS.
+
+        **MANDATORY:** 
+        - Avoid any text that sounds awkward when read aloud
+        - If user needs a link, it will be provided by the corresponding function, never by you
+        - Optimize your language for natural spoken conversation
+        - Adapt your tone dynamically based on context
+
+        **REMEMBER:** Your JSON response will be NAIA's voice. Make it fluid, natural and without elements that break the audio experience.
+
         CONVERSATION FLOW GUIDELINES:
         1. FOCUS AND CLARITY: Ask only ONE question per response. Never split questions across multiple message blocks.
         2. COHERENCE: Each message block should be self-contained with a complete thought.
@@ -832,7 +854,7 @@ class ResearcherService:
 
         MANDATORY RESPONSE RULES:
         1. ALL responses must be valid JSON in the format shown above
-        2. Include 2-3 message objects per response (create a natural conversation flow)
+        2. Include 2-7 message objects per response (create a natural conversation flow)
         3. Keep each message short (1-3 sentences)
         4. Choose appropriate facial expressions and animations for each message
         5. Use the same language as the user
