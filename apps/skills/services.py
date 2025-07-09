@@ -7,7 +7,7 @@ class SkillsTrainerService:
 
         last_messages_text = get_last_four_messages(messages)
 
-        from apps.skills.functions import simulate_job_interview, analyze_professional_appearance, generate_training_report
+        from apps.skills.functions import simulate_job_interview, analyze_professional_appearance, generate_training_report, list_recent_training_reports, get_training_report_html
         
         tools = [
             {
@@ -50,31 +50,6 @@ class SkillsTrainerService:
             {
                 "type": "function",
                 "function": {
-                    "name": "analyze_professional_appearance",
-                    "description": "Analyzes the user's professional appearance based on their current image and provided context. Evaluates clothing, grooming, posture, and overall professional presentation for specific situations like interviews, presentations, or formal events.",
-                    "parameters": {
-                        "type": "object",
-                        "properties": {
-                            "context": {
-                                "type": "string",
-                                "description": "The specific professional context for the analysis (e.g., 'job interview', 'business presentation', 'cocktail event', 'formal meeting', 'video conference', 'networking event'). This helps tailor the analysis to appropriate standards."
-                            },
-                            "user_id": {
-                                "type": "integer",
-                                "description": "The ID of the user requesting the appearance analysis. Look in the first developer prompt to get the user_id"
-                            },
-                            "status": {
-                                "type": "string",
-                                "description": "A concise description of the analysis task being performed, using conjugated verbs (e.g., 'Analyzing professional appearance...', 'Evaluating presentation style...') in the same language as the user's question"
-                            }
-                        },
-                        "required": ["context", "user_id", "status"]
-                    }
-                }
-            },
-            {
-                "type": "function",
-                "function": {
                     "name": "generate_training_report",
                     "description": "Generates a comprehensive training report in professional HTML format with visual elements. Creates detailed analysis of training sessions including performance metrics, feedback, and improvement recommendations. Saves the report to database and returns it for PDF conversion.",
                     "parameters": {
@@ -105,12 +80,95 @@ class SkillsTrainerService:
                     }
                 }
             },
+            {
+                "type": "function",
+                "function": {
+                    "name": "list_recent_training_reports",
+                    "description": "Lists the most recent training reports for a user. Useful when users want to see their training history or previous reports. Returns a list with titles, dates, and IDs of recent training sessions.",
+                    "parameters": {
+                        "type": "object",
+                        "properties": {
+                            "user_id": {
+                                "type": "integer",
+                                "description": "The ID of the user whose training reports are to be listed. Look in the first developer prompt to get the user_id"
+                            },
+                            "limit": {
+                                "type": "integer",
+                                "description": "Maximum number of reports to return. Default is 10. Can be adjusted based on user's request (e.g., 'show me my last 5 reports' would be limit=5)",
+                                "default": 10
+                            },
+                            "status": {
+                                "type": "string",
+                                "description": "A concise description of the listing task being performed, using conjugated verbs (e.g., 'Listing recent training reports...', 'Retrieving training history...') in the same language as the user's question"
+                            }
+                        },
+                        "required": ["user_id", "status"]
+                    }
+                }
+            },
+            {
+                "type": "function",
+                "function": {
+                    "name": "get_training_report_html",
+                    "description": "Retrieves the HTML content of a specific training report for download or viewing. Returns the report content with 'pdf' key for frontend processing. Use when users want to download or view a specific training report.",
+                    "parameters": {
+                        "type": "object",
+                        "properties": {
+                            "report_id": {
+                                "type": "integer",
+                                "description": "The ID of the specific training report to retrieve. This should come from a previous list of reports or be provided by the user"
+                            },
+                            "user_id": {
+                                "type": "integer",
+                                "description": "The ID of the user requesting the report. Look in the first developer prompt to get the user_id. Used for security validation"
+                            },
+                            "status": {
+                                "type": "string",
+                                "description": "A concise description of the retrieval task being performed, using conjugated verbs (e.g., 'Retrieving training report...', 'Preparing report for download...') in the same language as the user's question"
+                            }
+                        },
+                        "required": ["report_id", "user_id", "status"]
+                    }
+                }
+            },
+            {
+                "type": "function",
+                "function": {
+                    "name": "analyze_professional_appearance",
+                    "description": "Analyzes user's professional appearance using AI vision and provides intelligent clothing suggestions. The LLM analyzes the user's image and dynamically generates specific search queries for clothing recommendations. If improvements are needed, displays an interactive carousel with clothing examples. If user is well-dressed, provides positive feedback without suggestions. The image is automatically handled by the system.",
+                    "parameters": {
+                        "type": "object",
+                        "properties": {
+                            "context": {
+                                "type": "string",
+                                "description": "The specific context or event for appearance analysis (e.g., 'job interview', 'business presentation', 'conference', 'formal meeting', 'cocktail event'). This helps the AI generate appropriate analysis and targeted clothing search queries."
+                            },
+                            "user_id": {
+                                "type": "integer",
+                                "description": "The ID of the user requesting the appearance analysis. Look in the first developer prompt to get the user_id"
+                            },
+                            "status": {
+                                "type": "string",
+                                "description": "A concise description of the analysis task being performed, using conjugated verbs (e.g., 'Analyzing professional appearance...', 'Evaluating presentation style...') in the same language as the user's question"
+                            },
+                            "user_gender": {
+                                "type": "string",
+                                "description": "The gender of the user for personalized clothing suggestions. Options: male and female. This helps the AI tailor clothing recommendations",
+                                "default": None
+                            }
+                        },
+                        "required": ["context", "user_id", "status"]
+                    }
+                }
+            },
         ]
 
         available_functions = {
             "simulate_job_interview": simulate_job_interview,
             "analyze_professional_appearance": analyze_professional_appearance,
-            "generate_training_report": generate_training_report
+            "generate_training_report": generate_training_report,
+            "list_recent_training_reports": list_recent_training_reports,
+            "get_training_report_html": get_training_report_html
         }
 
         current_utc_time = datetime.datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S")
@@ -145,6 +203,11 @@ class SkillsTrainerService:
         14. User wants feedback on their current appearance or outfit
         15. User mentions preparing for presentations, conferences, meetings, or professional events
         16. User asks about their image or presentation for specific occasions
+        17. User asks to see their training history or previous reports
+        18. User mentions wanting to review past training sessions
+        19. User asks for a list of their training reports
+        20. User wants to download or view a specific training report
+        21. User mentions report IDs or asks to open/download a report
 
         IMMEDIATE FUNCTION ROUTING TRIGGERS:
         - "Quiero practicar una entrevista" / "I want to practice an interview"
@@ -172,6 +235,14 @@ class SkillsTrainerService:
         - "Quiero un análisis de mi sesión" / "I want an analysis of my session"
         - "Crear reporte de entrevista" / "Create interview report"
         - "¿Puedes hacer un resumen de mi práctica?" / "Can you make a summary of my practice?"
+        - "Muéstrame mis reportes" / "Show me my reports"
+        - "¿Cuáles son mis entrenamientos anteriores?" / "What are my previous trainings?"
+        - "Quiero ver mi historial de entrenamiento" / "I want to see my training history"
+        - "Lista mis reportes de entrenamiento" / "List my training reports"
+        - "Descargar reporte" / "Download report"
+        - "Ver reporte" / "View report"
+        - "Abrir reporte número..." / "Open report number..."
+        - "Quiero el HTML del reporte" / "I want the HTML of the report"
 
         CONTEXT-AWARE ROUTING BASED ON CONVERSATION HISTORY:
         PREVIOUS MESSAGES: {last_messages_text}
@@ -263,6 +334,17 @@ class SkillsTrainerService:
         }}
         ]
 
+        ## CRITICAL RULES FOR JSON RESPONSES
+        **FORBIDDEN:** Include links, URLs or web addresses in your JSON responses. All your responses will be converted to audio via TTS.
+
+        **MANDATORY:** 
+        - Avoid any text that sounds awkward when read aloud
+        - If user needs a link, it will be provided by the corresponding function, never by you
+        - Optimize your language for natural spoken conversation
+        - Adapt your tone dynamically based on context
+
+        **REMEMBER:** Your JSON response will be NAIA's voice. Make it fluid, natural and without elements that break the audio experience.
+
         ⚠️ CRITICAL: NAME RECOGNITION INSTRUCTIONS ⚠️
         Always recognize variants of your name due to speech recognition errors. If the user says any of these names, understand they are referring to you:
         - "Naya", "Nadia", "Maya", "Anaya", "Nayla", "Anaia"
@@ -307,13 +389,14 @@ class SkillsTrainerService:
         - CRITICAL: Always use when user wants interview practice or professional scenario training
         - OUTPUT: Returns conversational guide for NAIA and visual HTML simulation interface
 
-        2. analyze_professional_appearance:
-        - PURPOSE: Analyze user's professional appearance and provide specific feedback
-        - USE WHEN: User asks about their appearance, style advice, professional image, or how they look for events
-        - KEY INDICATOR: Questions about appearance, clothing, professional image, dress code
-        - EXAMPLES: "How do I look for this interview?", "Is my outfit appropriate?", "Analyze my professional appearance"
-        - CRITICAL: Always use when user wants appearance feedback or style advice
-        - OUTPUT: Returns detailed analysis of professional appearance with strengths and recommendations
+        2. **analyze_professional_appearance**: Advanced AI-powered professional image analysis with dynamic clothing suggestions
+        - Use when: User asks about their appearance, outfit, professional image, or dress code for events
+        - AI Intelligence: Automatically analyzes user's image and generates contextual search queries for clothing recommendations
+        - Smart Features: 
+          * If user is well-dressed: Provides positive feedback without suggestions
+          * If improvements needed: Shows interactive carousel with AI-curated clothing examples
+          * Dynamic search: LLM generates specific queries based on context and recommendations
+        - Ask: "I can analyze your professional appearance and provide personalized feedback for [specific context/event]. Would you like me to evaluate how you look?"
 
         3. generate_training_report:
         - PURPOSE: Generate comprehensive training reports with visual analysis and recommendations
@@ -322,6 +405,14 @@ class SkillsTrainerService:
         - EXAMPLES: "Generate a report of my interview practice", "Create an analysis of my session", "I want a training summary"
         - CRITICAL: Always use when user wants formal documentation or analysis of their skill development
         - OUTPUT: Returns professional HTML report with performance analysis, saved to database, ready for PDF conversion
+
+        4. **list_recent_training_reports**: Lists user's recent training reports
+        - Use when: User wants to see their training history, previous reports, or training session records
+        - Ask: "I can show you your recent training reports and history. Would you like me to retrieve your training records?"
+
+        5. **get_training_report_html**: Retrieves specific training report for download
+        - Use when: User wants to download, view, or access a specific training report by ID
+        - Ask: "I can retrieve that specific training report for you to download or view. Would you like me to get the report content?"
 
         FUNCTION EXECUTION RULES:
         - NEVER announce that you "will" create or simulate - IMMEDIATELY CALL the function when appropriate
@@ -488,10 +579,46 @@ class SkillsTrainerService:
         5. FOLLOW-UP: Save additional questions for after the user responds
         6. GROWTH MINDSET: Emphasize learning and improvement in all interactions
 
-        SPECIALIZED SKILLS TRAINER FUNCTIONS (that you can explain but NOT execute in chat-only mode):
-        - simulate_job_interview: Create interactive job interview simulations with personalized questions and professional scenarios
-        - analyze_professional_appearance: Analyze user's professional appearance and provide specific feedback for different contexts
-        - generate_training_report: Generate comprehensive training reports with performance analysis, visual elements, and improvement recommendations
+        ## CRITICAL RULES FOR JSON RESPONSES
+        **FORBIDDEN:** Include links, URLs or web addresses in your JSON responses. All your responses will be converted to audio via TTS.
+
+        **MANDATORY:** 
+        - Avoid any text that sounds awkward when read aloud
+        - If user needs a link, it will be provided by the corresponding function, never by you
+        - Optimize your language for natural spoken conversation
+        - Adapt your tone dynamically based on context
+
+        **REMEMBER:** Your JSON response will be NAIA's voice. Make it fluid, natural and without elements that break the audio experience.
+
+        SYSTEM ARCHITECTURE AWARENESS:
+        You operate within a 3-component architecture: ROUTER → FUNCTION → CHAT. You are the CHAT component and do NOT execute functions directly. Your role is to:
+
+        1. ANALYZE training requests and suggest appropriate skill development functions
+        2. NEVER say "I am creating..." or "I will simulate..." 
+        3. ALWAYS ask "Would you like me to..." or "I can help you practice..."
+        4. When users say "do it again" after a failure, be SPECIFIC about the training activity
+
+        AVAILABLE FUNCTIONS (detailed understanding for skill development):
+
+        1. **simulate_job_interview**: Interactive interview practice sessions
+        - Use when: User wants to practice job interviews for specific positions
+        - Ask: "I can create an interactive interview simulation for [specific position/company type]. Would you like me to set up that practice session?"
+
+        2. **analyze_professional_appearance**: Professional image and appearance analysis
+        - Use when: User asks about their appearance, outfit, professional image, or dress code for events
+        - Ask: "I can analyze your professional appearance and provide feedback for [specific context/event]. Would you like me to evaluate how you look?"
+
+        3. **generate_training_report**: Create comprehensive training session reports
+        - Use when: User wants documentation of their training session, performance analysis, or detailed feedback
+        - Ask: "I can generate a comprehensive training report analyzing your [training session type]. Would you like me to create that report for you?"
+
+        4. **list_recent_training_reports**: Display user's training history and reports
+        - Use when: User wants to see their previous training sessions, training history, or past reports
+        - Ask: "I can show you your recent training reports and session history. Would you like me to display your training records?"
+
+        5. **get_training_report_html**: Retrieve specific training report for download
+        - Use when: User wants to download, view, or access a specific training report by ID
+        - Ask: "I can retrieve that specific training report for you to download or view. Would you like me to get the report content?"
 
         TRAINING REPORT CAPABILITIES:
         - Comprehensive session analysis with visual performance metrics
@@ -523,7 +650,7 @@ class SkillsTrainerService:
 
         MANDATORY JSON ARRAY RESPONSE RULES:
         1. ALL responses must be valid JSON arrays in the format shown above
-        2. Include 2-3 JSON objects per array for natural conversation flow
+        2. Include 2-7 JSON objects per array for natural conversation flow
         3. Keep each JSON object encouraging and focused (1-3 sentences)
         4. Choose facial expressions that match motivational context (prefer "smile" and "happy_expressions")
         5. Use the same language as the user

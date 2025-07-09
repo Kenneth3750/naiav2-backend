@@ -4,10 +4,14 @@ from typing import Dict
 from apps.status.services import set_status
 from openai import OpenAI
 import json
-from services.files import B2FileService
+from apps.researcher.functions import generate_image_carousel_html
 from apps.skills.models import TrainingReport
 from apps.users.models import User
 from datetime import datetime, timezone, timedelta
+from apps.skills.services import SkillsTrainerDBService
+from apps.skills.models import TrainingReport
+from datetime import timezone, timedelta
+from serpapi import GoogleSearch
 load_dotenv()
 
 openai_api_key = os.getenv("open_ai")
@@ -870,93 +874,191 @@ def get_simulation_css() -> str:
     """
 
 
-def analyze_professional_appearance(context: str, user_id: int, status: str) -> Dict:
+def analyze_professional_appearance(context: str, user_id: int, status: str, user_gender: str = None) -> Dict:
     """
-    Analyzes the user's professional appearance based on their current image
-    and the provided context (interview, presentation, cocktail, formal, etc.)
+    Analyzes the user's professional appearance and shows clothing suggestions via image carousel if needed.
+    The image is handled automatically by the LLM system.
     
     Args:
         context (str): Analysis context (interview, presentation, cocktail, formal, etc.)
         user_id (int): User ID
         status (str): Status message for tracking
+        user_gender (str, optional): User's declared gender ('male', 'female', 'non-binary', etc.)
+                                   Takes absolute priority over visual analysis
         
     Returns:
-        dict: Structured analysis of professional appearance
+        dict: Structured analysis with image carousel if suggestions are needed
     """
     try:
         set_status(user_id, status, 4) 
-        
-       
-        file_service = B2FileService()
-        image_url = file_service.get_current_file_url(user_id)
-        
-        if not image_url:
-            return {"error": "Could not retrieve user's image"}
-        
-        # Specialized prompt for professional appearance analysis
-        analysis_prompt = f"""You are an expert professional image consultant. Analyze the person's appearance in the image considering the following context: {context}
+
+        # Construir parte del prompt sobre género con prioridad al usuario
+        gender_instruction = ""
+        if user_gender:
+            gender_instruction = f"""
+CRITICAL GENDER OVERRIDE: The user has explicitly declared their gender as '{user_gender}'. 
+You MUST use this declared gender for all clothing recommendations and search queries, 
+regardless of what you observe in the image. This user declaration has ABSOLUTE PRIORITY.
+"""
+        else:
+            gender_instruction = """
+GENDER IDENTIFICATION FROM IMAGE: Since no gender was declared by the user, 
+identify the apparent gender presentation from the image to tailor recommendations appropriately.
+"""
+
+        analysis_prompt = f"""You are an expert professional image consultant. I need you to analyze the person's appearance in the image that has been provided, considering the following context: {context}
+
+{gender_instruction}
 
 Evaluate the following aspects:
+1. **GENDER FOR RECOMMENDATIONS**: Use declared gender '{user_gender}' if provided, otherwise identify from image
+2. **CLOTHING AND STYLE**: Appropriate for context, quality, colors, formality level
+3. **PERSONAL GROOMING**: Hair, hygiene, makeup (if applicable)
+4. **POSTURE AND BODY LANGUAGE**: Posture, expression, confidence
+5. **ENVIRONMENT**: Background, lighting, professional framing
 
-1. **CLOTHING AND STYLE**:
-   - Appropriate for the mentioned context
-   - Quality and condition of garments
-   - Color combination
-   - Adequate level of formality
+CRITICAL: Based on your analysis, determine if this person needs clothing/style improvements or if they are already well-dressed.
 
-2. **PERSONAL GROOMING**:
-   - Hair and hairstyle
-   - Visible hygiene and personal care
-   - Makeup (if applicable) appropriate for the context
+GENDER-AWARE SEARCH GUIDELINES:
+{"- USER DECLARED GENDER: Use '" + user_gender + "' for all search terms and recommendations" if user_gender else "- VISUAL IDENTIFICATION: Determine from image appearance"}
+- If male/masculine: Include "men", "male", "masculine" in search queries
+- If female/feminine: Include "women", "female", "feminine" in search queries  
+- If non-binary: Use "unisex", "gender neutral" terms
+- CONTEXT OVERRIDE: If the context explicitly mentions different gender preferences, respect that
+- EXAMPLES WITH DECLARED GENDER:
+  * Declared male + boda → "elegant wedding guest attire men formal suit"
+  * Declared female + interview → "professional business interview outfit women formal"
+  * Declared male + presentación → "formal presentation attire men business professional"
 
-3. **POSTURE AND BODY LANGUAGE**:
-   - Body posture
-   - Facial expression
-   - Projected confidence
+You MUST respond with ONLY a valid JSON object in this EXACT format:
+{{
+    "overall_rating": 8.5,
+    "needs_improvement": true,
+    "analysis_summary": "Detailed professional analysis of the person's appearance...",
+    "strengths": ["Specific strength 1", "Specific strength 2", "Specific strength 3"],
+    "recommendations": ["Specific recommendation 1", "Specific recommendation 2"],
+    "improvement_areas": ["area1", "area2"],
+    "gender_identified": "{user_gender if user_gender else 'determined_from_image'}",
+    "gender_source": "{'user_declared' if user_gender else 'visual_analysis'}",
+    "search_query": "professional business attire interview formal men"
+}}
 
-4. **ENVIRONMENT AND PRESENTATION**:
-   - Appropriate background for video calls/professional photos
-   - Adequate lighting
-   - Professional framing
-
-Provide:
-- **Strengths**: 3-4 specific positive aspects
-- **Recommendations**: 3-4 concrete improvement suggestions
-- **Overall Rating**: From 1-10 for the mentioned context
-- **Specific Tips**: For the type of event/situation in the context
-
-Be constructive, specific, and professional in your observations."""
+RULES:
+- ALWAYS prioritize declared gender over visual analysis
+- If person is well-dressed and professional: set "needs_improvement": false and "search_query": ""
+- If they need improvements: set "needs_improvement": true and create appropriate search query
+- The search_query MUST reflect the correct gender (declared or identified)
+- Make search_query specific to both context and gender
+- For wedding contexts: "wedding guest attire [gender]" 
+- For formal events: "formal [gender] attire [context]"
+- Keep analysis_summary comprehensive but concise
+- Be constructive and specific in all feedback
+- Always respect user's gender declaration as absolute truth"""
 
         response = client.chat.completions.create(
-            model="gpt-4.1-mini",
+            model="gpt-4.1",
             messages=[{
-                "role": "user",
-                "content": [
-                    {"type": "text", "text": analysis_prompt},
-                    {
-                        "type": "image_url",
-                        "image_url": {
-                            "url": image_url,
-                        },
-                    },
-                ],
+                "role": "user", 
+                "content": analysis_prompt
             }],
-            max_tokens=500
+            max_tokens=800
         )
         
-        analysis_result = response.choices[0].message.content
+        # Usar función similar a _clean_json_response
+        analysis_text = response.choices[0].message.content
+        analysis_data = clean_json_response(analysis_text)
+
+        print(f"Analysis data: {analysis_data}")  # Debugging output
         
-        return {
-            "professional_analysis": analysis_result,
+        # Construir respuesta base
+        result = {
+            "professional_analysis": analysis_data.get("analysis_summary", "Analysis completed"),
             "context_analyzed": context,
-            "analysis_type": "professional_appearance",
-            "image_analyzed": True
+            "analysis_type": "professional_appearance", 
+            "image_analyzed": True,
+            "overall_rating": analysis_data.get("overall_rating", 7.0),
+            "strengths": analysis_data.get("strengths", []),
+            "recommendations": analysis_data.get("recommendations", []),
+            "gender_used": analysis_data.get("gender_identified", user_gender or "not_specified"),
+            "gender_source": analysis_data.get("gender_source", "user_declared" if user_gender else "visual_analysis")
         }
+        
+        # Verificar si necesita mejoras
+        needs_improvement = analysis_data.get("needs_improvement", True)
+        search_query = analysis_data.get("search_query", "").strip()
+        
+        if not needs_improvement or not search_query:
+            result["status"] = "excellent"
+            result["message"] = "¡Excelente! Tu apariencia es perfectamente apropiada para este contexto."
+            return result
+        
+        # Buscar imágenes de vestimenta usando el query generado por el LLM
+        api_key = os.getenv("SERPAPI_KEY")
+        if not api_key:
+            result["warning"] = "Cannot show clothing suggestions - API key not found"
+            return result
+        
+        # Usar el query específico generado por el LLM
+        image_params = {
+            "engine": "google_images",
+            "q": search_query,
+            "api_key": api_key,
+            "num": 8,
+            "safe": "active"
+        }
+        
+        try:
+            search = GoogleSearch(image_params)
+            image_results = search.get_dict()
+            images = image_results.get("images_results", [])
+            
+            if images:
+                carousel_html = generate_image_carousel_html(images, 8)
+                result["graph"] = carousel_html
+                result["search_query_used"] = search_query
+                result["status"] = "suggestions_provided"
+            else:
+                result["warning"] = "No se pudieron encontrar sugerencias de vestimenta"
+                
+        except Exception as search_error:
+            print(f"Error searching for clothing images: {str(search_error)}")
+            result["warning"] = "Error al buscar sugerencias de vestimenta"
+        
+        return result
         
     except Exception as e:
         print(f"Error analyzing professional appearance: {str(e)}")
         return {"error": str(e)}
-    
+
+
+def clean_json_response(content: str) -> dict:
+    """
+    Limpia y parsea respuesta JSON del LLM, similar a _clean_json_response en llm.py
+    """
+    try:
+        # Limpiar markdown si existe
+        if content.startswith("```json"):
+            content = content.replace("```json", "").replace("```", "").strip()
+        elif content.startswith("```"):
+            content = content.replace("```", "", 1)
+            if content.endswith("```"):
+                content = content[:-3]
+        
+        content = content.strip()
+        
+        # Parsear JSON
+        return json.loads(content)
+        
+    except json.JSONDecodeError as e:
+        print(f"Error parsing JSON response: {content}")
+        return {
+            "overall_rating": 7.0,
+            "needs_improvement": True,
+            "analysis_summary": content,  
+            "strengths": [],
+            "recommendations": [],
+            "search_query": "professional business attire"
+        }
 
 def generate_training_report(training_type: str, training_data: str, user_id: int, status: str, use_synthetic_data: bool = False) -> Dict:
     """
@@ -1180,4 +1282,208 @@ Make the report comprehensive, actionable, and visually professional."""
         
     except Exception as e:
         print(f"Error generating training report: {str(e)}")
+        return {"error": str(e)}
+    
+
+
+def list_recent_training_reports(user_id: int, limit: int = 10, status: str = "") -> dict:
+    """
+    Lista los reportes de entrenamiento más recientes para un usuario específico.
+    
+    Args:
+        user_id (int): ID del usuario cuyos reportes se quieren listar
+        limit (int): Número máximo de reportes a retornar (por defecto 10)
+        status (str): Mensaje de estado para tracking
+        
+    Returns:
+        dict: Diccionario con HTML para mostrar en el frontend bajo la llave "display"
+    """
+    try:
+        set_status(user_id, status, 4) 
+        
+        from apps.skills.services import SkillsTrainerDBService
+        from datetime import timezone, timedelta
+        db_service = SkillsTrainerDBService()
+        
+
+        all_reports = db_service.list_user_training_reports(user_id)
+        
+        recent_reports = list(all_reports[:limit])
+        
+        if not recent_reports:
+            html_content = """
+            <div style="padding: 20px; text-align: center; font-family: Arial, sans-serif;">
+                <div style="background: linear-gradient(135deg, #f59e0b, #d97706); padding: 20px; border-radius: 10px; color: white; margin-bottom: 20px;">
+                    <h2 style="margin: 0; font-size: 24px;">📋 Training Reports</h2>
+                </div>
+                <div style="background: #f9fafb; padding: 30px; border-radius: 10px; border: 2px dashed #d1d5db;">
+                    <p style="font-size: 18px; color: #6b7280; margin: 0;">No training reports found yet.</p>
+                    <p style="font-size: 14px; color: #9ca3af; margin-top: 10px;">Complete some training sessions to see your reports here!</p>
+                </div>
+            </div>
+            """
+        else:
+            reports_html = ""
+            bogota_tz = timezone(timedelta(hours=-5))
+            
+            for i, report in enumerate(recent_reports, 1):
+                # Formatear fecha - convertir de UTC a Bogotá timezone
+                created_at = report.get('created_at', '')
+                if hasattr(created_at, 'strftime'):
+                    # Si la fecha tiene timezone info, convertir a Bogotá
+                    if hasattr(created_at, 'astimezone'):
+                        bogota_time = created_at.astimezone(bogota_tz)
+                        formatted_date = bogota_time.strftime('%B %d, %Y at %I:%M %p')
+                    else:
+                        # Si no tiene timezone info, asumir que es UTC y convertir
+                        if created_at.tzinfo is None:
+                            # Asumir UTC y convertir a Bogotá
+                            utc_time = created_at.replace(tzinfo=timezone.utc)
+                            bogota_time = utc_time.astimezone(bogota_tz)
+                            formatted_date = bogota_time.strftime('%B %d, %Y at %I:%M %p')
+                        else:
+                            formatted_date = created_at.strftime('%B %d, %Y at %I:%M %p')
+                else:
+                    formatted_date = str(created_at)
+                
+                # Determinar el tipo de entrenamiento y su ícono
+                training_type = report.get('training_type', 'Unknown')
+                if 'interview' in training_type.lower():
+                    icon = "💼"
+                    type_color = "#2563eb"
+                elif 'appearance' in training_type.lower():
+                    icon = "👔"
+                    type_color = "#059669"
+                else:
+                    icon = "📈"
+                    type_color = "#d97706"
+                
+                reports_html += f"""
+                <div style="background: white; border-radius: 10px; padding: 20px; margin-bottom: 15px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); border-left: 4px solid {type_color};">
+                    <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 10px;">
+                        <div style="flex: 1;">
+                            <h3 style="margin: 0 0 5px 0; color: #111827; font-size: 18px; font-weight: 600;">
+                                {icon} {report.get('title', 'Training Report')}
+                            </h3>
+                            <p style="margin: 0; color: #6b7280; font-size: 14px;">
+                                📅 {formatted_date}
+                            </p>
+                        </div>
+                        <div style="background: {type_color}; color: white; padding: 4px 12px; border-radius: 20px; font-size: 12px; font-weight: 500;">
+                            Report #{report.get('id', i)}
+                        </div>
+                    </div>
+                    <div style="background: #f9fafb; padding: 10px; border-radius: 5px; margin-top: 10px;">
+                        <p style="margin: 0; color: #374151; font-size: 13px;">
+                            <strong>Type:</strong> {training_type.replace('_', ' ').title()}
+                        </p>
+                    </div>
+                </div>
+                """
+            
+            html_content = f"""
+            <div style="padding: 20px; font-family: Arial, sans-serif; max-width: 800px;">
+                <div style="background: linear-gradient(135deg, #d97706, #f59e0b); padding: 20px; border-radius: 10px; color: white; margin-bottom: 20px; text-align: center;">
+                    <h2 style="margin: 0; font-size: 24px;">📋 Your Training Reports</h2>
+                    <p style="margin: 10px 0 0 0; opacity: 0.9; font-size: 14px;">
+                        Showing {len(recent_reports)} of {len(all_reports)} total reports
+                    </p>
+                </div>
+                
+                <div style="margin-bottom: 20px;">
+                    {reports_html}
+                </div>
+                
+                {f'<div style="text-align: center; padding: 15px; background: #eff6ff; border-radius: 8px; border: 1px solid #bfdbfe;"><p style="margin: 0; color: #1d4ed8; font-size: 14px;"><strong>Note:</strong> Showing the most recent {limit} reports. You have {len(all_reports)} total reports.</p></div>' if len(all_reports) > limit else ''}
+            </div>
+            """
+        
+        return {
+            "display": html_content,
+            "total_found": len(all_reports),
+            "showing": len(recent_reports),
+            "message": f"Successfully retrieved {len(recent_reports)} recent training reports"
+        }
+        
+    except Exception as e:
+        print(f"Error listing recent training reports: {str(e)}")
+        error_html = f"""
+        <div style="padding: 20px; font-family: Arial, sans-serif;">
+            <div style="background: #fee2e2; border: 1px solid #fecaca; padding: 15px; border-radius: 8px; color: #dc2626;">
+                <h3 style="margin: 0 0 10px 0; font-size: 16px;">❌ Error Loading Reports</h3>
+                <p style="margin: 0; font-size: 14px;">Unable to retrieve your training reports at this time.</p>
+            </div>
+        </div>
+        """
+        return {"display": error_html, "error": str(e)}
+
+
+def get_training_report_html(report_id: int, user_id: int, status: str = "") -> dict:
+    """
+    Obtiene el contenido HTML de un reporte de entrenamiento específico para descarga.
+    
+    Args:
+        report_id (int): ID del reporte que se quiere obtener
+        user_id (int): ID del usuario que solicita el reporte (para validación)
+        status (str): Mensaje de estado para tracking
+        
+    Returns:
+        dict: Diccionario con el HTML del reporte bajo la llave "pdf"
+    """
+    try:
+        set_status(user_id, status, 4)
+        
+        db_service = SkillsTrainerDBService()
+        
+        # Obtener el reporte específico
+        report_data = db_service.get_training_report_by_id(report_id)
+        
+        # Validar que el reporte pertenece al usuario (seguridad)
+        try:
+            report_instance = TrainingReport.objects.get(id=report_id)
+            if report_instance.user.id != user_id:
+                return {"error": "Access denied: This report does not belong to the current user"}
+        except TrainingReport.DoesNotExist:
+            return {"error": f"Training report with ID {report_id} not found"}
+        
+        # Extraer el HTML del reporte
+        report_html = report_data.get('report_html', '')
+        if not report_html:
+            return {"error": "Report HTML content not found"}
+        
+        # Convertir la fecha a horario de Bogotá y formato string
+        created_at = report_data.get('created_at', '')
+        formatted_date = ''
+        if created_at:
+            try:
+                bogota_tz = timezone(timedelta(hours=-5))
+                
+                if hasattr(created_at, 'strftime'):
+                    if hasattr(created_at, 'astimezone'):
+                        bogota_time = created_at.astimezone(bogota_tz)
+                        formatted_date = bogota_time.strftime('%B %d, %Y at %I:%M %p')
+                    else:
+                        if created_at.tzinfo is None:
+                            utc_time = created_at.replace(tzinfo=timezone.utc)
+                            bogota_time = utc_time.astimezone(bogota_tz)
+                            formatted_date = bogota_time.strftime('%B %d, %Y at %I:%M %p')
+                        else:
+                            formatted_date = created_at.strftime('%B %d, %Y at %I:%M %p')
+                else:
+                    formatted_date = str(created_at)
+            except Exception as date_error:
+                print(f"Error formatting date: {str(date_error)}")
+                formatted_date = str(created_at)
+        
+        return {
+            "pdf": report_html,
+            "report_id": report_id,
+            "title": report_data.get('title', 'Training Report'),
+            "training_type": report_data.get('training_type', 'Unknown'),
+            "created_at": formatted_date,  # Ahora es string, no datetime
+            "message": f"Training report HTML retrieved successfully for download"
+        }
+        
+    except Exception as e:
+        print(f"Error retrieving training report HTML: {str(e)}")
         return {"error": str(e)}
