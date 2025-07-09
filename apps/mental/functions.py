@@ -593,7 +593,7 @@ def mental_health_screening_tool(user_id: int, status: str, user_specific_situat
         
         conversation_guide = response.choices[0].message.content
         
-        return {"graph": conversation_guide}
+        return {"conversation_guide": conversation_guide}
         
     except Exception as e:
         print(f"Error generating mental health screening guide: {str(e)}")
