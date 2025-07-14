@@ -23,6 +23,7 @@ chromadb_user/
 media/
 logs/
 
+user_list.py
 
 chromadb_uniguide/
 rag_docs/

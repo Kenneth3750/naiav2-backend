@@ -958,8 +958,8 @@ def _send_email_direct(email: str, subject: str, body: str, user_id: int, recipi
 
 def search_contacts_by_name(name: str, user_id: int, status: str = "Buscando contactos...") -> dict:
     """
-    Searches for contacts by name using Microsoft Graph API.
-    Searches in people, contacts, and organizational directory.
+    Enhanced contact search using Microsoft Graph API with all available scopes.
+    Searches comprehensively across people, contacts, and organizational directory.
     
     Args:
         name (str): The name to search for
@@ -967,19 +967,11 @@ def search_contacts_by_name(name: str, user_id: int, status: str = "Buscando con
         status (str): Status message for tracking. Defaults to "Buscando contactos..."
         
     Returns:
-        dict: A dictionary containing either contact results or error details
+        dict: A dictionary containing contact results, count, and HTML display
         Format: {
-            "contacts": [
-                {
-                    "id": "unique_id",
-                    "displayName": "Full Name",
-                    "email": "email@domain.com",
-                    "jobTitle": "Position",
-                    "department": "Department",
-                    "source": "people|contacts|directory"
-                }
-            ],
-            "count": number_of_results
+            "contacts": [list of contacts],
+            "count": number_of_results,
+            "display": "HTML formatted results"
         }
     """
     # Validate required fields
@@ -1008,124 +1000,218 @@ def search_contacts_by_name(name: str, user_id: int, status: str = "Buscando con
         }
         
         all_contacts = []
-        search_name = name.strip().lower()
+        search_name = name.strip()
+        search_name_lower = search_name.lower()
         
-        print(f"Searching contacts for: {name}")
+        print(f"Comprehensive contact search for: {name}")
         
-        # 1. Search in People (frequent contacts and suggestions)
+        # 1. Enhanced People Search (using People.Read scope)
         try:
-            people_url = f"https://graph.microsoft.com/v1.0/me/people?$search=\"{name}\""
-            people_response = requests.get(people_url, headers=headers, timeout=15)
+            # Multiple search strategies for people
+            people_queries = [
+                f"https://graph.microsoft.com/v1.0/me/people?$search=\"{search_name}\"&$top=50",
+                f"https://graph.microsoft.com/v1.0/me/people?$filter=startswith(displayName,'{search_name}')&$top=50"
+            ]
             
-            if people_response.status_code == 200:
-                people_data = people_response.json()
-                for person in people_data.get('value', []):
-                    # Extract primary email
-                    email_addresses = person.get('emailAddresses', [])
-                    if email_addresses and email_addresses[0].get('address'):
-                        contact = {
-                            "id": f"people_{person.get('id', '')}",
-                            "displayName": person.get('displayName', ''),
-                            "email": email_addresses[0].get('address', ''),
-                            "jobTitle": person.get('jobTitle', ''),
-                            "department": person.get('department', ''),
-                            "source": "people"
-                        }
-                        all_contacts.append(contact)
-            else:
-                print(f"People search failed: {people_response.status_code}")
+            for people_url in people_queries:
+                try:
+                    people_response = requests.get(people_url, headers=headers, timeout=15)
+                    if people_response.status_code == 200:
+                        people_data = people_response.json()
+                        for person in people_data.get('value', []):
+                            email_addresses = person.get('emailAddresses', [])
+                            if email_addresses and email_addresses[0].get('address'):
+                                contact = {
+                                    "id": f"people_{person.get('id', '')}",
+                                    "displayName": person.get('displayName', ''),
+                                    "email": email_addresses[0].get('address', ''),
+                                    "jobTitle": person.get('jobTitle', ''),
+                                    "department": person.get('department', ''),
+                                    "companyName": person.get('companyName', ''),
+                                    "source": "people",
+                                    "relevanceScore": person.get('relevanceScore', 0)
+                                }
+                                all_contacts.append(contact)
+                except requests.exceptions.RequestException as e:
+                    print(f"People query failed: {str(e)}")
+                    continue
         
-        except requests.exceptions.RequestException as e:
-            print(f"Error searching people: {str(e)}")
+        except Exception as e:
+            print(f"Error in people search: {str(e)}")
         
-        # 2. Search in Contacts
+        # 2. Enhanced Contacts Search (using Contacts.Read scope)
         try:
-            contacts_url = f"https://graph.microsoft.com/v1.0/me/contacts?$filter=contains(displayName,'{name}') or contains(givenName,'{name}') or contains(surname,'{name}')"
-            contacts_response = requests.get(contacts_url, headers=headers, timeout=15)
+            # Multiple filter strategies for contacts
+            contact_queries = [
+                f"https://graph.microsoft.com/v1.0/me/contacts?$filter=contains(displayName,'{search_name}')&$top=50",
+                f"https://graph.microsoft.com/v1.0/me/contacts?$filter=contains(givenName,'{search_name}')&$top=50",
+                f"https://graph.microsoft.com/v1.0/me/contacts?$filter=contains(surname,'{search_name}')&$top=50",
+                f"https://graph.microsoft.com/v1.0/me/contacts?$filter=startswith(displayName,'{search_name}')&$top=50"
+            ]
             
-            if contacts_response.status_code == 200:
-                contacts_data = contacts_response.json()
-                for contact_item in contacts_data.get('value', []):
-                    # Extract primary email
-                    email_addresses = contact_item.get('emailAddresses', [])
-                    if email_addresses and email_addresses[0].get('address'):
-                        contact = {
-                            "id": f"contact_{contact_item.get('id', '')}",
-                            "displayName": contact_item.get('displayName', ''),
-                            "email": email_addresses[0].get('address', ''),
-                            "jobTitle": contact_item.get('jobTitle', ''),
-                            "department": contact_item.get('department', ''),
-                            "source": "contacts"
-                        }
-                        all_contacts.append(contact)
-            else:
-                print(f"Contacts search failed: {contacts_response.status_code}")
+            for contacts_url in contact_queries:
+                try:
+                    contacts_response = requests.get(contacts_url, headers=headers, timeout=15)
+                    if contacts_response.status_code == 200:
+                        contacts_data = contacts_response.json()
+                        for contact_item in contacts_data.get('value', []):
+                            email_addresses = contact_item.get('emailAddresses', [])
+                            if email_addresses and email_addresses[0].get('address'):
+                                contact = {
+                                    "id": f"contact_{contact_item.get('id', '')}",
+                                    "displayName": contact_item.get('displayName', ''),
+                                    "email": email_addresses[0].get('address', ''),
+                                    "jobTitle": contact_item.get('jobTitle', ''),
+                                    "department": contact_item.get('department', ''),
+                                    "companyName": contact_item.get('companyName', ''),
+                                    "source": "contacts",
+                                    "relevanceScore": 0
+                                }
+                                all_contacts.append(contact)
+                except requests.exceptions.RequestException as e:
+                    print(f"Contacts query failed: {str(e)}")
+                    continue
         
-        except requests.exceptions.RequestException as e:
-            print(f"Error searching contacts: {str(e)}")
+        except Exception as e:
+            print(f"Error in contacts search: {str(e)}")
         
-        # 3. Search in Organization Directory (if permissions allow)
+        # 3. Enhanced Directory Search (using User.Read.All and Directory.Read.All scopes)
         try:
-            # Search for users in the organization
-            users_url = f"https://graph.microsoft.com/v1.0/users?$filter=startswith(displayName,'{name}') or startswith(givenName,'{name}') or startswith(surname,'{name}')&$select=id,displayName,mail,jobTitle,department,userPrincipalName"
-            users_response = requests.get(users_url, headers=headers, timeout=15)
+            # Comprehensive directory search strategies
+            directory_queries = [
+                f"https://graph.microsoft.com/v1.0/users?$filter=startswith(displayName,'{search_name}')&$select=id,displayName,mail,jobTitle,department,userPrincipalName,companyName,officeLocation&$top=50",
+                f"https://graph.microsoft.com/v1.0/users?$filter=startswith(givenName,'{search_name}')&$select=id,displayName,mail,jobTitle,department,userPrincipalName,companyName,officeLocation&$top=50",
+                f"https://graph.microsoft.com/v1.0/users?$filter=startswith(surname,'{search_name}')&$select=id,displayName,mail,jobTitle,department,userPrincipalName,companyName,officeLocation&$top=50",
+                f"https://graph.microsoft.com/v1.0/users?$filter=contains(displayName,'{search_name}')&$select=id,displayName,mail,jobTitle,department,userPrincipalName,companyName,officeLocation&$top=50"
+            ]
             
-            if users_response.status_code == 200:
-                users_data = users_response.json()
-                for user in users_data.get('value', []):
-                    # Use mail or userPrincipalName
-                    email = user.get('mail') or user.get('userPrincipalName', '')
-                    if email:
-                        contact = {
-                            "id": f"user_{user.get('id', '')}",
-                            "displayName": user.get('displayName', ''),
-                            "email": email,
-                            "jobTitle": user.get('jobTitle', ''),
-                            "department": user.get('department', ''),
-                            "source": "directory"
-                        }
-                        all_contacts.append(contact)
-            else:
-                print(f"Directory search failed: {users_response.status_code}")
-                # Don't treat directory search failure as fatal error
+            for users_url in directory_queries:
+                try:
+                    users_response = requests.get(users_url, headers=headers, timeout=15)
+                    if users_response.status_code == 200:
+                        users_data = users_response.json()
+                        for user in users_data.get('value', []):
+                            email = user.get('mail') or user.get('userPrincipalName', '')
+                            if email:
+                                contact = {
+                                    "id": f"user_{user.get('id', '')}",
+                                    "displayName": user.get('displayName', ''),
+                                    "email": email,
+                                    "jobTitle": user.get('jobTitle', ''),
+                                    "department": user.get('department', ''),
+                                    "companyName": user.get('companyName', ''),
+                                    "officeLocation": user.get('officeLocation', ''),
+                                    "source": "directory",
+                                    "relevanceScore": 0
+                                }
+                                all_contacts.append(contact)
+                except requests.exceptions.RequestException as e:
+                    print(f"Directory query failed: {str(e)}")
+                    continue
         
-        except requests.exceptions.RequestException as e:
-            print(f"Error searching directory: {str(e)}")
-            # Don't treat directory search failure as fatal error
+        except Exception as e:
+            print(f"Error in directory search: {str(e)}")
         
-        # Remove duplicates based on email address
+        # 4. Additional search for partial name matches
+        try:
+            # Search for users where any part of the name matches
+            name_parts = search_name.split()
+            for part in name_parts:
+                if len(part) >= 2:  # Only search for parts with 2+ characters
+                    partial_url = f"https://graph.microsoft.com/v1.0/users?$filter=contains(displayName,'{part}')&$select=id,displayName,mail,jobTitle,department,userPrincipalName,companyName&$top=30"
+                    try:
+                        partial_response = requests.get(partial_url, headers=headers, timeout=10)
+                        if partial_response.status_code == 200:
+                            partial_data = partial_response.json()
+                            for user in partial_data.get('value', []):
+                                email = user.get('mail') or user.get('userPrincipalName', '')
+                                if email:
+                                    contact = {
+                                        "id": f"partial_{user.get('id', '')}",
+                                        "displayName": user.get('displayName', ''),
+                                        "email": email,
+                                        "jobTitle": user.get('jobTitle', ''),
+                                        "department": user.get('department', ''),
+                                        "companyName": user.get('companyName', ''),
+                                        "source": "directory_partial",
+                                        "relevanceScore": 0
+                                    }
+                                    all_contacts.append(contact)
+                    except requests.exceptions.RequestException:
+                        continue
+        
+        except Exception as e:
+            print(f"Error in partial search: {str(e)}")
+        
+        # Remove duplicates and prioritize results
         unique_contacts = {}
         for contact in all_contacts:
             email = contact['email'].lower()
             if email not in unique_contacts:
                 unique_contacts[email] = contact
             else:
-                # Keep the one from the most reliable source
-                existing_source = unique_contacts[email]['source']
-                current_source = contact['source']
-                # Priority: people > contacts > directory
-                if (current_source == 'people' and existing_source != 'people') or \
-                   (current_source == 'contacts' and existing_source == 'directory'):
-                    unique_contacts[email] = contact
+                # Keep the one from the most reliable source or with better data
+                existing = unique_contacts[email]
+                current = contact
+                
+                # Priority: people > contacts > directory > directory_partial
+                source_priority = {
+                    'people': 4,
+                    'contacts': 3, 
+                    'directory': 2,
+                    'directory_partial': 1
+                }
+                
+                current_priority = source_priority.get(current['source'], 0)
+                existing_priority = source_priority.get(existing['source'], 0)
+                
+                if current_priority > existing_priority:
+                    unique_contacts[email] = current
+                elif current_priority == existing_priority and current.get('relevanceScore', 0) > existing.get('relevanceScore', 0):
+                    unique_contacts[email] = current
         
-        # Convert back to list and sort by name
+        # Convert back to list
         final_contacts = list(unique_contacts.values())
-        final_contacts.sort(key=lambda x: x['displayName'].lower())
         
-        # Filter results to ensure they actually match the search term
-        # This helps with false positives from broad API searches
+        # Enhanced filtering for relevance
         filtered_contacts = []
         for contact in final_contacts:
             display_name_lower = contact['displayName'].lower()
-            if search_name in display_name_lower or \
-               any(search_name in part.lower() for part in contact['displayName'].split()):
+            # Check if search term matches name parts
+            name_matches = (
+                search_name_lower in display_name_lower or
+                any(search_name_lower in part.lower() for part in contact['displayName'].split()) or
+                any(part.lower() in display_name_lower for part in search_name.split() if len(part) >= 2)
+            )
+            
+            if name_matches:
                 filtered_contacts.append(contact)
+        
+        # Sort by relevance: exact matches first, then by source priority, then alphabetically
+        def sort_key(contact):
+            name_lower = contact['displayName'].lower()
+            exact_match = search_name_lower == name_lower
+            starts_with = name_lower.startswith(search_name_lower)
+            source_priority = {'people': 4, 'contacts': 3, 'directory': 2, 'directory_partial': 1}
+            
+            return (
+                not exact_match,  # Exact matches first (False < True)
+                not starts_with,  # Starts with matches second
+                -source_priority.get(contact['source'], 0),  # Higher priority sources first
+                contact['displayName'].lower()  # Alphabetical
+            )
+        
+        filtered_contacts.sort(key=sort_key)
         
         print(f"Found {len(filtered_contacts)} unique contacts matching '{name}'")
         
+        # Generate HTML display
+        html_display = generate_contacts_html(filtered_contacts, search_name)
+        
         return {
             "contacts": filtered_contacts,
-            "count": len(filtered_contacts)
+            "count": len(filtered_contacts),
+            "display": html_display
         }
     
     except requests.exceptions.Timeout:
@@ -1142,6 +1228,108 @@ def search_contacts_by_name(name: str, user_id: int, status: str = "Buscando con
         error_msg = f"Unexpected error while searching contacts: {str(e)}"
         print(f"Unexpected error: {error_msg}")
         return {"error": error_msg}
+
+
+def generate_contacts_html(contacts, search_term):
+    """Generate HTML display for contact search results"""
+    
+    if not contacts:
+        return f"""
+        <div style="font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; max-width: 800px; margin: 20px auto; padding: 20px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); border-radius: 15px; box-shadow: 0 10px 30px rgba(0,0,0,0.2);">
+            <div style="text-align: center; color: white;">
+                <h2 style="margin: 0 0 10px 0; font-size: 24px;">🔍 Búsqueda de Contactos</h2>
+                <p style="margin: 0; font-size: 16px; opacity: 0.9;">No se encontraron contactos para "<strong>{search_term}</strong>"</p>
+            </div>
+        </div>
+        """
+    
+    source_icons = {
+        'people': '👥',
+        'contacts': '📞', 
+        'directory': '🏢',
+        'directory_partial': '🔍'
+    }
+    
+    source_names = {
+        'people': 'Contactos Frecuentes',
+        'contacts': 'Contactos Guardados',
+        'directory': 'Directorio Universitario',
+        'directory_partial': 'Búsqueda Ampliada'
+    }
+    
+    contacts_html = ""
+    for i, contact in enumerate(contacts, 1):
+        source_icon = source_icons.get(contact['source'], '📧')
+        source_name = source_names.get(contact['source'], contact['source'].title())
+        
+        # Build additional info
+        additional_info = []
+        if contact.get('jobTitle'):
+            additional_info.append(f"📋 {contact['jobTitle']}")
+        if contact.get('department'):
+            additional_info.append(f"🏛️ {contact['department']}")
+        if contact.get('companyName'):
+            additional_info.append(f"🏢 {contact['companyName']}")
+        if contact.get('officeLocation'):
+            additional_info.append(f"📍 {contact['officeLocation']}")
+        
+        additional_info_html = "<br>".join(additional_info) if additional_info else "<em style='color: #888;'>Sin información adicional</em>"
+        
+        contacts_html += f"""
+        <div style="background: white; border-radius: 12px; padding: 20px; margin-bottom: 15px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); border-left: 5px solid #667eea; transition: transform 0.2s ease;">
+            <div style="display: flex; align-items: center; margin-bottom: 12px;">
+                <div style="background: linear-gradient(135deg, #667eea, #764ba2); color: white; width: 35px; height: 35px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: bold; margin-right: 15px; font-size: 18px;">
+                    {i}
+                </div>
+                <div style="flex: 1;">
+                    <h3 style="margin: 0 0 5px 0; color: #333; font-size: 20px; font-weight: 600;">{contact['displayName']}</h3>
+                    <div style="display: flex; align-items: center; gap: 10px;">
+                        <span style="background: #f0f8ff; color: #667eea; padding: 4px 8px; border-radius: 6px; font-size: 12px; font-weight: 500;">
+                            {source_icon} {source_name}
+                        </span>
+                    </div>
+                </div>
+            </div>
+            
+            <div style="margin-left: 50px;">
+                <div style="background: #f8f9fa; padding: 15px; border-radius: 8px; margin-bottom: 12px;">
+                    <div style="display: flex; align-items: center; margin-bottom: 8px;">
+                        <span style="color: #667eea; font-weight: 600; margin-right: 8px;">📧 Email:</span>
+                        <a href="mailto:{contact['email']}" style="color: #667eea; text-decoration: none; font-weight: 500; font-size: 16px;">{contact['email']}</a>
+                    </div>
+                    <div style="color: #555; font-size: 14px; line-height: 1.6;">
+                        {additional_info_html}
+                    </div>
+                </div>
+                
+                <div style="font-size: 12px; color: #888; font-style: italic;">
+                    💡 Para seleccionar este contacto, menciona el <strong>número {i}</strong> en tu mensaje
+                </div>
+            </div>
+        </div>
+        """
+    
+    return f"""
+    <div style="font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; max-width: 900px; margin: 20px auto; padding: 0; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); border-radius: 15px; box-shadow: 0 15px 35px rgba(0,0,0,0.2);">
+        <!-- Header -->
+        <div style="text-align: center; color: white; padding: 25px 20px;">
+            <h2 style="margin: 0 0 10px 0; font-size: 28px; font-weight: 700;">🔍 Resultados de Búsqueda</h2>
+            <p style="margin: 0; font-size: 16px; opacity: 0.9;">Se encontraron <strong>{len(contacts)} contactos</strong> para "<strong>{search_term}</strong>"</p>
+        </div>
+        
+        <!-- Results -->
+        <div style="padding: 20px; background: #f5f7fa; border-radius: 0 0 15px 15px;">
+            {contacts_html}
+            
+            <!-- Footer -->
+            <div style="text-align: center; margin-top: 20px; padding: 15px; background: white; border-radius: 10px; border: 2px dashed #667eea;">
+                <p style="margin: 0; color: #667eea; font-weight: 600; font-size: 14px;">
+                    💬 Para usar cualquiera de estos contactos, simplemente menciona su número (ej: "el contacto número 3")
+                </p>
+            </div>
+        </div>
+    </div>
+    """
 
 
 def display_contact_options(contacts: list, search_name: str) -> str:

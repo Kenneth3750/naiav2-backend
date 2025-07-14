@@ -357,6 +357,7 @@ class PersonalAssistantService:
         - "Necesito recordar..." / "I need to remember..."
         - "Crear evento..." / "Create event..."
         - "Añadir recordatorio..." / "Add reminder..."
+        - "Mandale un correo al segundo contacto" / "Send an email to the second contact"
 
         CONTEXT-AWARE ROUTING BASED ON CONVERSATION HISTORY:
         PREVIOUS MESSAGES: {last_messages_text}
@@ -397,6 +398,8 @@ class PersonalAssistantService:
         - "Add a reminder to call mom tomorrow"
         - "Create an event for my presentation next week"
         - "Put a reminder to submit the project"
+        - "Send an email to the second contact"
+        - "Envía un correo a la opción 1"
 
         WHEN IN DOUBT: Choose "FUNCTION_NEEDED" for any task that a personal assistant would typically handle within a university context.
 
@@ -488,6 +491,7 @@ class PersonalAssistantService:
         - KEY INDICATOR: Menciones de "buscar contacto", "encontrar email", "contacto de", "cuál es el email de"
         - EXAMPLES: "Busca el contacto de Juan Pérez", "What's the email of Dr. García?"
         - CRITICAL: Usar para buscar información de contacto antes de enviar un correo
+        - The function returns an html with the contacts found followed ny a number, this number is useful when the users wants to send an email to one of those emails and the user mentions the number of the contact, for example "el segundo" or "opción 1", you must use that number to send the email to the contact with that number to know which contact the user is referring to.
 
         5. read_calendar_events:
         - PURPOSE: Leer y mostrar eventos del calendario para un rango de fechas específico

@@ -70,6 +70,14 @@ class UserList(APIView):
                     serializer.validated_data["email"],
                     serializer.validated_data["photo_url"]
                 )
+
+                has_permission = self.user_service.has_user_permission(serializer.validated_data["email"])
+                if not has_permission:
+                    return Response(
+                        {"Denied": "You do not have permission to create this user"},
+                        status=status.HTTP_403_FORBIDDEN
+                    )
+
                 return Response(
                     {
                         "status": "User created successfully",
@@ -175,6 +183,13 @@ class UserDetail(APIView):
             print(f"Fetching user by email: {email}")
         else:
             user = self.user_service.get_user_by_id(user_id)
+
+        has_permission = self.user_service.has_user_permission(email) if email else True
+        if not has_permission:
+            return Response(
+                {"Denied": "You do not have permission to access this user"},
+                status=status.HTTP_403_FORBIDDEN
+            )
             
         if user is None:
             return Response(

@@ -22,6 +22,7 @@ import json
 from serpapi import GoogleSearch
 from typing import Dict
 from apps.researcher.functions import generate_image_carousel_html
+import uuid
 load_dotenv()
 
 DEFAULT_FROM_EMAIL=os.getenv("DEFAULT_FROM_EMAIL")
@@ -267,6 +268,8 @@ def get_university_calendar_multi_month(user_id: int, months_to_search: list, st
         options.add_argument('--disable-images')
         options.add_argument('--window-size=1920,1080')
         options.add_argument('--remote-debugging-port=0')
+        options.add_argument(f'--user-data-dir={tempfile.gettempdir()}/chrome-{uuid.uuid4()}')
+        options.add_argument('--disable-features=VizDisplayCompositor')
         options.add_argument('--disable-logging')
         options.add_argument('--disable-gpu-logging')
         
@@ -392,11 +395,7 @@ def get_university_calendar_multi_month(user_id: int, months_to_search: list, st
     
     finally:
         if driver:
-            try:
-                driver.quit()
-            except Exception as e:
-                print(f"Error closing driver: {str(e)}")
-                pass
+            driver.quit()
 
 
 def get_virtual_campus_tour(area_filter: str = None, place_name: str = None, language: str = "Spanish", user_id: int = 0, status: str = "") -> dict:

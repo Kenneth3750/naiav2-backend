@@ -3,7 +3,9 @@ from .repositories import UserRepository
 
 class UserService():
     def __init__(self):
+        from user_list import user_list
         self.user_repository = UserRepository()
+        self.user_list = user_list
 
     def get_user_by_id(self, user_id):
         return self.user_repository.get_user_by_id(user_id)
@@ -26,5 +28,7 @@ class UserService():
             return self.user_repository.get_user_token(user_id)
         except Exception as e:
             raise e
-
+        
+    def has_user_permission(self, email):
+        return True if email in self.user_list else False
         
