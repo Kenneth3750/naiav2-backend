@@ -23,6 +23,9 @@ from serpapi import GoogleSearch
 from typing import Dict
 from apps.researcher.functions import generate_image_carousel_html
 import uuid
+import tempfile
+import shutil
+import traceback
 load_dotenv()
 
 DEFAULT_FROM_EMAIL=os.getenv("DEFAULT_FROM_EMAIL")
@@ -246,17 +249,24 @@ def query_university_rag(user_id: int, question: str, k: int = 3, status:str = "
 def get_university_calendar_multi_month(user_id: int, months_to_search: list, status: str) -> dict:
     """
     Get university calendar events for multiple months to find specific events
-    
-    Args:
-        user_id: User ID
-        months_to_search: List of months to search (e.g., [7, 8, 9] for July-September)
-        status: Status to show to user
+    Enhanced with detailed logging for debugging
     """
     driver = None
+    temp_dir = None
+    
     try:
+        print(f"[CALENDAR] Starting calendar function for user {user_id}")
+        print(f"[CALENDAR] Months to search: {months_to_search}")
+        
         set_status(user_id, status, 2)
         
-        # Same driver configuration as current function
+        # Create unique temporary directory
+        import tempfile
+        import uuid
+        temp_dir = tempfile.mkdtemp(prefix='chrome-', suffix=f'-{uuid.uuid4().hex[:8]}')
+        print(f"[CALENDAR] Created temp directory: {temp_dir}")
+        
+        # Enhanced Chrome options for server stability
         options = Options()
         options.add_argument('--headless')
         options.add_argument('--no-sandbox')
@@ -268,142 +278,286 @@ def get_university_calendar_multi_month(user_id: int, months_to_search: list, st
         options.add_argument('--disable-images')
         options.add_argument('--window-size=1920,1080')
         options.add_argument('--remote-debugging-port=0')
-        options.add_argument(f'--user-data-dir={tempfile.gettempdir()}/chrome-{uuid.uuid4()}')
-        options.add_argument('--disable-features=VizDisplayCompositor')
         options.add_argument('--disable-logging')
         options.add_argument('--disable-gpu-logging')
+        options.add_argument(f'--user-data-dir={temp_dir}')
+        
+        # Additional stability options for servers
         options.add_argument('--disable-background-timer-throttling')
         options.add_argument('--disable-backgrounding-occluded-windows')
         options.add_argument('--disable-renderer-backgrounding')
         options.add_argument('--disable-features=TranslateUI')
-        options.add_argument('--disable-extensions')
         options.add_argument('--disable-component-extensions-with-background-pages')
         options.add_argument('--no-first-run')
         options.add_argument('--no-default-browser-check')
+        options.add_argument('--disable-default-apps')
+        options.add_argument('--disable-sync')
         
+        print(f"[CALENDAR] Chrome options configured: {len(options.arguments)} arguments")
+        
+        # Initialize Chrome driver
+        print(f"[CALENDAR] Initializing Chrome WebDriver...")
         driver = webdriver.Chrome(options=options)
-        driver.set_page_load_timeout(30)
-        driver.implicitly_wait(10)
+        print(f"[CALENDAR] ✅ Chrome driver initialized successfully")
         
+        # Set timeouts
+        driver.set_page_load_timeout(60)
+        driver.implicitly_wait(20)
+        print(f"[CALENDAR] Timeouts set: page_load=60s, implicit_wait=20s")
+        
+        # Navigate to calendar URL
         url = 'https://outlook.office365.com/calendar/published/82dc57e4303e46d490fec6d6df9e41c6@uninorte.edu.co/ca0af55ded00488eb89bac6079a9675a7730392440685253853/calendar.html'
+        print(f"[CALENDAR] Loading URL: {url}")
+        
         driver.get(url)
+        print(f"[CALENDAR] ✅ Page loaded successfully")
         
         # Wait for calendar to load
-        WebDriverWait(driver, 10).until(
-            EC.presence_of_element_located((By.CLASS_NAME, "ms-CommandBar"))
-        )
+        print(f"[CALENDAR] Waiting for calendar elements to load...")
+        try:
+            WebDriverWait(driver, 30).until(
+                EC.presence_of_element_located((By.CLASS_NAME, "ms-CommandBar"))
+            )
+            print(f"[CALENDAR] ✅ Calendar elements found and loaded")
+        except Exception as wait_error:
+            print(f"[CALENDAR] ❌ Error waiting for calendar elements: {str(wait_error)}")
+            # Try alternative selectors
+            print(f"[CALENDAR] Trying alternative element selectors...")
+            try:
+                WebDriverWait(driver, 10).until(
+                    EC.presence_of_element_located((By.TAG_NAME, "body"))
+                )
+                print(f"[CALENDAR] ✅ Page body loaded as fallback")
+            except Exception as fallback_error:
+                print(f"[CALENDAR] ❌ Complete page load failure: {str(fallback_error)}")
+                raise wait_error
         
         all_events = {}
+        from datetime import datetime, timezone, timedelta
         gmt_minus_5 = timezone(timedelta(hours=-5))
         current_date = datetime.now(gmt_minus_5)
         current_month = current_date.month
         current_year = current_date.year
         
+        print(f"[CALENDAR] Current date: {current_date}, Month: {current_month}, Year: {current_year}")
+        
         month_names = ["", "January", "February", "March", "April", "May", "June", 
                       "July", "August", "September", "October", "November", "December"]
         
-        for target_month in months_to_search:
+        # Process each month
+        for i, target_month in enumerate(months_to_search):
+            print(f"[CALENDAR] Processing month {i+1}/{len(months_to_search)}: {month_names[target_month]} (month {target_month})")
+            
             months_diff = target_month - current_month
+            print(f"[CALENDAR] Month difference: {months_diff} (from {current_month} to {target_month})")
             
             # Navigate to target month
-            for _ in range(abs(months_diff)):
-                if months_diff > 0:
-                    next_button = WebDriverWait(driver, 5).until(
-                        EC.element_to_be_clickable((By.CSS_SELECTOR, "button[title*='siguiente']"))
-                    )
-                    next_button.click()
-                elif months_diff < 0:
-                    prev_button = WebDriverWait(driver, 5).until(
-                        EC.element_to_be_clickable((By.CSS_SELECTOR, "button[title*='anterior']"))
-                    )
-                    prev_button.click()
-                time.sleep(1)
-            
-            # Extract events from this month using multiple selectors
-            time.sleep(2)
-            page_source = driver.page_source
-            soup = BeautifulSoup(page_source, 'html.parser')
-            
-            month_events = []
-            
-            # Method 1: Original method with role='button'
-            divs_role_button = soup.find_all('div', role='button')
-            for div in divs_role_button:
-                if div.get('aria-label') is not None:
-                    title = div.get("aria-label").strip().replace('\n', ' ').split(",")
-                    event_text = f"EVENT: {title[0].strip()}, DATE: {title[2].strip()}"
-                    if event_text not in month_events:
-                        month_events.append(event_text)
-                elif div.get('title') is not None:
-                    title = div.get("title").strip().replace('\n', ' ').split(",")
-                    event_text = f"EVENT: {title[0].strip()}, DATE: {title[1].strip()}"
-                    if event_text not in month_events:
-                        month_events.append(event_text)
-            
-            # Method 2: Look for divs with data-calitemid (specific event containers)
-            event_containers = soup.find_all('div', {'data-calitemid': True})
-            for container in event_containers:
-                # Look for the inner div with title or aria-label
-                inner_div = container.find('div', {'title': True})
-                if inner_div and inner_div.get('title'):
-                    title = inner_div.get('title').strip().replace('\n', ' ').split(",")
-                    event_text = f"EVENT: {title[0].strip()}, DATE: {title[1].strip()}"
-                    if event_text not in month_events:
-                        month_events.append(event_text)
+            if months_diff != 0:
+                print(f"[CALENDAR] Navigating {abs(months_diff)} months {'forward' if months_diff > 0 else 'backward'}")
                 
-                # Also check for aria-label in inner divs
-                inner_div_aria = container.find('div', {'aria-label': True})
-                if inner_div_aria and inner_div_aria.get('aria-label'):
-                    title = inner_div_aria.get('aria-label').strip().replace('\n', ' ').split(",")
-                    event_text = f"EVENT: {title[0].strip()}, DATE: {title[2].strip()}"
-                    if event_text not in month_events:
-                        month_events.append(event_text)
+                for j in range(abs(months_diff)):
+                    try:
+                        if months_diff > 0:
+                            print(f"[CALENDAR] Clicking next button (step {j+1}/{abs(months_diff)})")
+                            next_button = WebDriverWait(driver, 10).until(
+                                EC.element_to_be_clickable((By.CSS_SELECTOR, "button[title*='siguiente']"))
+                            )
+                            next_button.click()
+                        else:
+                            print(f"[CALENDAR] Clicking previous button (step {j+1}/{abs(months_diff)})")
+                            prev_button = WebDriverWait(driver, 10).until(
+                                EC.element_to_be_clickable((By.CSS_SELECTOR, "button[title*='anterior']"))
+                            )
+                            prev_button.click()
+                        
+                        time.sleep(2)  # Wait for navigation
+                        print(f"[CALENDAR] ✅ Navigation step {j+1} completed")
+                        
+                    except Exception as nav_error:
+                        print(f"[CALENDAR] ❌ Navigation error at step {j+1}: {str(nav_error)}")
+                        # Try alternative navigation selectors
+                        try:
+                            print(f"[CALENDAR] Trying alternative navigation...")
+                            if months_diff > 0:
+                                alt_button = driver.find_element(By.XPATH, "//button[contains(@aria-label, 'next') or contains(@aria-label, 'siguiente')]")
+                            else:
+                                alt_button = driver.find_element(By.XPATH, "//button[contains(@aria-label, 'previous') or contains(@aria-label, 'anterior')]")
+                            alt_button.click()
+                            time.sleep(2)
+                            print(f"[CALENDAR] ✅ Alternative navigation successful")
+                        except Exception as alt_nav_error:
+                            print(f"[CALENDAR] ❌ Alternative navigation also failed: {str(alt_nav_error)}")
+                            raise nav_error
+            else:
+                print(f"[CALENDAR] Already on target month, no navigation needed")
             
-            # Method 3: Look for spans with class 'xWbuA' (event text content)
-            event_spans = soup.find_all('span', class_='xWbuA')
-            for span in event_spans:
-                # Get the parent container to find date info
-                parent_container = span.find_parent('div', {'data-calitemid': True})
-                if parent_container:
-                    # Look for title or aria-label in the parent
-                    title_div = parent_container.find('div', {'title': True})
-                    aria_div = parent_container.find('div', {'aria-label': True})
-                    
-                    if title_div:
-                        title = title_div.get('title').strip().replace('\n', ' ').split(",")
-                        event_text = f"EVENT: {span.get_text().strip()}, DATE: {title[1].strip()}"
-                        if event_text not in month_events:
-                            month_events.append(event_text)
-                    elif aria_div:
-                        title = aria_div.get('aria-label').strip().replace('\n', ' ').split(",")
-                        event_text = f"EVENT: {span.get_text().strip()}, DATE: {title[2].strip()}"
-                        if event_text not in month_events:
-                            month_events.append(event_text)
+            # Extract events from current month
+            print(f"[CALENDAR] Extracting events for {month_names[target_month]}...")
+            time.sleep(3)  # Wait for month to fully load
             
-            all_events[month_names[target_month]] = month_events
-            
-            # Reset to current month for next iteration
-            current_month = target_month
+            try:
+                page_source = driver.page_source
+                print(f"[CALENDAR] Page source length: {len(page_source)} characters")
+                
+                from bs4 import BeautifulSoup
+                soup = BeautifulSoup(page_source, 'html.parser')
+                print(f"[CALENDAR] BeautifulSoup parsing completed")
+                
+                month_events = []
+                
+                # Method 1: Original method with role='button'
+                print(f"[CALENDAR] Method 1: Searching for divs with role='button'")
+                divs_role_button = soup.find_all('div', role='button')
+                print(f"[CALENDAR] Found {len(divs_role_button)} divs with role='button'")
+                
+                method1_events = 0
+                for div in divs_role_button:
+                    if div.get('aria-label') is not None:
+                        try:
+                            title = div.get("aria-label").strip().replace('\n', ' ').split(",")
+                            event_text = f"EVENT: {title[0].strip()}, DATE: {title[2].strip()}"
+                            if event_text not in month_events:
+                                month_events.append(event_text)
+                                method1_events += 1
+                        except Exception as parse_error:
+                            print(f"[CALENDAR] Error parsing aria-label: {str(parse_error)}")
+                    elif div.get('title') is not None:
+                        try:
+                            title = div.get("title").strip().replace('\n', ' ').split(",")
+                            event_text = f"EVENT: {title[0].strip()}, DATE: {title[1].strip()}"
+                            if event_text not in month_events:
+                                month_events.append(event_text)
+                                method1_events += 1
+                        except Exception as parse_error:
+                            print(f"[CALENDAR] Error parsing title: {str(parse_error)}")
+                
+                print(f"[CALENDAR] Method 1 found {method1_events} events")
+                
+                # Method 2: Look for divs with data-calitemid
+                print(f"[CALENDAR] Method 2: Searching for divs with data-calitemid")
+                event_containers = soup.find_all('div', {'data-calitemid': True})
+                print(f"[CALENDAR] Found {len(event_containers)} event containers")
+                
+                method2_events = 0
+                for container in event_containers:
+                    try:
+                        inner_div = container.find('div', {'title': True})
+                        if inner_div and inner_div.get('title'):
+                            title = inner_div.get('title').strip().replace('\n', ' ').split(",")
+                            event_text = f"EVENT: {title[0].strip()}, DATE: {title[1].strip()}"
+                            if event_text not in month_events:
+                                month_events.append(event_text)
+                                method2_events += 1
+                        
+                        inner_div_aria = container.find('div', {'aria-label': True})
+                        if inner_div_aria and inner_div_aria.get('aria-label'):
+                            title = inner_div_aria.get('aria-label').strip().replace('\n', ' ').split(",")
+                            event_text = f"EVENT: {title[0].strip()}, DATE: {title[2].strip()}"
+                            if event_text not in month_events:
+                                month_events.append(event_text)
+                                method2_events += 1
+                    except Exception as parse_error:
+                        print(f"[CALENDAR] Error in method 2 parsing: {str(parse_error)}")
+                
+                print(f"[CALENDAR] Method 2 found {method2_events} additional events")
+                
+                # Method 3: Look for spans with class 'xWbuA'
+                print(f"[CALENDAR] Method 3: Searching for spans with class 'xWbuA'")
+                event_spans = soup.find_all('span', class_='xWbuA')
+                print(f"[CALENDAR] Found {len(event_spans)} event spans")
+                
+                method3_events = 0
+                for span in event_spans:
+                    try:
+                        parent_container = span.find_parent('div', {'data-calitemid': True})
+                        if parent_container:
+                            title_div = parent_container.find('div', {'title': True})
+                            aria_div = parent_container.find('div', {'aria-label': True})
+                            
+                            if title_div:
+                                title = title_div.get('title').strip().replace('\n', ' ').split(",")
+                                event_text = f"EVENT: {span.get_text().strip()}, DATE: {title[1].strip()}"
+                                if event_text not in month_events:
+                                    month_events.append(event_text)
+                                    method3_events += 1
+                            elif aria_div:
+                                title = aria_div.get('aria-label').strip().replace('\n', ' ').split(",")
+                                event_text = f"EVENT: {span.get_text().strip()}, DATE: {title[2].strip()}"
+                                if event_text not in month_events:
+                                    month_events.append(event_text)
+                                    method3_events += 1
+                    except Exception as parse_error:
+                        print(f"[CALENDAR] Error in method 3 parsing: {str(parse_error)}")
+                
+                print(f"[CALENDAR] Method 3 found {method3_events} additional events")
+                
+                print(f"[CALENDAR] Total events found for {month_names[target_month]}: {len(month_events)}")
+                for event in month_events[:3]:  # Log first 3 events as sample
+                    print(f"[CALENDAR] Sample event: {event}")
+                
+                all_events[month_names[target_month]] = month_events
+                
+                # Reset to current month for next iteration
+                current_month = target_month
+                
+            except Exception as extraction_error:
+                print(f"[CALENDAR] ❌ Error extracting events for {month_names[target_month]}: {str(extraction_error)}")
+                all_events[month_names[target_month]] = []
         
-        # Format all events
+        # Format results
+        print(f"[CALENDAR] Formatting results...")
         formatted_events = f"UNIVERSITY EVENTS FOR {current_year}:\n\n"
+        total_events = 0
         for month_name, events in all_events.items():
             formatted_events += f"{month_name.upper()}:\n"
             for event in events:
                 formatted_events += f"  {event}\n"
             formatted_events += "\n"
-
-        caldendar_html = generate_calendar_html(all_events, current_year)
+            total_events += len(events)
+        
+        print(f"[CALENDAR] ✅ Calendar extraction completed successfully")
+        print(f"[CALENDAR] Total events across all months: {total_events}")
+        
+        # Generate HTML (assuming this function exists)
+        try:
+            caldendar_html = generate_calendar_html(all_events, current_year)
+            print(f"[CALENDAR] ✅ HTML generation completed")
+        except Exception as html_error:
+            print(f"[CALENDAR] ❌ HTML generation error: {str(html_error)}")
+            caldendar_html = "<p>Error generating calendar display</p>"
 
         return {"calendar_events": formatted_events, "graph": caldendar_html}
         
     except Exception as e:
-        print(f"Error getting calendar: {str(e)}")
+        print(f"[CALENDAR] ❌ MAJOR ERROR in calendar function: {str(e)}")
+        print(f"[CALENDAR] Error type: {type(e).__name__}")
+        import traceback
+        print(f"[CALENDAR] Full traceback: {traceback.format_exc()}")
         return {"error": str(e)}
     
     finally:
+        print(f"[CALENDAR] Starting cleanup process...")
+        
+        # Cleanup driver
         if driver:
-            driver.quit()
+            try:
+                print(f"[CALENDAR] Closing Chrome driver...")
+                driver.quit()
+                print(f"[CALENDAR] ✅ Chrome driver closed successfully")
+            except Exception as driver_error:
+                print(f"[CALENDAR] ❌ Error closing driver: {str(driver_error)}")
+        
+        # Cleanup temporary directory
+        if temp_dir:
+            try:
+                print(f"[CALENDAR] Cleaning up temp directory: {temp_dir}")
+                import shutil
+                shutil.rmtree(temp_dir, ignore_errors=True)
+                print(f"[CALENDAR] ✅ Temp directory cleaned up")
+            except Exception as cleanup_error:
+                print(f"[CALENDAR] ❌ Error cleaning temp directory: {str(cleanup_error)}")
+        
+        print(f"[CALENDAR] Cleanup process completed")
 
 
 def get_virtual_campus_tour(area_filter: str = None, place_name: str = None, language: str = "Spanish", user_id: int = 0, status: str = "") -> dict:
