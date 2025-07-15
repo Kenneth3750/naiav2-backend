@@ -1,9 +1,9 @@
 import urllib.parse
 import requests
-import json
+from typing import Dict
 from apps.users.services import UserService
 
-def search_university_staff(params, user_id, role_id):
+def search_university_staff(name: str, user_id: int) -> Dict:
     """
     Search for university staff and faculty using Microsoft Graph API.
     Returns detailed information with photos in HTML format.
@@ -19,7 +19,7 @@ def search_university_staff(params, user_id, role_id):
 
     
     # Validate required fields
-    search_name = params.get('name', '').strip()
+    search_name = name
     if not search_name:
         return {"error": "El nombre es requerido para buscar personal universitario"}
     
