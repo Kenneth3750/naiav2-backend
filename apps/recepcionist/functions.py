@@ -3,7 +3,7 @@ import requests
 from typing import Dict
 from apps.users.services import UserService
 from apps.status.services import set_status
-import json
+from bs4 import BeautifulSoup
 
 def search_university_staff(name: str, user_id: int, status: str) -> Dict:
     """
@@ -184,7 +184,6 @@ def search_university_staff(name: str, user_id: int, status: str) -> Dict:
                     photo_url = f"https://graph.microsoft.com/v1.0/users/{user_id_graph}/photo/$value"
                     photo_response = requests.get(photo_url, headers=headers, timeout=10)
                     if photo_response.status_code == 200:
-                        import base64
                         photo_base64 = base64.b64encode(photo_response.content).decode('utf-8')
                         enhanced_contact['photo_base64'] = f"data:image/jpeg;base64,{photo_base64}"
                         print(f"✅ Photo found for {contact.get('displayName', 'Unknown')}")
@@ -368,3 +367,148 @@ def _generate_no_results_html(search_name):
         </div>
     </div>
     """
+
+
+def answer_question_of_uni_premises(place: str, user_id: int, status: str) -> Dict:
+    """
+    Answer questions about university premises by scraping relevant content from the official website.
+    """
+    set_status(user_id, status, 5)
+    
+    if not place:
+        return {"error": "El lugar es requerido para responder preguntas sobre las instalaciones universitarias"}
+    
+    try:
+        places = {
+            "Restaurante Bocas de Ceniza": "https://www.uninorte.edu.co/web/dunord/bocas-de-ceniza",
+            "Restaurante du Nord Plaza": "https://www.uninorte.edu.co/web/dunord/du-nord-plaza",
+            "Café du Nord": "https://www.uninorte.edu.co/web/dunord/cafe-du-nord",
+            "Restaurante 1966": "https://www.uninorte.edu.co/web/dunord/restarurante-1966",
+            "du Nord Exprès": "https://www.uninorte.edu.co/web/dunord/du-nord-expres",
+            "du Nord Terrasse": "https://www.uninorte.edu.co/web/dunord/du-nord-terrasse",
+            "Le Petit": "https://www.uninorte.edu.co/web/dunord/le-petit-cafe",
+            "La Esquina": "https://www.uninorte.edu.co/web/dunord/la-esquina",
+            "El Contenedor": "https://www.uninorte.edu.co/web/dunord/el-contenedor",
+            "La Crepería": "https://www.uninorte.edu.co/web/dunord/la-creperia",
+            "du Nord H": "https://www.uninorte.edu.co/web/dunord/du-nord-h",
+            "Vending Machines": "https://www.uninorte.edu.co/web/dunord/vending-machines",
+            "La Gelateria": "https://www.uninorte.edu.co/web/dunord/la-gelateria",
+            "Hot Dogs": "https://www.uninorte.edu.co/web/dunord/hot-dogs",
+            "Librería y Papelería KM5": "https://www.uninorte.edu.co/web/dunord/libreria-y-papeleria-km5",
+            "du Nord Store": "https://www.uninorte.edu.co/web/dunord/du-nord-store",
+            "du Nord Graphique": "https://www.uninorte.edu.co/web/dunord/du-nord-graphique",
+            "Almacen Mapuka": "https://www.uninorte.edu.co/web/dunord/mapuka",
+            "Zonas Digitales": "https://www.uninorte.edu.co/web/dunord/zonas-digitales",
+            "Le Salón": "https://www.uninorte.edu.co/web/dunord/le-salon",
+            "Gimnasio Uninorte": "https://www.uninorte.edu.co/web/dunord/gimnasio-uninorte",
+            "Droguería": "https://www.uninorte.edu.co/web/dunord/drogueria",
+            "Coliseo": "https://www.uninorte.edu.co/web/dunord/coliseo",
+            "Centro Deportivo Roble Amarillo": "https://www.uninorte.edu.co/web/dunord/centro-deportivo-roble-amarillo"
+        }
+        
+        # Normalize input for matching
+        normalized_place = place.strip().lower()
+        
+        # Find the best match in places dictionary
+        matched_place = None
+        for key in places.keys():
+            if normalized_place in key.lower():
+                matched_place = key
+                break
+        
+        if not matched_place:
+            # Try partial matching
+            for key in places.keys():
+                key_parts = key.lower().split()
+                if any(normalized_place in part for part in key_parts):
+                    matched_place = key
+                    break
+        
+        if matched_place:
+            url = places[matched_place]
+            
+            # Fetch the content
+            response = requests.get(url, timeout=15)
+            response.raise_for_status()
+            
+            # Parse the HTML content
+            soup = BeautifulSoup(response.text, 'html.parser')
+            
+            # Remove navigation, headers, footers and other non-content elements
+            for element in soup.select('nav, header, footer, .navigation, .navbar, .menu, .sidebar, #header, #footer, #navigation, script, style, .advertisement'):
+                element.decompose()
+            
+            # Extract the main content - focus on article, section or main content div
+            content_elements = soup.select('article, .article, section, .content, .main-content, main, .page-content, .entry-content, .portlet-body')
+            
+            content_text = ""
+            if content_elements:
+                for element in content_elements:
+                    # Extract text from paragraphs, headings, lists
+                    for tag in element.select('p, h1, h2, h3, h4, h5, h6, li, .description, .info, .details'):
+                        if tag.text.strip():
+                            content_text += tag.text.strip() + "\n\n"
+            
+            # If no content found with specific selectors, try to get any meaningful text
+            if not content_text:
+                content_text = soup.get_text(separator="\n", strip=True)
+                
+                # Clean up the text by removing consecutive newlines and whitespace
+                content_text = re.sub(r'\n\s*\n', '\n\n', content_text)
+                content_text = re.sub(r'\s{2,}', ' ', content_text)
+            
+            if content_text:
+                # Truncate if too long (keeping it under a reasonable size)
+                max_length = 3000
+                if len(content_text) > max_length:
+                    content_text = content_text[:max_length] + "... [Contenido truncado]"
+                
+                return {
+                    "display": f"""
+                    <div style="font-family: Arial, sans-serif; padding: 15px; background-color: #f9f9f9; border-radius: 8px; margin-top: 10px;">
+                        <h2 style="color: #1a365d;">Información sobre: {matched_place}</h2>
+                        <div style="white-space: pre-wrap; line-height: 1.5;">{content_text}</div>
+                        <p style="margin-top: 20px; font-size: 0.9em;">
+                            <a href="{url}" target="_blank" style="color: #3182ce;">Ver información completa en el sitio web</a>
+                        </p>
+                    </div>
+                    """,
+                    "message": f"He encontrado información sobre {matched_place}. La información se muestra en pantalla."
+                }
+            else:
+                return {
+                    "display": f"""
+                    <div style="font-family: Arial, sans-serif; padding: 15px; background-color: #f9f9f9; border-radius: 8px;">
+                        <h2 style="color: #1a365d;">Información sobre: {matched_place}</h2>
+                        <p>La página existe pero no se pudo extraer el contenido relevante.</p>
+                        <p>
+                            <a href="{url}" target="_blank" style="color: #3182ce;">Visitar la página directamente</a>
+                        </p>
+                    </div>
+                    """,
+                    "message": f"La página de {matched_place} existe, pero no pude extraer la información. He proporcionado un enlace directo."
+                }
+        else:
+            return {
+                "display": f"""
+                <div style="font-family: Arial, sans-serif; padding: 15px; background-color: #f9f9f9; border-radius: 8px;">
+                    <h2 style="color: #1a365d;">Lugar no encontrado</h2>
+                    <p>No se encontró información específica para el lugar: <strong>{place}</strong>.</p>
+                    <p>Lugares disponibles:</p>
+                    <ul style="columns: 2; column-gap: 20px;">
+                        {' '.join([f'<li>{p}</li>' for p in sorted(places.keys())])}
+                    </ul>
+                </div>
+                """,
+                "message": f"No se encontró información para '{place}'. Intenta con otro lugar o revisa la lista de lugares disponibles."
+            }
+        
+    except requests.RequestException as e:
+        return {
+            "display": f"<p>Error al acceder al sitio web: {str(e)}</p>",
+            "message": "No pude acceder al sitio web de la universidad. Verifica la conexión a internet."
+        }
+    except Exception as e:
+        return {
+            "error": f"Error inesperado al responder preguntas sobre las instalaciones universitarias: {str(e)}"
+        }

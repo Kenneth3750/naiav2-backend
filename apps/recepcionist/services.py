@@ -1,6 +1,6 @@
 from datetime import timedelta, timezone
 from apps.chat.functions import get_last_four_messages
-from apps.recepcionist.functions import search_university_staff
+from apps.recepcionist.functions import search_university_staff, answer_question_of_uni_premises
 import datetime
 from datetime import timedelta, timezone
 
@@ -18,29 +18,81 @@ class RecepcionistService:
                     "name": "search_university_staff",
                     "description": "Search for university staff, professors, and employees by name to get their contact information, office location, job title, and other details",
                     "parameters": {
-                        "type": "object",
-                        "properties": {
-                            "name": {
-                                "type": "string",
-                                "description": "The name or partial name of the university staff member to search for"
-                            },
-                            "user_id": {
-                                "type": "integer",
-                                "description": "The ID of the user making the request, used for logging and tracking purposes. This id is provided in the prompt, so you must use it directly without asking the user for it."
-                            },
-                            "status": {
-                                "type": "string", 
-                                "description": "A concise description of the calendar creation task, using conjugated verbs (e.g., 'Buscar información sobre [nombre del personal universitario]') in the same language as the user's question" ,
-                            }
+                    "type": "object",
+                    "properties": {
+                        "name": {
+                        "type": "string",
+                        "description": "The name or partial name of the university staff member to search for"
                         },
-                        "required": ["name", "user_id", "status"],
+                        "user_id": {
+                        "type": "integer",
+                        "description": "The ID of the user making the request, used for logging and tracking purposes. This id is provided in the prompt, so you must use it directly without asking the user for it."
+                        },
+                        "status": {
+                        "type": "string", 
+                        "description": "A concise description of the calendar creation task, using conjugated verbs (e.g., 'Buscar información sobre [nombre del personal universitario]') in the same language as the user's question" ,
+                        }
+                    },
+                    "required": ["name", "user_id", "status"],
+                    }
+                }
+            },
+            {
+                "type": "function",
+                "function": {
+                    "name": "answer_question_of_uni_premises",
+                    "description": "Answer questions about university premises, such as locations, facilities, and general information about the university campus.",
+                    "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "place": {
+                        "type": "string",
+                        "enum": [
+                            "Restaurante Bocas de Ceniza",
+                            "Restaurante du Nord Plaza",
+                            "Café du Nord",
+                            "Restaurante 1966",
+                            "du Nord Exprès",
+                            "du Nord Terrasse",
+                            "Le Petit",
+                            "La Esquina",
+                            "El Contenedor",
+                            "La Crepería",
+                            "du Nord H",
+                            "Vending Machines",
+                            "La Gelateria",
+                            "Hot Dogs",
+                            "Librería y Papelería KM5",
+                            "du Nord Store",
+                            "du Nord Graphique",
+                            "Almacen Mapuka",
+                            "Zonas Digitales",
+                            "Le Salón",
+                            "Gimnasio Uninorte",
+                            "Droguería",
+                            "Coliseo",
+                            "Centro Deportivo Roble Amarillo"
+                        ],
+                        "description": "The specific place or facility within the university premises that the user is asking about."
+                        },
+                        "user_id": {
+                        "type": "integer",
+                        "description": "The ID of the user making the request, used for logging and tracking purposes. This id is provided in the prompt, so you must use it directly without asking the user for it."
+                        },
+                        "status": {
+                        "type": "string", 
+                        "description": "A concise description of the question about university premises, using conjugated verbs (e.g., 'Buscando información sobre [lugar]')"
+                        }
+                    },
+                    "required": ["place", "user_id", "status"],
                     }
                 }
             }
         ]
 
         available_functions = {
-            "search_university_staff": search_university_staff
+            "search_university_staff": search_university_staff,
+            "answer_question_of_uni_premises": answer_question_of_uni_premises
         }
 
         current_utc_time = datetime.datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S")
@@ -54,7 +106,8 @@ class RecepcionistService:
 
         AVAILABLE RECEPTION FUNCTIONS:
         1. search_university_staff - Searches for university professors, staff, and employees by name to get contact information, office location, and job details
-
+        2. answer_question_of_uni_premises - Answers questions about university premises, such as locations, facilities, and general information about the university campus.
+        
         ALWAYS ROUTE TO "FUNCTION_NEEDED" WHEN:
         1. User asks about ANY SPECIFIC PERSON by name who could be university staff/faculty/employee
         2. User wants to find contact information for university personnel
@@ -64,6 +117,10 @@ class RecepcionistService:
         6. User mentions specific names of university staff/faculty
         7. User asks about departments heads, coordinators, or administrative staff
         8. User needs to find university employee information
+        9. Ask about any du nord premises, such as "¿Dónde está el restaurante Bocas de Ceniza?" or "Where are the du nord dinners?"
+        10. Wants to know about any university premises, such as "¿Dónde está el gimnasio?" or "Where are the restaurants on campus?"
+        11. Ask specific questions about university premises, such as "¿A que hora abre el graphique?" or "What time does the store open?"
+
 
         EXAMPLES OF "FUNCTION_NEEDED":
         - "¿Dónde está la oficina del profesor García?"
@@ -73,6 +130,8 @@ class RecepcionistService:
         - "I need to contact the department head"
         - "¿Está disponible el director académico?"
         - "Where can I find the registrar?"
+        - "A que hora abre el gimnasio?"
+        - "Where is the plaza?"
 
         EXAMPLES OF "NO_FUNCTION_NEEDED" (VERY LIMITED):
         - "Hola, ¿cómo estás?"
@@ -82,6 +141,7 @@ class RecepcionistService:
         - "¿Cómo funciona la universidad?"
         - "¿Qué servicios tienes?"
         - General conversation without specific person names
+
 
         CONTEXT-AWARE ROUTING BASED ON CONVERSATION HISTORY:
         PREVIOUS MESSAGES: {last_messages_text}
@@ -154,10 +214,42 @@ class RecepcionistService:
            - EXAMPLES: "Find Professor García", "Where is Dr. Smith's office?", "Contact info for coordinator López"
            - RETURNS: Detailed information displayed visually with photos, contact details, office locations
 
-        **UPCOMING FUNCTIONS (coming soon):**
-        - Enhanced location and event services for Barranquilla
-        - Restaurant recommendations near campus
-        - Local attractions and services for university community
+        2. answer_question_of_uni_premises(place): Answer questions about university premises, such as locations, facilities, and general information about the university campus.
+            - PURPOSE: Provide information about university premises like restaurants, gyms, and other facilities
+            - USE WHEN: User asks about specific places on campus or general information about university facilities
+            - EXAMPLES: "Where is the restaurant Bocas de Ceniza?", "What time does the gym open?", "Tell me about du Nord Store"
+            - RETURNS: Detailed information about the place, that you must use to answer the user question.
+            - It is crucial to know that the place names are in spanish a you must only use the exact name from the list below:
+            [
+                "Restaurante Bocas de Ceniza",
+                "Restaurante du Nord Plaza",
+                "Café du Nord",
+                "Restaurante 1966",
+                "du Nord Exprès",
+                "du Nord Terrasse",
+                "Le Petit",
+                "La Esquina",
+                "El Contenedor",
+                "La Crepería",
+                "du Nord H",
+                "Vending Machines",
+                "La Gelateria",
+                "Hot Dogs",
+                "Librería y Papelería KM5",
+                "du Nord Store",
+                "du Nord Graphique",
+                "Almacen Mapuka",
+                "Zonas Digitales",
+                "Le Salón",
+                "Gimnasio Uninorte",
+                "Droguería",
+                "Coliseo",
+                "Centro Deportivo Roble Amarillo"
+            ]
+            - IMPORTANT: Most of the users do not use the full name of the place, so you must be able to understand the user question and use the correct place name from the list above.
+            - For example some users do not use "Restaurante du Nord Plaza" but just "du Nord Plaza", so you must be able to understand that the user is asking about the restaurant du Nord Plaza and use the correct name from the list above. 
+            - Another example is the "du Nord Graphique" that some users just say "Graphique" and maybe the do not spell it correctly, they could say "graphic", "Grafic" or anything similar, so you must be able to understand that the user is asking about the du Nord Graphique and use the correct name from the list above.
+            - For the other places you must do the same analysis, so you can understand the user question and use the correct place name from the list above.
 
         ## ROLE-SPECIFIC GUIDELINES
         
