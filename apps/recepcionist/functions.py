@@ -3,7 +3,169 @@ import requests
 from typing import Dict
 from apps.users.services import UserService
 from apps.status.services import set_status
+from services.files import B2FileService
+from langchain_openai import OpenAIEmbeddings
+from langchain_text_splitters import CharacterTextSplitter
+from langchain_community.vectorstores import Chroma
+from langchain_community.document_loaders import PyPDFLoader, Docx2txtLoader, TextLoader
+from openai import OpenAI
+import tempfile
+import os
 import json
+
+openai_api_key = os.getenv("open_ai")
+
+client = OpenAI(
+    api_key= openai_api_key
+)
+
+def create_recepcionist_rag():
+    """
+    Save documents from B2 cloud storage into a vector database
+    """
+    try:
+        # Get documents from B2
+        b2_service = B2FileService()
+        document_bytes_list = b2_service.download_recepcionist_documents()
+        
+        if not document_bytes_list:
+            raise ValueError("No documents found in B2 storage.")
+            
+        all_documents = []
+        
+        # Process each document from B2
+        for i, file_info in enumerate(document_bytes_list):
+            # Extract file bytes and filename from the returned data
+            if isinstance(file_info, dict) and 'bytes' in file_info and 'filename' in file_info:
+                file_bytes = file_info['bytes']
+                file_name = file_info['filename']
+            else:
+                # If not in expected format, use the old behavior
+                file_bytes = file_info
+                file_name = ""
+            
+            # Determine appropriate file extension for temp file
+            if file_name and file_name.lower().endswith('.docx'):
+                suffix = '.docx'
+            elif file_name and file_name.lower().endswith('.txt'):
+                suffix = '.txt'
+            else:
+                suffix = '.pdf'  # Default to PDF
+            
+            with tempfile.NamedTemporaryFile(delete=False, suffix=suffix) as temp_file:
+                temp_path = temp_file.name
+                temp_file.write(file_bytes)
+            
+            try:
+                if suffix == '.pdf':
+                    # Process as PDF
+                    loader = PyPDFLoader(temp_path)
+                    docs = loader.load()
+                    all_documents.extend(docs)
+                    print(f"Processed PDF document #{i+1}")
+                elif suffix == '.docx':
+                    # Process as DOCX
+                    loader = Docx2txtLoader(temp_path)
+                    docs = loader.load()
+                    all_documents.extend(docs)
+                    print(f"Processed DOCX document #{i+1}")
+                else:
+                    # Process as text
+                    loader = TextLoader(temp_path)
+                    docs = loader.load()
+                    all_documents.extend(docs)
+                    print(f"Processed TXT document #{i+1}")
+            except Exception as e:
+                print(f"Failed to process document #{i+1}: {str(e)}")
+                try:
+                    # Fallback: try as plain text if original processing fails
+                    loader = TextLoader(temp_path, encoding='utf-8', autodetect_encoding=True)
+                    docs = loader.load()
+                    all_documents.extend(docs)
+                    print(f"Processed document #{i+1} as fallback text")
+                except Exception as inner_e:
+                    print(f"All processing methods failed for document #{i+1}: {str(inner_e)}")
+            
+            # Clean up temp file
+            os.unlink(temp_path)
+
+        if not all_documents:
+            raise ValueError("No documents could be successfully processed.")
+        
+        # Create embeddings and store in Chroma
+        persist_dir = "./chromadb_recepcionist"
+        os.makedirs(persist_dir, exist_ok=True)
+
+        embeddings = OpenAIEmbeddings(
+            api_key=openai_api_key,
+            model="text-embedding-3-large"
+        )
+
+        # Create text splitter
+        text_splitter = CharacterTextSplitter.from_tiktoken_encoder(
+            encoding_name="cl100k_base",
+            chunk_size=1000,
+            chunk_overlap=200
+        )
+
+        # Split documents into chunks
+        chunks = text_splitter.split_documents(all_documents)
+
+        # Create and persist vector store
+        vector_store = Chroma(
+            persist_directory=persist_dir,
+            embedding_function=embeddings
+        )
+        
+        vector_store.add_documents(chunks)
+        vector_store.persist()
+
+        return f"Successfully processed {len(document_bytes_list)} documents from B2 storage"
+
+    except Exception as e:
+        print(f"Error processing documents: {str(e)}")
+        return {"error": str(e)}
+
+def query_recepcionist_rag(user_id: int, question: str, k: int = 3, status:str = "") -> dict:
+    """
+    Query the information stored in the vector store and generate a response.
+    """
+    try:
+        set_status(user_id, status, 2)
+        persist_dir = "./chromadb_recepcionist"
+
+        if not os.path.exists(persist_dir):
+            create_recepcionist_rag()
+            raise FileNotFoundError("No documents have been indexed yet.")
+
+        embeddings = OpenAIEmbeddings(
+            api_key=openai_api_key,
+            model="text-embedding-3-large"
+        )
+        
+        vector_store = Chroma(
+            persist_directory=persist_dir,
+            embedding_function=embeddings
+        )
+
+        results = vector_store.similarity_search(question, k=k)
+
+        if not results:
+            return {"response": "No relevant documents found for your question."}
+        
+        rag_results = []
+        for i, doc in enumerate(results, 1):
+            rag_results.append(f"Document {i}: {doc.page_content}")
+
+        result_text = "\n\n".join(rag_results)
+
+        print(f"RAG results: {result_text}")
+        return {"resolved_rag": result_text}
+
+    except Exception as e:
+        print(f"Error retrieving documents: {str(e)}")
+        return {"error": str(e)}
+
 
 def search_university_staff(name: str, user_id: int, status: str) -> Dict:
     """

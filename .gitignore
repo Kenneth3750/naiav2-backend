@@ -26,5 +26,6 @@ logs/
 user_list.py
 
 chromadb_uniguide/
+chromadb_recepcionist/
 rag_docs/
 apps/uniguide/rag_test.py
