@@ -982,6 +982,10 @@ def search_contacts_by_name(name: str, user_id: int, status: str = "Buscando con
         return {"error": "User ID is required"}
     
     try:
+        # Import required modules
+        import urllib.parse
+        import time
+        
         # Set status for tracking
         if user_id:
             set_status(user_id, status, 3)  # role_id 3 for Personal Assistant
@@ -1304,58 +1308,66 @@ def search_contacts_by_name(name: str, user_id: int, status: str = "Buscando con
         final_contacts = list(unique_contacts.values())
         print(f"Unique contacts after deduplication: {len(final_contacts)}")
         
-        # More lenient filtering for relevance
+        # More strict filtering for relevance - especially for multi-word searches
         filtered_contacts = []
         search_parts = [part.lower().strip() for part in search_name.split() if part.strip()]
+        
+        print(f"Search parts: {search_parts}")
         
         for contact in final_contacts:
             display_name = contact['displayName']
             display_name_lower = display_name.lower()
             
-            # Multiple matching strategies (more lenient)
-            is_match = False
-            
-            # Strategy 1: Exact or very close match
-            if search_name_lower == display_name_lower:
-                is_match = True
-                contact['match_score'] = 100
-            
-            # Strategy 2: All search parts appear in name
-            elif all(part in display_name_lower for part in search_parts):
-                is_match = True
-                contact['match_score'] = 90
-            
-            # Strategy 3: Most search parts appear in name
-            elif len(search_parts) > 1:
-                matching_parts = sum(1 for part in search_parts if part in display_name_lower)
-                if matching_parts >= len(search_parts) - 1:  # Allow one missing part
-                    is_match = True
-                    contact['match_score'] = 70 + (matching_parts * 10)
-            
-            # Strategy 4: Name starts with search term or vice versa
-            elif (display_name_lower.startswith(search_name_lower) or 
-                  search_name_lower.startswith(display_name_lower)):
-                is_match = True
-                contact['match_score'] = 60
-            
-            # Strategy 5: Any significant part matches (for single word searches)
-            elif len(search_parts) == 1 and len(search_parts[0]) >= 3:
-                if search_parts[0] in display_name_lower:
-                    is_match = True
-                    contact['match_score'] = 50
-            
-            # Strategy 6: Very lenient - any search part of 4+ chars appears
-            elif any(len(part) >= 4 and part in display_name_lower for part in search_parts):
-                is_match = True
-                contact['match_score'] = 40
-            
-            if is_match:
-                filtered_contacts.append(contact)
-                print(f"Match found: {display_name} (score: {contact.get('match_score', 0)})")
+            # For multi-word searches, be much more strict
+            if len(search_parts) >= 2:
+                # Strategy 1: Exact match (highest priority)
+                if search_name_lower == display_name_lower:
+                    contact['match_score'] = 100
+                    filtered_contacts.append(contact)
+                    print(f"EXACT MATCH: {display_name} (score: 100)")
+                    
+                # Strategy 2: ALL search parts must appear in the name
+                elif all(part in display_name_lower for part in search_parts):
+                    # Calculate how closely they match
+                    if search_name_lower in display_name_lower:
+                        contact['match_score'] = 95  # Full search term appears as substring
+                    else:
+                        contact['match_score'] = 85  # All parts appear but scattered
+                    filtered_contacts.append(contact)
+                    print(f"FULL MATCH (all parts): {display_name} (score: {contact['match_score']})")
+                
+                # Strategy 3: Only if searching specifically for first+last name format
+                # Check if it looks like "FirstName LastName" and require both
+                elif len(search_parts) == 2:
+                    first_name, last_name = search_parts
+                    # Must have both first name and last name
+                    if (first_name in display_name_lower and last_name in display_name_lower):
+                        # But only if they're significant parts (not just initials)
+                        if len(first_name) >= 3 and len(last_name) >= 3:
+                            contact['match_score'] = 70
+                            filtered_contacts.append(contact)
+                            print(f"BOTH PARTS MATCH: {display_name} (score: 70)")
+                
+                # For 2-word searches, be very strict - don't include partial matches
+                # This prevents including every "Samuel" or every "Solano"
+                        
+            else:
+                # Single word search - can be more lenient
+                search_word = search_parts[0]
+                
+                if search_word == display_name_lower:
+                    contact['match_score'] = 100
+                    filtered_contacts.append(contact)
+                elif display_name_lower.startswith(search_word):
+                    contact['match_score'] = 80
+                    filtered_contacts.append(contact)
+                elif search_word in display_name_lower and len(search_word) >= 4:
+                    contact['match_score'] = 60
+                    filtered_contacts.append(contact)
         
-        print(f"Final filtered contacts: {len(filtered_contacts)}")
+        print(f"Final filtered contacts after strict matching: {len(filtered_contacts)}")
         
-        # Sort by relevance and match score
+        # Sort by match score (highest first), then source priority, then alphabetically
         def sort_key(contact):
             match_score = contact.get('match_score', 0)
             source_priority = {'people': 4, 'contacts': 3, 'directory': 2, 'directory_fuzzy': 1}
@@ -1369,7 +1381,7 @@ def search_contacts_by_name(name: str, user_id: int, status: str = "Buscando con
         
         filtered_contacts.sort(key=sort_key)
         
-        print(f"Found {len(filtered_contacts)} contacts matching '{name}'")
+        print(f"Found {len(filtered_contacts)} relevant contacts matching '{name}'")
         
         # Generate HTML display
         html_display = generate_contacts_html(filtered_contacts, search_name)
@@ -1496,7 +1508,6 @@ def generate_contacts_html(contacts, search_term):
         </div>
     </div>
     """
-
 
 def display_contact_options(contacts: list, search_name: str) -> str:
     """
