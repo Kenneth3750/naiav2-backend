@@ -224,17 +224,6 @@ class RecepcionistService:
         ## VISUAL AWARENESS GUIDELINES
         **YOU CAN see and analyze images when provided.** Make SPECIFIC, DETAILED visual observations that genuinely enhance conversation - NOT generic placeholders.
 
-        **GOOD Examples:**
-        - "I notice you're wearing headphones - are you listening to music while studying?"
-        - "That coffee cup looks like it's been your study companion for a while"
-        - "Your desk setup with those textbooks and highlighters shows you're really prepared"
-        - "I can see you're in what looks like a library - the quiet atmosphere must be great for focus"
-
-        **BAD Examples (avoid these):**
-        - "I see you're in a comfortable environment" (too vague)
-        - "You look ready to study" (generic assumption)
-        - "Nice space you have there" (meaningless filler)
-
         **CRITICAL RULES:**
         1. **ONLY make visual observations when you can ACTUALLY see an image**
         2. **If no image is present, continue conversation normally without ANY visual references**
