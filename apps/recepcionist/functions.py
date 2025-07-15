@@ -3,6 +3,7 @@ import requests
 from typing import Dict
 from apps.users.services import UserService
 from apps.status.services import set_status
+import json
 
 def search_university_staff(name: str, user_id: int, status: str) -> Dict:
     """
@@ -10,9 +11,9 @@ def search_university_staff(name: str, user_id: int, status: str) -> Dict:
     Returns detailed information with photos in HTML format.
     
     Args:
-        params (dict): Parameters containing 'name' for search
+        name (str): The name to search for
         user_id (int): The ID of the user making the search
-        role_id (int): Role ID for tracking
+        status (str): Status message for tracking
         
     Returns:
         dict: Contains 'display' key with HTML formatted results
@@ -45,20 +46,29 @@ def search_university_staff(name: str, user_id: int, status: str) -> Dict:
         all_results = []
         seen_ids = set()
         
+        print(f"Name parts to search: {name_parts}")
+        
         # Strategy 1: Search by display name parts
         for part in name_parts:
             encoded_part = urllib.parse.quote(part)
             search_queries = [
-                f"https://graph.microsoft.com/v1.0/users?$filter=startswith(displayName,'{encoded_part}')&$select=id,displayName,mail,jobTitle,department,officeLocation,businessPhones,userPrincipalName,companyName&$top=50",
-                f"https://graph.microsoft.com/v1.0/users?$filter=contains(displayName,'{encoded_part}')&$select=id,displayName,mail,jobTitle,department,officeLocation,businessPhones,userPrincipalName,companyName&$top=50"
+                f"https://graph.microsoft.com/v1.0/users?$filter=startswith(displayName,'{encoded_part}')&$select=id,displayName,mail,jobTitle,department,officeLocation,businessPhones,userPrincipalName,companyName,employeeId,givenName,surname,mobilePhone,streetAddress,city,state,postalCode,country,faxNumber,usageLocation,preferredLanguage&$top=50",
+                f"https://graph.microsoft.com/v1.0/users?$filter=contains(displayName,'{encoded_part}')&$select=id,displayName,mail,jobTitle,department,officeLocation,businessPhones,userPrincipalName,companyName,employeeId,givenName,surname,mobilePhone,streetAddress,city,state,postalCode,country,faxNumber,usageLocation,preferredLanguage&$top=50"
             ]
+            
+            print(f"Searching for part: '{part}'")
             
             for query_url in search_queries:
                 try:
+                    print(f"Executing query: {query_url}")
                     response = requests.get(query_url, headers=headers, timeout=15)
+                    print(f"Response status: {response.status_code}")
+                    
                     if response.status_code == 200:
                         data = response.json()
                         users = data.get('value', [])
+                        print(f"Found {len(users)} users for part '{part}'")
+                        
                         for user in users:
                             user_id_graph = user.get('id')
                             if user_id_graph and user_id_graph not in seen_ids:
@@ -66,6 +76,22 @@ def search_university_staff(name: str, user_id: int, status: str) -> Dict:
                                 if user.get('jobTitle') or user.get('department'):
                                     seen_ids.add(user_id_graph)
                                     all_results.append(user)
+                                    
+                                    # DEBUG: Print detailed user information
+                                    print("="*80)
+                                    print(f"USER FOUND: {user.get('displayName', 'N/A')}")
+                                    print("="*80)
+                                    print("COMPLETE USER DATA FROM MICROSOFT GRAPH API:")
+                                    print(json.dumps(user, indent=2, ensure_ascii=False))
+                                    print("="*80)
+                                    print("INDIVIDUAL FIELDS:")
+                                    for key, value in user.items():
+                                        print(f"  {key}: {value}")
+                                    print("="*80)
+                                    
+                    else:
+                        print(f"API Error: {response.status_code} - {response.text}")
+                        
                 except Exception as e:
                     print(f"Error in search query: {str(e)}")
                     continue
@@ -73,21 +99,40 @@ def search_university_staff(name: str, user_id: int, status: str) -> Dict:
         # Strategy 2: Try full name search
         encoded_full_name = urllib.parse.quote(search_name)
         full_name_queries = [
-            f"https://graph.microsoft.com/v1.0/users?$filter=contains(displayName,'{encoded_full_name}')&$select=id,displayName,mail,jobTitle,department,officeLocation,businessPhones,userPrincipalName,companyName&$top=20"
+            f"https://graph.microsoft.com/v1.0/users?$filter=contains(displayName,'{encoded_full_name}')&$select=id,displayName,mail,jobTitle,department,officeLocation,businessPhones,userPrincipalName,companyName,employeeId,givenName,surname,mobilePhone,streetAddress,city,state,postalCode,country,faxNumber,usageLocation,preferredLanguage&$top=20"
         ]
+        
+        print(f"Executing full name search for: '{search_name}'")
         
         for query_url in full_name_queries:
             try:
+                print(f"Full name query: {query_url}")
                 response = requests.get(query_url, headers=headers, timeout=15)
+                print(f"Full name response status: {response.status_code}")
+                
                 if response.status_code == 200:
                     data = response.json()
                     users = data.get('value', [])
+                    print(f"Found {len(users)} users for full name search")
+                    
                     for user in users:
                         user_id_graph = user.get('id')
                         if user_id_graph and user_id_graph not in seen_ids:
                             if user.get('jobTitle') or user.get('department'):
                                 seen_ids.add(user_id_graph)
                                 all_results.append(user)
+                                
+                                # DEBUG: Print detailed user information for full name matches
+                                print("="*80)
+                                print(f"FULL NAME MATCH: {user.get('displayName', 'N/A')}")
+                                print("="*80)
+                                print("COMPLETE USER DATA FROM MICROSOFT GRAPH API:")
+                                print(json.dumps(user, indent=2, ensure_ascii=False))
+                                print("="*80)
+                                
+                else:
+                    print(f"Full name API Error: {response.status_code} - {response.text}")
+                    
             except Exception as e:
                 print(f"Error in full name search: {str(e)}")
                 continue
@@ -97,6 +142,8 @@ def search_university_staff(name: str, user_id: int, status: str) -> Dict:
         for user in all_results:
             if user not in unique_results:
                 unique_results.append(user)
+        
+        print(f"Total unique results before sorting: {len(unique_results)}")
         
         # Sort by name relevance and limit results
         def calculate_relevance(user):
@@ -112,7 +159,10 @@ def search_university_staff(name: str, user_id: int, status: str) -> Dict:
         unique_results.sort(key=calculate_relevance)
         final_results = unique_results[:10]  # Limit to 10 results
         
-        print(f"Found {len(final_results)} university staff members")
+        print(f"Final results count: {len(final_results)}")
+        print("FINAL RESULTS SUMMARY:")
+        for i, user in enumerate(final_results, 1):
+            print(f"{i}. {user.get('displayName', 'N/A')} - {user.get('jobTitle', 'N/A')} - {user.get('department', 'N/A')}")
         
         if not final_results:
             return {
@@ -133,13 +183,35 @@ def search_university_staff(name: str, user_id: int, status: str) -> Dict:
                     import base64
                     photo_base64 = base64.b64encode(photo_response.content).decode('utf-8')
                     enhanced_user['photo_base64'] = f"data:image/jpeg;base64,{photo_base64}"
+                    print(f"✅ Photo found for {user.get('displayName', 'Unknown')}")
                 else:
                     enhanced_user['photo_base64'] = None
+                    print(f"❌ No photo for {user.get('displayName', 'Unknown')} - Status: {photo_response.status_code}")
             except Exception as e:
-                print(f"Error getting photo for user {user.get('displayName', 'Unknown')}: {str(e)}")
+                print(f"❌ Error getting photo for user {user.get('displayName', 'Unknown')}: {str(e)}")
                 enhanced_user['photo_base64'] = None
             
             enhanced_results.append(enhanced_user)
+        
+        # Print summary of available fields across all users
+        print("\n" + "="*80)
+        print("FIELD AVAILABILITY SUMMARY ACROSS ALL RESULTS:")
+        print("="*80)
+        
+        all_fields = set()
+        for user in enhanced_results:
+            all_fields.update(user.keys())
+        
+        field_stats = {}
+        for field in all_fields:
+            count = sum(1 for user in enhanced_results if user.get(field))
+            field_stats[field] = count
+            
+        for field, count in sorted(field_stats.items()):
+            percentage = (count / len(enhanced_results)) * 100
+            print(f"  {field}: {count}/{len(enhanced_results)} ({percentage:.1f}%)")
+        
+        print("="*80)
         
         # Generate HTML display
         html_display = _generate_staff_search_html(enhanced_results, search_name)
@@ -160,7 +232,7 @@ def search_university_staff(name: str, user_id: int, status: str) -> Dict:
 
 
 def _generate_staff_search_html(staff_results, search_name):
-    """Generate HTML display for university staff search results"""
+    """Generate HTML display for university staff search results with enhanced information"""
     html = f"""
     <div style="font-family: Arial, sans-serif; max-width: 800px; margin: 0 auto; padding: 20px; background-color: #f8f9fa;">
         <div style="text-align: center; margin-bottom: 30px;">
@@ -176,25 +248,58 @@ def _generate_staff_search_html(staff_results, search_name):
     """
     
     for i, staff in enumerate(staff_results, 1):
-        # Extract and clean data
+        # Extract and clean data - now with more fields
         name = staff.get('displayName', 'Nombre no disponible')
         email = staff.get('mail', staff.get('userPrincipalName', 'Email no disponible'))
         job_title = staff.get('jobTitle', '')
         department = staff.get('department', '')
         office = staff.get('officeLocation', '')
         phones = staff.get('businessPhones', [])
+        mobile_phone = staff.get('mobilePhone', '')
         company = staff.get('companyName', '')
+        employee_id = staff.get('employeeId', '')
+        given_name = staff.get('givenName', '')
+        surname = staff.get('surname', '')
+        street_address = staff.get('streetAddress', '')
+        city = staff.get('city', '')
+        state = staff.get('state', '')
+        postal_code = staff.get('postalCode', '')
+        country = staff.get('country', '')
+        fax_number = staff.get('faxNumber', '')
+        usage_location = staff.get('usageLocation', '')
+        preferred_language = staff.get('preferredLanguage', '')
         photo_base64 = staff.get('photo_base64')
         
-        # Build phone display
+        # Build phone display with more options
         phone_display = ""
         if phones and len(phones) > 0:
             phone_display = f"<p><strong>📞 Teléfono:</strong> {phones[0]}</p>"
+        if mobile_phone:
+            phone_display += f"<p><strong>📱 Móvil:</strong> {mobile_phone}</p>"
+        if fax_number:
+            phone_display += f"<p><strong>📠 Fax:</strong> {fax_number}</p>"
         
-        # Build office display
-        office_display = ""
+        # Build office/location display with more details
+        location_display = ""
         if office:
-            office_display = f"<p><strong>🏢 Oficina:</strong> {office}</p>"
+            location_display = f"<p><strong>🏢 Oficina:</strong> {office}</p>"
+        
+        # Build address if available
+        address_parts = []
+        if street_address:
+            address_parts.append(street_address)
+        if city:
+            address_parts.append(city)
+        if state:
+            address_parts.append(state)
+        if postal_code:
+            address_parts.append(postal_code)
+        if country:
+            address_parts.append(country)
+            
+        if address_parts:
+            full_address = ", ".join(address_parts)
+            location_display += f"<p><strong>📍 Dirección:</strong> {full_address}</p>"
         
         # Build department display
         dept_display = ""
@@ -210,6 +315,26 @@ def _generate_staff_search_html(staff_results, search_name):
         company_display = ""
         if company and company.lower() not in ['uninorte', 'universidad del norte']:
             company_display = f"<p><strong>🏛️ Institución:</strong> {company}</p>"
+        
+        # Build additional info
+        additional_info = ""
+        if employee_id:
+            additional_info += f"<p><strong>🆔 ID Empleado:</strong> {employee_id}</p>"
+        if preferred_language:
+            additional_info += f"<p><strong>🌐 Idioma:</strong> {preferred_language}</p>"
+        if usage_location:
+            additional_info += f"<p><strong>📍 Ubicación:</strong> {usage_location}</p>"
+        
+        # Build name details if different from displayName
+        name_details = ""
+        if given_name or surname:
+            name_parts = []
+            if given_name:
+                name_parts.append(f"Nombre: {given_name}")
+            if surname:
+                name_parts.append(f"Apellido: {surname}")
+            if name_parts:
+                name_details = f"<p><small><strong>👤 Detalles:</strong> {' | '.join(name_parts)}</small></p>"
         
         # Profile photo section
         photo_section = ""
@@ -238,14 +363,16 @@ def _generate_staff_search_html(staff_results, search_name):
                     <p style="margin: 0; color: #4a5568; font-size: 14px;">
                         <strong>📧 Email:</strong> {email}
                     </p>
+                    {name_details}
                 </div>
                 
                 <div style="margin-top: 15px; line-height: 1.6; color: #2d3748;">
                     {job_display}
                     {dept_display}
-                    {office_display}
-                    {phone_display}
                     {company_display}
+                    {location_display}
+                    {phone_display}
+                    {additional_info}
                 </div>
                 
                 <div style="text-align: center; margin-top: 15px; padding-top: 15px; border-top: 1px solid #e2e8f0;">
