@@ -23,9 +23,17 @@ class RecepcionistService:
                             "name": {
                                 "type": "string",
                                 "description": "The name or partial name of the university staff member to search for"
+                            },
+                            "user_id": {
+                                "type": "integer",
+                                "description": "The ID of the user making the request, used for logging and tracking purposes. This id is provided in the prompt, so you must use it directly without asking the user for it."
+                            },
+                            "status": {
+                                "type": "string", 
+                                "description": "A concise description of the calendar creation task, using conjugated verbs (e.g., 'Buscar información sobre [nombre del personal universitario]') in the same language as the user's question" ,
                             }
                         },
-                        "required": ["name"]
+                        "required": ["name", "user_id"],
                     }
                 }
             }
