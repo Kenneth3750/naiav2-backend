@@ -33,7 +33,7 @@ class RecepcionistService:
                                 "description": "A concise description of the calendar creation task, using conjugated verbs (e.g., 'Buscar información sobre [nombre del personal universitario]') in the same language as the user's question" ,
                             }
                         },
-                        "required": ["name", "user_id"],
+                        "required": ["name", "user_id", "status"],
                     }
                 }
             }
