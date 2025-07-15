@@ -7,16 +7,8 @@ import json
 
 def search_university_staff(name: str, user_id: int, status: str) -> Dict:
     """
-    Search for university staff and faculty using Microsoft Graph API with improved search strategy.
-    Returns detailed information with photos in HTML format.
-    
-    Args:
-        name (str): The name to search for
-        user_id (int): The ID of the user making the search
-        status (str): Status message for tracking
-        
-    Returns:
-        dict: Contains 'display' key with HTML formatted results
+    Search for university staff using the EXACT same algorithm as search_contacts.
+    This is the working version that successfully finds people.
     """
     set_status(user_id, status, 5)
     
@@ -26,7 +18,7 @@ def search_university_staff(name: str, user_id: int, status: str) -> Dict:
         return {"error": "El nombre es requerido para buscar personal universitario"}
     
     try:
-        # Get user's Microsoft Graph token using existing UserService
+        # Get user's Microsoft Graph token
         user_service = UserService()
         access_token = user_service.get_user_token(user_id)
         
@@ -39,249 +31,188 @@ def search_university_staff(name: str, user_id: int, status: str) -> Dict:
             "Content-Type": "application/json"
         }
         
-        print(f"Searching university staff for: {search_name}")
-        
-        all_results = []
-        seen_ids = set()
-        name_parts = [part.strip() for part in search_name.split() if part.strip()]
+        all_contacts = []
         search_name_lower = search_name.lower()
         
-        print(f"Name parts to search: {name_parts}")
+        print(f"Comprehensive staff search for: {name}")
+        print(f"Search name lower: {search_name_lower}")
         
-        # URL encode the search term properly
-        encoded_name = urllib.parse.quote(search_name)
-        
-        # Strategy 1: Get ALL users and filter locally (most reliable like in search_contacts)
+        # Enhanced Directory Search (EXACT copy of search_contacts strategy)
         try:
-            print("Strategy 1: Getting ALL users and filtering locally...")
-            all_users_url = "https://graph.microsoft.com/v1.0/users?$select=id,displayName,mail,jobTitle,department,userPrincipalName,givenName,surname,usageLocation&$top=999"
+            print("Starting comprehensive directory search...")
             
-            print(f"Executing query: {all_users_url}")
-            response = requests.get(all_users_url, headers=headers, timeout=30)
-            print(f"Response status: {response.status_code}")
+            # Get name parts for more flexible searching
+            name_parts = [part.strip() for part in search_name.split() if part.strip()]
             
-            if response.status_code == 200:
-                data = response.json()
-                users = data.get('value', [])
-                print(f"Found {len(users)} total users to filter")
-                
-                for user in users:
-                    user_id_graph = user.get('id')
-                    display_name = user.get('displayName', '')
-                    
-                    if user_id_graph and user_id_graph not in seen_ids:
-                        # Filter for university staff (has jobTitle or department)
-                        if user.get('jobTitle') or user.get('department'):
-                            # Check if any part of the search name appears in the display name
-                            name_match = False
-                            for part in name_parts:
-                                if len(part) >= 2 and part.lower() in display_name.lower():
-                                    name_match = True
-                                    break
-                            
-                            if name_match:
-                                seen_ids.add(user_id_graph)
-                                all_results.append(user)
-                                
-                                # DEBUG: Print detailed user information
-                                print("="*80)
-                                print(f"MATCH FOUND: {display_name}")
-                                print("="*80)
-                                print("COMPLETE USER DATA:")
-                                print(json.dumps(user, indent=2, ensure_ascii=False))
-                                print("="*80)
-                
-                print(f"Strategy 1 found {len(all_results)} matching users")
-                
-            else:
-                print(f"Strategy 1 failed with status: {response.status_code} - {response.text}")
-                
-        except Exception as e:
-            print(f"Error in Strategy 1: {str(e)}")
-        
-        # Strategy 2: Use $search (if we don't have enough results)
-        if len(all_results) < 5:
-            try:
-                print("Strategy 2: Using $search...")
-                search_queries = [
-                    f"https://graph.microsoft.com/v1.0/users?$search=\"{encoded_name}\"&$select=id,displayName,mail,jobTitle,department,userPrincipalName,givenName,surname,usageLocation&$top=100"
-                ]
-                
-                for query_url in search_queries:
-                    try:
-                        print(f"Executing search query: {query_url}")
-                        response = requests.get(query_url, headers=headers, timeout=15)
-                        print(f"Search response status: {response.status_code}")
-                        
-                        if response.status_code == 200:
-                            data = response.json()
-                            users = data.get('value', [])
-                            print(f"Search found {len(users)} users")
-                            
-                            for user in users:
-                                user_id_graph = user.get('id')
-                                if user_id_graph and user_id_graph not in seen_ids:
-                                    if user.get('jobTitle') or user.get('department'):
-                                        seen_ids.add(user_id_graph)
-                                        all_results.append(user)
-                                        print(f"Search added: {user.get('displayName', 'Unknown')}")
-                        else:
-                            print(f"Search API Error: {response.status_code} - {response.text}")
-                            
-                    except Exception as e:
-                        print(f"Error in search query: {str(e)}")
-                        continue
-                        
-            except Exception as e:
-                print(f"Error in Strategy 2: {str(e)}")
-        
-        # Strategy 3: Search by givenName and surname (if still not enough results)
-        if len(all_results) < 5:
-            try:
-                print("Strategy 3: Searching by givenName and surname...")
-                for part in name_parts:
-                    encoded_part = urllib.parse.quote(part)
-                    name_field_queries = [
-                        f"https://graph.microsoft.com/v1.0/users?$filter=startswith(givenName,'{encoded_part}')&$select=id,displayName,mail,jobTitle,department,userPrincipalName,givenName,surname,usageLocation&$top=50",
-                        f"https://graph.microsoft.com/v1.0/users?$filter=startswith(surname,'{encoded_part}')&$select=id,displayName,mail,jobTitle,department,userPrincipalName,givenName,surname,usageLocation&$top=50"
-                    ]
-                    
-                    for query_url in name_field_queries:
-                        try:
-                            print(f"Executing name field query: {query_url}")
-                            response = requests.get(query_url, headers=headers, timeout=15)
-                            print(f"Name field response status: {response.status_code}")
-                            
-                            if response.status_code == 200:
-                                data = response.json()
-                                users = data.get('value', [])
-                                print(f"Name field search found {len(users)} users")
-                                
-                                for user in users:
-                                    user_id_graph = user.get('id')
-                                    if user_id_graph and user_id_graph not in seen_ids:
-                                        if user.get('jobTitle') or user.get('department'):
-                                            seen_ids.add(user_id_graph)
-                                            all_results.append(user)
-                                            print(f"Name field added: {user.get('displayName', 'Unknown')}")
-                            else:
-                                print(f"Name field API Error: {response.status_code} - {response.text}")
-                                
-                        except Exception as e:
-                            print(f"Error in name field query: {str(e)}")
-                            continue
-                            
-            except Exception as e:
-                print(f"Error in Strategy 3: {str(e)}")
-        
-        # Enhanced relevance scoring
-        def calculate_relevance_score(user):
-            display_name = user.get('displayName', '').lower()
-            given_name = user.get('givenName', '').lower()
-            surname = user.get('surname', '').lower()
-            job_title = user.get('jobTitle', '').lower()
-            department = user.get('department', '').lower()
+            directory_queries = []
             
-            score = 0
+            # Strategy 1: Get ALL users and filter locally (most reliable)
+            directory_queries.append(("https://graph.microsoft.com/v1.0/users?$select=id,displayName,mail,jobTitle,department,userPrincipalName,givenName,surname,usageLocation&$top=999", "all_users"))
             
-            # Exact name match gets highest score
-            if search_name_lower == display_name:
-                score += 1000
-            
-            # Check if all name parts are present in display name
-            all_parts_in_display = all(part.lower() in display_name for part in name_parts)
-            if all_parts_in_display:
-                score += 500
-                
-            # Check individual name parts
+            # Strategy 2: Search by each name part
             for part in name_parts:
-                part_lower = part.lower()
-                if part_lower in display_name:
-                    score += 100
-                if part_lower in given_name:
-                    score += 80
-                if part_lower in surname:
-                    score += 80
+                encoded_part = urllib.parse.quote(part)
+                directory_queries.extend([
+                    (f"https://graph.microsoft.com/v1.0/users?$filter=startswith(displayName,'{encoded_part}')&$select=id,displayName,mail,jobTitle,department,userPrincipalName,givenName,surname,usageLocation&$top=100", f"startswith_{part}"),
+                    (f"https://graph.microsoft.com/v1.0/users?$filter=startswith(givenName,'{encoded_part}')&$select=id,displayName,mail,jobTitle,department,userPrincipalName,givenName,surname,usageLocation&$top=100", f"givenName_{part}"),
+                    (f"https://graph.microsoft.com/v1.0/users?$filter=startswith(surname,'{encoded_part}')&$select=id,displayName,mail,jobTitle,department,userPrincipalName,givenName,surname,usageLocation&$top=100", f"surname_{part}")
+                ])
             
-            # Prioritize actual staff/faculty over students/graduates
-            if 'profesor' in job_title or 'professor' in job_title:
-                score += 200
-            elif 'funcionario' in job_title or 'funcionario' in department:
-                score += 150
-            elif 'coordinador' in job_title or 'director' in job_title:
-                score += 180
-            elif 'estudiante' in job_title or 'student' in job_title or department == 'estudiantes':
-                score -= 100
-            elif 'egresado' in job_title or 'graduate' in job_title or department == 'egresados':
-                score -= 200
+            for i, (users_url, query_type) in enumerate(directory_queries):
+                try:
+                    print(f"Trying directory query {i+1} ({query_type}): {users_url}")
+                    users_response = requests.get(users_url, headers=headers, timeout=25)
+                    print(f"Directory API response status: {users_response.status_code}")
+                    
+                    if users_response.status_code == 200:
+                        users_data = users_response.json()
+                        users_found = len(users_data.get('value', []))
+                        print(f"Found {users_found} users in directory response {i+1} ({query_type})")
+                        
+                        for user in users_data.get('value', []):
+                            display_name = user.get('displayName', '')
+                            email = user.get('mail') or user.get('userPrincipalName', '')
+                            job_title = user.get('jobTitle', '')
+                            department = user.get('department', '')
+                            
+                            # Filter for university staff (has jobTitle or department)
+                            if not (job_title or department):
+                                continue
+                            
+                            # For "all users" query, filter by name match
+                            if query_type == "all_users":
+                                # Check if any part of the search name appears in the display name
+                                name_match = False
+                                for part in name_parts:
+                                    if len(part) >= 2 and part.lower() in display_name.lower():
+                                        name_match = True
+                                        break
+                                
+                                if not name_match:
+                                    continue
+                            
+                            contact = {
+                                "id": f"directory_{user.get('id', '')}",
+                                "displayName": display_name,
+                                "email": email,
+                                "jobTitle": job_title,
+                                "department": department,
+                                "givenName": user.get('givenName', ''),
+                                "surname": user.get('surname', ''),
+                                "usageLocation": user.get('usageLocation', ''),
+                                "source": "directory",
+                                "user_data": user  # Store complete user data
+                            }
+                            all_contacts.append(contact)
+                            print(f"Added directory user: {display_name} ({email})")
+                    else:
+                        print(f"Directory API error: {users_response.status_code} - {users_response.text}")
+                        
+                except requests.exceptions.RequestException as e:
+                    print(f"Directory query failed: {str(e)}")
+                    continue
+        
+        except Exception as e:
+            print(f"Error in directory search: {str(e)}")
+        
+        print(f"Total contacts found before deduplication: {len(all_contacts)}")
+        
+        # Remove duplicates and prioritize results (EXACT copy from search_contacts)
+        print("Removing duplicates and prioritizing results...")
+        
+        unique_contacts = []
+        seen_emails = set()
+        
+        for contact in all_contacts:
+            email = contact.get('email', '').lower()
+            if email and email not in seen_emails:
+                seen_emails.add(email)
+                unique_contacts.append(contact)
+        
+        print(f"Unique contacts after deduplication: {len(unique_contacts)}")
+        
+        # Smart filtering for best matches (EXACT copy from search_contacts logic)
+        search_parts_lower = [part.lower() for part in name_parts]
+        print(f"Search parts: {search_parts_lower}")
+        
+        filtered_contacts = []
+        
+        for contact in unique_contacts:
+            display_name_lower = contact.get('displayName', '').lower()
+            
+            # Check if ALL search parts appear in the display name
+            all_parts_found = all(part in display_name_lower for part in search_parts_lower)
+            
+            if all_parts_found:
+                contact['match_score'] = 100  # Full match
+                filtered_contacts.append(contact)
+                print(f"FULL MATCH (all parts): {contact.get('displayName', '')} (score: 100)")
+            else:
+                # Partial match - check how many parts are found
+                parts_found = sum(1 for part in search_parts_lower if part in display_name_lower)
+                match_percentage = (parts_found / len(search_parts_lower)) * 100
                 
-            return score
+                if match_percentage >= 50:  # At least 50% of parts found
+                    contact['match_score'] = match_percentage
+                    filtered_contacts.append(contact)
+                    print(f"PARTIAL MATCH: {contact.get('displayName', '')} (score: {match_percentage})")
         
-        # Apply scoring and sort
-        for user in all_results:
-            user['relevance_score'] = calculate_relevance_score(user)
+        print(f"Final filtered contacts after strict matching: {len(filtered_contacts)}")
         
-        # Sort by relevance and limit results
-        all_results.sort(key=lambda x: x['relevance_score'], reverse=True)
-        final_results = all_results[:10]  # Limit to 10 results
-        
-        # Filter out very low relevance results
-        final_results = [user for user in final_results if user['relevance_score'] > 50]
-        
-        print(f"Final results count: {len(final_results)}")
-        print("FINAL RESULTS SUMMARY:")
-        for i, user in enumerate(final_results, 1):
-            print(f"{i}. {user.get('displayName', 'N/A')} - {user.get('jobTitle', 'N/A')} - {user.get('department', 'N/A')} (Score: {user.get('relevance_score', 0)})")
-        
-        if not final_results:
+        if not filtered_contacts:
             return {
                 "display": _generate_no_results_html(search_name),
-                "message": f"No se encontró personal universitario con el nombre '{search_name}'. Intenta con variaciones del nombre o verifica la ortografía."
+                "message": f"No se encontró personal universitario con el nombre '{search_name}'. Intenta con variaciones del nombre."
             }
         
-        # Get profile photos for each user
+        # Sort by match score and limit results
+        filtered_contacts.sort(key=lambda x: x.get('match_score', 0), reverse=True)
+        final_results = filtered_contacts[:10]
+        
+        print(f"Found {len(final_results)} relevant contacts matching '{search_name}'")
+        
+        # Get profile photos for each user (keeping existing photo logic)
         enhanced_results = []
-        for user in final_results:
-            enhanced_user = user.copy()
+        for contact in final_results:
+            enhanced_contact = contact.copy()
+            user_data = contact.get('user_data', {})
             
             # Try to get user's profile photo
             try:
-                photo_url = f"https://graph.microsoft.com/v1.0/users/{user['id']}/photo/$value"
-                photo_response = requests.get(photo_url, headers=headers, timeout=10)
-                if photo_response.status_code == 200:
-                    import base64
-                    photo_base64 = base64.b64encode(photo_response.content).decode('utf-8')
-                    enhanced_user['photo_base64'] = f"data:image/jpeg;base64,{photo_base64}"
-                    print(f"✅ Photo found for {user.get('displayName', 'Unknown')}")
+                user_id_graph = user_data.get('id')
+                if user_id_graph:
+                    photo_url = f"https://graph.microsoft.com/v1.0/users/{user_id_graph}/photo/$value"
+                    photo_response = requests.get(photo_url, headers=headers, timeout=10)
+                    if photo_response.status_code == 200:
+                        import base64
+                        photo_base64 = base64.b64encode(photo_response.content).decode('utf-8')
+                        enhanced_contact['photo_base64'] = f"data:image/jpeg;base64,{photo_base64}"
+                        print(f"✅ Photo found for {contact.get('displayName', 'Unknown')}")
+                    else:
+                        enhanced_contact['photo_base64'] = None
+                        print(f"❌ No photo for {contact.get('displayName', 'Unknown')} - Status: {photo_response.status_code}")
                 else:
-                    enhanced_user['photo_base64'] = None
-                    print(f"❌ No photo for {user.get('displayName', 'Unknown')} - Status: {photo_response.status_code}")
+                    enhanced_contact['photo_base64'] = None
             except Exception as e:
-                print(f"❌ Error getting photo for user {user.get('displayName', 'Unknown')}: {str(e)}")
-                enhanced_user['photo_base64'] = None
+                print(f"❌ Error getting photo for {contact.get('displayName', 'Unknown')}: {str(e)}")
+                enhanced_contact['photo_base64'] = None
             
-            enhanced_results.append(enhanced_user)
+            enhanced_results.append(enhanced_contact)
         
         # Generate HTML display
-        html_display = _generate_staff_search_html(enhanced_results, search_name)
+        html_display = _generate_staff_results_html(enhanced_results, search_name)
         
         return {
             "display": html_display,
             "message": f"Se encontraron {len(enhanced_results)} miembros del personal universitario que coinciden con '{search_name}'. Revisa la pantalla para ver los detalles completos."
         }
         
-    except requests.exceptions.Timeout:
-        return {"error": "Tiempo de espera agotado al buscar personal universitario"}
-    
-    except requests.exceptions.RequestException as e:
-        return {"error": f"Error de red al buscar personal universitario: {str(e)}"}
-    
     except Exception as e:
         return {"error": f"Error inesperado al buscar personal universitario: {str(e)}"}
 
 
-def _generate_staff_search_html(staff_results, search_name):
-    """Generate HTML display for university staff search results with relevance indicators"""
+def _generate_staff_results_html(staff_results, search_name):
+    """Generate HTML display for university staff search results"""
     html = f"""
     <div style="font-family: Arial, sans-serif; max-width: 800px; margin: 0 auto; padding: 20px; background-color: #f8f9fa;">
         <div style="text-align: center; margin-bottom: 30px;">
@@ -297,30 +228,30 @@ def _generate_staff_search_html(staff_results, search_name):
     """
     
     for i, staff in enumerate(staff_results, 1):
-        # Extract and clean data (only use available fields based on the logs)
+        # Extract data from contact format
         name = staff.get('displayName', 'Nombre no disponible')
-        email = staff.get('mail', staff.get('userPrincipalName', 'Email no disponible'))
+        email = staff.get('email', 'Email no disponible')
         job_title = staff.get('jobTitle', '')
         department = staff.get('department', '')
         given_name = staff.get('givenName', '')
         surname = staff.get('surname', '')
         usage_location = staff.get('usageLocation', '')
         photo_base64 = staff.get('photo_base64')
-        relevance_score = staff.get('relevance_score', 0)
+        match_score = staff.get('match_score', 0)
         
-        # Determine relevance indicator
-        if relevance_score >= 500:
-            relevance_indicator = "🎯 Coincidencia Exacta"
-            relevance_color = "#10b981"
-        elif relevance_score >= 200:
-            relevance_indicator = "✅ Muy Relevante"
-            relevance_color = "#3b82f6"
-        elif relevance_score >= 100:
-            relevance_indicator = "⭐ Relevante"
-            relevance_color = "#f59e0b"
+        # Determine match quality indicator
+        if match_score >= 100:
+            match_indicator = "🎯 Coincidencia Exacta"
+            match_color = "#10b981"
+        elif match_score >= 75:
+            match_indicator = "✅ Muy Relevante"
+            match_color = "#3b82f6"
+        elif match_score >= 50:
+            match_indicator = "⭐ Relevante"
+            match_color = "#f59e0b"
         else:
-            relevance_indicator = "📋 Posible Coincidencia"
-            relevance_color = "#6b7280"
+            match_indicator = "📋 Posible Coincidencia"
+            match_color = "#6b7280"
         
         # Build department display
         dept_display = ""
@@ -332,7 +263,7 @@ def _generate_staff_search_html(staff_results, search_name):
         if job_title:
             job_display = f"<p><strong>💼 Cargo:</strong> {job_title}</p>"
         
-        # Build name details if different from displayName
+        # Build name details
         name_details = ""
         if given_name or surname:
             name_parts = []
@@ -375,8 +306,8 @@ def _generate_staff_search_html(staff_results, search_name):
                     <p style="margin: 0 0 10px 0; color: #4a5568; font-size: 14px;">
                         <strong>📧 Email:</strong> {email}
                     </p>
-                    <span style="background-color: {relevance_color}; color: white; padding: 4px 12px; border-radius: 20px; font-size: 12px; font-weight: bold;">
-                        {relevance_indicator}
+                    <span style="background-color: {match_color}; color: white; padding: 4px 12px; border-radius: 20px; font-size: 12px; font-weight: bold;">
+                        {match_indicator}
                     </span>
                     {name_details}
                 </div>
@@ -389,7 +320,7 @@ def _generate_staff_search_html(staff_results, search_name):
                 
                 <div style="text-align: center; margin-top: 15px; padding-top: 15px; border-top: 1px solid #e2e8f0;">
                     <span style="background-color: #e6fffa; color: #234e52; padding: 4px 12px; border-radius: 20px; font-size: 12px; font-weight: bold;">
-                        Resultado #{i} (Puntuación: {relevance_score})
+                        Resultado #{i} (Coincidencia: {match_score:.0f}%)
                     </span>
                 </div>
             </div>
@@ -399,13 +330,12 @@ def _generate_staff_search_html(staff_results, search_name):
         </div>
         
         <div style="background-color: #e6fffa; padding: 20px; margin-top: 30px; border-radius: 8px; border-left: 4px solid #38b2ac;">
-            <h3 style="margin: 0 0 10px 0; color: #234e52; font-size: 18px;">💡 Consejos de Búsqueda</h3>
+            <h3 style="margin: 0 0 10px 0; color: #234e52; font-size: 18px;">💡 Información del Resultado</h3>
             <ul style="margin: 0; padding-left: 20px; color: #2d3748; line-height: 1.6;">
-                <li>Los resultados están ordenados por relevancia con tu búsqueda</li>
-                <li>Si no encuentras a quien buscas, intenta con variaciones del nombre</li>
-                <li>Puedes buscar por nombre, apellido, o nombre completo</li>
-                <li>Los datos mostrados provienen del directorio oficial de la universidad</li>
-                <li>Se priorizan profesores y funcionarios sobre estudiantes y egresados</li>
+                <li>Los resultados están ordenados por porcentaje de coincidencia</li>
+                <li>Se muestran personas que contienen todas o la mayoría de las palabras buscadas</li>
+                <li>Los datos provienen del directorio oficial de Universidad del Norte</li>
+                <li>Para contactar al personal, usa el email institucional proporcionado</li>
             </ul>
         </div>
     </div>
@@ -431,7 +361,7 @@ def _generate_no_results_html(search_name):
                     <li>Verifica la ortografía del nombre completo</li>
                     <li>Intenta buscar solo por el nombre: "Christian"</li>
                     <li>Intenta buscar solo por el apellido: "Quintero"</li>
-                    <li>Prueba con variaciones como "Chris" o apellidos compuestos</li>
+                    <li>Prueba con nombres intermedios: "Christian Giovanny"</li>
                     <li>Asegúrate de que la persona es personal activo de la universidad</li>
                 </ul>
             </div>
