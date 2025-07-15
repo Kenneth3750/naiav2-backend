@@ -2,8 +2,9 @@ import urllib.parse
 import requests
 from typing import Dict
 from apps.users.services import UserService
+from apps.status.services import set_status
 
-def search_university_staff(name: str, user_id: int) -> Dict:
+def search_university_staff(name: str, user_id: int, status: str) -> Dict:
     """
     Search for university staff and faculty using Microsoft Graph API.
     Returns detailed information with photos in HTML format.
@@ -16,7 +17,7 @@ def search_university_staff(name: str, user_id: int) -> Dict:
     Returns:
         dict: Contains 'display' key with HTML formatted results
     """
-
+    set_status(user_id, status, 5)
     
     # Validate required fields
     search_name = name
