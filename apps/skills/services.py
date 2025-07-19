@@ -2,13 +2,14 @@ import datetime
 from datetime import timedelta, timezone
 from apps.chat.functions import get_last_four_messages
 from apps.skills.repositories import SkillsTrainerRepository
+from apps.skills.functions import simulate_job_interview, analyze_professional_appearance, generate_training_report, list_recent_training_reports, get_training_report_html, cv_builder
+from apps.researcher.functions import send_email
 class SkillsTrainerService:
     def retrieve_tools(self, user_id, messages):
 
         last_messages_text = get_last_four_messages(messages)
 
-        from apps.skills.functions import simulate_job_interview, analyze_professional_appearance, generate_training_report, list_recent_training_reports, get_training_report_html
-        
+
         tools = [
             {
                 "type": "function",
@@ -161,6 +162,156 @@ class SkillsTrainerService:
                     }
                 }
             },
+            {
+                "type": "function",
+                "function": {
+                    "name": "send_email",
+                    "description": "Send an email to the user. This function is used to send an email to the user with the information provided by the user.",
+                    "parameters": {
+                        "type": "object",
+                        "properties": {
+                            "to_email": {
+                            "type": "string",
+                            "description": """The email of the user to send the email to."""
+                            },
+                            "subject": {
+                            "type": "string",
+                            "description": """The subject of the email to send."""
+                            },
+                            "body": {
+                            "type": "string",
+                            "description": """The body of the email to send."""
+                            },
+                            "user_id": {
+                            "type": "integer",
+                            "description": "The ID of the user requesting the email. Look at the first developer prompt to get the user_id"
+                            },
+                            "status": {
+                            "type": "string",
+                            "description": "A concise description of the email task being performed, using conjugated verbs (e.g., 'Enviando correo a...', 'Sending email about...') in the same language as the user's question"
+                            }
+            
+                        },
+                        "required": ["to_email", "subject", "body", "user_id", "status"]
+                    }
+                }
+            },
+            {
+                "type": "function",
+                "function": {
+                    "name": "cv_builder",
+                    "description": "Construye un CV/hoja de vida personalizado en formato markdown con alta variabilidad. Crea CVs únicos adaptados completamente a las especificaciones del usuario sin limitaciones de estilo o formato.",
+                    "parameters": {
+                        "type": "object",
+                        "properties": {
+                            "personal_info": {
+                                "type": "object",
+                                "description": "Información personal básica del usuario",
+                                "properties": {
+                                    "full_name": {"type": "string", "description": "Nombre completo"},
+                                    "email": {"type": "string", "description": "Correo electrónico"},
+                                    "phone": {"type": "string", "description": "Número de teléfono"},
+                                    "location": {"type": "string", "description": "Ubicación (ciudad, país)"},
+                                    "linkedin": {"type": "string", "description": "Perfil de LinkedIn (opcional)"},
+                                    "portfolio": {"type": "string", "description": "Sitio web/portfolio (opcional)"},
+                                    "github": {"type": "string", "description": "Perfil de GitHub (opcional)"}
+                                },
+                                "required": ["full_name", "email", "phone", "location"]
+                            },
+                            "cv_type": {
+                                "type": "string",
+                                "description": "Tipo de CV deseado. Ejemplos: 'academic', 'technical', 'creative', 'corporate', 'startup', 'consulting', 'research', o cualquier descripción específica"
+                            },
+                            "experience_level": {
+                                "type": "string",
+                                "description": "Nivel de experiencia. Ejemplos: 'student', 'recent graduate', 'junior', 'mid-level', 'senior', 'executive', o cualquier descripción específica"
+                            },
+                            "target_industry": {
+                                "type": "string",
+                                "description": "Industria objetivo. Ejemplos: 'technology', 'healthcare', 'education', 'finance', 'marketing', 'engineering', o cualquier industria específica"
+                            },
+                            "design_style": {
+                                "type": "string",
+                                "description": "Estilo de diseño deseado. Ejemplos: 'minimalist', 'modern', 'classic', 'creative', 'bold', 'elegant', o cualquier descripción de estilo"
+                            },
+                            "sections_to_include": {
+                                "type": "array",
+                                "items": {"type": "string"},
+                                "description": "Lista de secciones a incluir en el CV. Ejemplos: ['experience', 'education', 'skills', 'projects', 'achievements', 'certifications', 'languages', 'volunteer', 'publications', 'awards'] o cualquier sección personalizada"
+                            },
+                            "primary_focus": {
+                                "type": "string",
+                                "description": "Enfoque principal del CV. Ejemplos: 'technical_skills', 'achievements', 'experience', 'academic', 'leadership', 'creativity', o cualquier enfoque específico"
+                            },
+                            "desired_length": {
+                                "type": "string",
+                                "description": "Longitud deseada del CV. Ejemplos: 'one_page', 'two_pages', 'comprehensive', o cualquier descripción de longitud"
+                            },
+                            "language": {
+                                "type": "string",
+                                "description": "Idioma en el que debe estar escrito el CV. Ejemplos: 'spanish', 'english', 'portuguese', 'french', o cualquier idioma específico"
+                            },
+                            "experience_details": {
+                                "type": "array",
+                                "items": {
+                                    "type": "object",
+                                    "properties": {
+                                        "position": {"type": "string", "description": "Título del puesto"},
+                                        "company": {"type": "string", "description": "Nombre de la empresa"},
+                                        "duration": {"type": "string", "description": "Duración del empleo"},
+                                        "description": {"type": "string", "description": "Descripción de responsabilidades"},
+                                        "achievements": {"type": "array", "items": {"type": "string"}, "description": "Logros específicos"}
+                                    }
+                                },
+                                "description": "Lista opcional de experiencias laborales detalladas"
+                            },
+                            "education_details": {
+                                "type": "array",
+                                "items": {"type": "object"},
+                                "description": "Lista opcional de información educativa detallada"
+                            },
+                            "skills_list": {
+                                "type": "array",
+                                "items": {"type": "string"},
+                                "description": "Lista opcional de habilidades técnicas y blandas"
+                            },
+                            "projects_list": {
+                                "type": "array",
+                                "items": {"type": "object"},
+                                "description": "Lista opcional de proyectos relevantes"
+                            },
+                            "achievements_list": {
+                                "type": "array",
+                                "items": {"type": "string"},
+                                "description": "Lista opcional de logros destacados"
+                            },
+                            "languages_list": {
+                                "type": "array",
+                                "items": {"type": "object"},
+                                "description": "Lista opcional de idiomas y niveles"
+                            },
+                            "certifications_list": {
+                                "type": "array",
+                                "items": {"type": "object"},
+                                "description": "Lista opcional de certificaciones"
+                            },
+                            "additional_sections": {
+                                "type": "object",
+                                "description": "Secciones adicionales personalizadas en formato clave-valor"
+                            },
+                            "user_id": {
+                                "type": "integer",
+                                "description": "The ID of the user requesting the email. Look at the first developer prompt to get the user_id"
+                            },
+                            "status": {
+                                "type": "string",
+                                "description": "A concise description of the CV building task being performed, using conjugated verbs (e.g., 'Construyendo CV...', 'Generating resume...') in the same language as the user's question"
+                            }
+                        },
+                        "required": ["personal_info", "cv_type", "experience_level", "target_industry", "design_style", "sections_to_include", "primary_focus", "desired_length", "language", "user_id", "status"]
+                    }
+                }
+            }
         ]
 
         available_functions = {
@@ -168,7 +319,9 @@ class SkillsTrainerService:
             "analyze_professional_appearance": analyze_professional_appearance,
             "generate_training_report": generate_training_report,
             "list_recent_training_reports": list_recent_training_reports,
-            "get_training_report_html": get_training_report_html
+            "get_training_report_html": get_training_report_html,
+            "cv_builder": cv_builder,
+            "send_email": send_email
         }
 
         current_utc_time = datetime.datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S")
@@ -177,135 +330,180 @@ class SkillsTrainerService:
 
         router_prompt = f"""You are a specialized router for NAIA, an AI assistant at Universidad del Norte. Your ONLY job is to determine whether a user message requires a specialized function or can be handled with a simple chat response.
 
-        CRITICAL: The system WILL NOT search for information or execute functions UNLESS you say "FUNCTION_NEEDED".
+                CRITICAL: The system WILL NOT search for information or execute functions UNLESS you say "FUNCTION_NEEDED".
 
-        SKILLS TRAINER SCOPE:
-        This role specializes in developing personal and professional skills through interactive training, practice scenarios, and skill assessment within the university context.
+                SKILLS TRAINER SCOPE:
+                This role specializes in developing personal and professional skills through interactive training, practice scenarios, and skill assessment within the university context.
 
-        ALWAYS ROUTE TO "FUNCTION_NEEDED" WHEN:
-        1. User requests interview practice or job interview simulation
-        2. User wants to practice specific professional scenarios
-        3. User asks for skill development exercises or training
-        4. User mentions preparing for job interviews or professional situations
-        5. User wants to practice communication or presentation skills
-        6. User requests feedback on professional performance
-        7. User asks for role-playing scenarios or simulations
-        8. User wants to improve specific professional competencies
-        9. User asks for appearance analysis, style advice, or professional image feedback
-        10. User mentions dress code, professional attire, or appearance for events
-        11. User wants advice on how they look for professional situations
-        12. User asks about professional presentation or image consulting
-        13. User wants to generate a report of their training session
-        14. User asks for analysis or summary of their practice session
-        15. User mentions wanting documentation of their skill development
-        16. User requests a report, summary, or analysis of their training performance
-        13. User asks if they are well-dressed, well-presented, or appropriately dressed for any event
-        14. User wants feedback on their current appearance or outfit
-        15. User mentions preparing for presentations, conferences, meetings, or professional events
-        16. User asks about their image or presentation for specific occasions
-        17. User asks to see their training history or previous reports
-        18. User mentions wanting to review past training sessions
-        19. User asks for a list of their training reports
-        20. User wants to download or view a specific training report
-        21. User mentions report IDs or asks to open/download a report
+                ALWAYS ROUTE TO "FUNCTION_NEEDED" WHEN:
+                1. User requests interview practice or job interview simulation
+                2. User wants to practice specific professional scenarios
+                3. User asks for skill development exercises or training
+                4. User mentions preparing for job interviews or professional situations
+                5. User wants to practice communication or presentation skills
+                6. User requests feedback on professional performance
+                7. User asks for role-playing scenarios or simulations
+                8. User wants to improve specific professional competencies
+                9. User asks for appearance analysis, style advice, or professional image feedback
+                10. User mentions dress code, professional attire, or appearance for events
+                11. User wants advice on how they look for professional situations
+                12. User asks about professional presentation or image consulting
+                13. User wants to generate a report of their training session
+                14. User asks for analysis or summary of their practice session
+                15. User mentions wanting documentation of their skill development
+                16. User requests a report, summary, or analysis of their training performance
+                17. User asks if they are well-dressed, well-presented, or appropriately dressed for any event
+                18. User wants feedback on their current appearance or outfit
+                19. User mentions preparing for presentations, conferences, meetings, or professional events
+                20. User asks about their image or presentation for specific occasions
+                21. User asks to see their training history or previous reports
+                22. User mentions wanting to review past training sessions
+                23. User asks for a list of their training reports
+                24. User wants to download or view a specific training report
+                25. User mentions report IDs or asks to open/download a report
+                26. User wants to create, build, or generate a CV/resume
+                27. User asks for help with their CV, resume, or hoja de vida
+                28. User mentions needing a professional CV or resume
+                29. User wants to customize or personalize their CV
+                30. User asks for CV creation, CV building, or resume generation
+                31. User wants to send an email or enviar un correo
+                32. User asks to compose, write, or draft an email
+                33. User mentions sending professional correspondence
+                34. User requests email assistance or email sending
 
-        IMMEDIATE FUNCTION ROUTING TRIGGERS:
-        - "Quiero practicar una entrevista" / "I want to practice an interview"
-        - "Simular entrevista de trabajo" / "Simulate job interview"
-        - "Practicar para entrevista" / "Practice for interview"
-        - "Entrenar habilidades de..." / "Train skills for..."
-        - "Simular escenario profesional" / "Simulate professional scenario"
-        - "Preparación para entrevista" / "Interview preparation"
-        - "Quiero mejorar mis habilidades" / "I want to improve my skills"
-        - "Práctica de presentación" / "Presentation practice"
-        - "¿Cómo me veo?" / "How do I look?"
-        - "¿Mi apariencia es profesional?" / "Is my appearance professional?"
-        - "Consejos de vestimenta" / "Clothing advice"
-        - "¿Estoy bien vestido para...?" / "Am I dressed appropriately for...?"
-        - "Análisis de mi imagen" / "Analyze my image"
-        - "¿Mi outfit está bien para...?" / "Is my outfit good for...?"
-        - "¿Estoy bien presentado?" / "Am I well-presented?"
-        - "¿Me veo bien para...?" / "Do I look good for...?"
-        - "Dime si estoy bien vestido" / "Tell me if I'm well-dressed"
-        - "¿Mi presentación está bien?" / "Is my presentation okay?"
-        - "Voy a dar una conferencia" / "I'm giving a conference"
-        - "Tengo una presentación" / "I have a presentation"
-        - "¿Cómo me veo para la reunión?" / "How do I look for the meeting?"
-        - "Genera un reporte de mi entrenamiento" / "Generate a training report"
-        - "Quiero un análisis de mi sesión" / "I want an analysis of my session"
-        - "Crear reporte de entrevista" / "Create interview report"
-        - "¿Puedes hacer un resumen de mi práctica?" / "Can you make a summary of my practice?"
-        - "Muéstrame mis reportes" / "Show me my reports"
-        - "¿Cuáles son mis entrenamientos anteriores?" / "What are my previous trainings?"
-        - "Quiero ver mi historial de entrenamiento" / "I want to see my training history"
-        - "Lista mis reportes de entrenamiento" / "List my training reports"
-        - "Descargar reporte" / "Download report"
-        - "Ver reporte" / "View report"
-        - "Abrir reporte número..." / "Open report number..."
-        - "Quiero el HTML del reporte" / "I want the HTML of the report"
 
-        CONTEXT-AWARE ROUTING BASED ON CONVERSATION HISTORY:
-        PREVIOUS MESSAGES: {last_messages_text}
+                IMMEDIATE FUNCTION ROUTING TRIGGERS:
+                - "Quiero practicar una entrevista" / "I want to practice an interview"
+                - "Simular entrevista de trabajo" / "Simulate job interview"
+                - "Practicar para entrevista" / "Practice for interview"
+                - "Entrenar habilidades de..." / "Train skills for..."
+                - "Simular escenario profesional" / "Simulate professional scenario"
+                - "Preparación para entrevista" / "Interview preparation"
+                - "Quiero mejorar mis habilidades" / "I want to improve my skills"
+                - "Práctica de presentación" / "Presentation practice"
+                - "¿Cómo me veo?" / "How do I look?"
+                - "¿Mi apariencia es profesional?" / "Is my appearance professional?"
+                - "Consejos de vestimenta" / "Clothing advice"
+                - "¿Estoy bien vestido para...?" / "Am I dressed appropriately for...?"
+                - "Análisis de mi imagen" / "Analyze my image"
+                - "¿Mi outfit está bien para...?" / "Is my outfit good for...?"
+                - "¿Estoy bien presentado?" / "Am I well-presented?"
+                - "¿Me veo bien para...?" / "Do I look good for...?"
+                - "Dime si estoy bien vestido" / "Tell me if I'm well-dressed"
+                - "¿Mi presentación está bien?" / "Is my presentation okay?"
+                - "Voy a dar una conferencia" / "I'm giving a conference"
+                - "Tengo una presentación" / "I have a presentation"
+                - "¿Cómo me veo para la reunión?" / "How do I look for the meeting?"
+                - "Genera un reporte de mi entrenamiento" / "Generate a training report"
+                - "Quiero un análisis de mi sesión" / "I want an analysis of my session"
+                - "Crear reporte de entrevista" / "Create interview report"
+                - "¿Puedes hacer un resumen de mi práctica?" / "Can you make a summary of my practice?"
+                - "Muéstrame mis reportes" / "Show me my reports"
+                - "¿Cuáles son mis entrenamientos anteriores?" / "What are my previous trainings?"
+                - "Quiero ver mi historial de entrenamiento" / "I want to see my training history"
+                - "Lista mis reportes de entrenamiento" / "List my training reports"
+                - "Descargar reporte" / "Download report"
+                - "Ver reporte" / "View report"
+                - "Abrir reporte número..." / "Open report number..."
+                - "Quiero el HTML del reporte" / "I want the HTML of the report"
+                - "Crear CV" / "Create CV"
+                - "Generar CV" / "Generate CV"
+                - "Hacer mi CV" / "Make my CV"
+                - "Construir CV" / "Build CV"
+                - "Quiero un CV" / "I want a CV"
+                - "Ayúdame con mi CV" / "Help me with my CV"
+                - "Crear resume" / "Create resume"
+                - "Generar hoja de vida" / "Generate resume"
+                - "Hacer mi hoja de vida" / "Make my resume"
+                - "Construir mi resume" / "Build my resume"
+                - "Personalizar CV" / "Customize CV"
+                - "CV personalizado" / "Personalized CV"
+                - "Enviar correo" / "Send email"
+                - "Enviar email" / "Send email"
+                - "Mandar correo" / "Send email"
+                - "Escribir correo" / "Write email"
+                - "Redactar email" / "Draft email"
+                - "Componer correo" / "Compose email"
+                - "Quiero enviar un correo" / "I want to send an email"
+                - "Ayúdame a enviar un email" / "Help me send an email"
 
-        Analyze the conversation context:
-        - If the assistant previously offered skill training and user responds with acceptance ("yes", "si", "por favor", "please", "ok", "let's practice"), route to FUNCTION_NEEDED
-        - If user is providing details for skill practice after initial request, route to FUNCTION_NEEDED
-        - If user is declining training ("no", "not now", "maybe later"), route to NO_FUNCTION_NEEDED
-        - If user wants to proceed with any skill development activity after discussion, route to FUNCTION_NEEDED
-        - If user asks about appearance or professional image, route to FUNCTION_NEEDED
-        - If user mentions events like conferences, presentations, meetings and asks about their appearance, route to FUNCTION_NEEDED
-        - If user asks if they are well-dressed, well-presented, or look good for any occasion, route to FUNCTION_NEEDED
-        - If user requests training reports, session analysis, or performance summaries, route to FUNCTION_NEEDED
+                
+                CONTEXT-AWARE ROUTING BASED ON CONVERSATION HISTORY:
+                PREVIOUS MESSAGES: {last_messages_text}
 
-        EXAMPLES OF "FUNCTION_NEEDED":
-        - "Quiero practicar una entrevista para desarrollador"
-        - "I want to practice an interview for marketing"
-        - "¿Cómo me veo para esta presentación?"
-        - "Is my appearance professional for the meeting?"
-        - "¿Estoy bien vestido para la conferencia?"
-        - "Am I dressed appropriately for this event?"
-        - "Dime si estoy bien presentado"
-        - "Tell me if I look professional"
-        - "¿Mi outfit está bien para la entrevista?"
-        - "How do I look for this presentation?"
-        - "Voy a dar una conferencia, ¿me veo bien?"
-        - "I have a meeting, am I well-dressed?"
-        - "Genera un reporte de mi entrenamiento"
-        - "Create a training report"
-        - "Quiero un análisis de mi sesión de práctica"
-        - "I want an analysis of my practice session"
+                Analyze the conversation context:
+                - If the assistant previously offered skill training and user responds with acceptance ("yes", "si", "por favor", "please", "ok", "let's practice"), route to FUNCTION_NEEDED
+                - If user is providing details for skill practice after initial request, route to FUNCTION_NEEDED
+                - If user is declining training ("no", "not now", "maybe later"), route to NO_FUNCTION_NEEDED
+                - If user wants to proceed with any skill development activity after discussion, route to FUNCTION_NEEDED
+                - If user asks about appearance or professional image, route to FUNCTION_NEEDED
+                - If user mentions events like conferences, presentations, meetings and asks about their appearance, route to FUNCTION_NEEDED
+                - If user asks if they are well-dressed, well-presented, or look good for any occasion, route to FUNCTION_NEEDED
+                - If user requests training reports, session analysis, or performance summaries, route to FUNCTION_NEEDED
+                - If the user asks for a CV evaluation or analysis with a link provided previously, route to FUNCTION_NEEDED
+                - If user wants to create, build, generate, or customize a CV/resume, route to FUNCTION_NEEDED
+                - If user asks for help with CV creation or professional resume building, route to FUNCTION_NEEDED
+                - If user wants to send an email or requests email assistance, route to FUNCTION_NEEDED
+                
+                EXAMPLES OF "FUNCTION_NEEDED":
+                - "Quiero practicar una entrevista para desarrollador"
+                - "I want to practice an interview for marketing"
+                - "¿Cómo me veo para esta presentación?"
+                - "Is my appearance professional for the meeting?"
+                - "¿Estoy bien vestido para la conferencia?"
+                - "Am I dressed appropriately for this event?"
+                - "Dime si estoy bien presentado"
+                - "Tell me if I look professional"
+                - "¿Mi outfit está bien para la entrevista?"
+                - "How do I look for this presentation?"
+                - "Voy a dar una conferencia, ¿me veo bien?"
+                - "I have a meeting, am I well-dressed?"
+                - "Genera un reporte de mi entrenamiento"
+                - "Create a training report"
+                - "Quiero un análisis de mi sesión de práctica"
+                - "I want an analysis of my practice session"
+                - "Crear mi CV"
+                - "Generate my resume"
+                - "Ayúdame a hacer mi hoja de vida"
+                - "I need help building my CV"
+                - "Quiero personalizar mi CV"
+                - "Help me create a professional resume"
+                - "Enviar un correo"
+                - "Send an email"
+                - "Ayúdame a escribir un email"
+                - "I need to compose an email"
 
-        EXAMPLES OF "NO_FUNCTION_NEEDED":
-        - "Hello, how are you?"
-        - "What's your name?"
-        - "Tell me about yourself"
-        - "What can you do?"
-        - "Thank you for the information"
+                EXAMPLES OF "NO_FUNCTION_NEEDED":
+                - "Hello, how are you?"
+                - "What's your name?"
+                - "Tell me about yourself"
+                - "What can you do?"
+                - "Thank you for the information"
 
-        EXAMPLES OF "FUNCTION_NEEDED":
-        - "Quiero practicar una entrevista para desarrollador"
-        - "I want to practice an interview for marketing"
-        - "¿Cómo me veo para esta presentación?"
-        - "Is my appearance professional for the meeting?"
-        - "¿Estoy bien vestido para la conferencia?"
-        - "Am I dressed appropriately for this event?"
-        - "Dime si estoy bien presentado"
-        - "Tell me if I look professional"
-        - "¿Mi outfit está bien para la entrevista?"
-        - "How do I look for this presentation?"
-        - "Voy a dar una conferencia, ¿me veo bien?"
-        - "I have a meeting, am I well-dressed?"
+                EXAMPLES OF "FUNCTION_NEEDED":
+                - "Quiero practicar una entrevista para desarrollador"
+                - "I want to practice an interview for marketing"
+                - "¿Cómo me veo para esta presentación?"
+                - "Is my appearance professional for the meeting?"
+                - "¿Estoy bien vestido para la conferencia?"
+                - "Am I dressed appropriately for this event?"
+                - "Dime si estoy bien presentado"
+                - "Tell me if I look professional"
+                - "¿Mi outfit está bien para la entrevista?"
+                - "How do I look for this presentation?"
+                - "Voy a dar una conferencia, ¿me veo bien?"
+                - "I have a meeting, am I well-dressed?"
 
-        WHEN IN DOUBT: Choose "FUNCTION_NEEDED" for any request related to skill development, practice, training, appearance analysis, or personal/professional growth within a university context.
+                WHEN IN DOUBT: Choose "FUNCTION_NEEDED" for any request related to skill development, practice, training, appearance analysis, CV creation, email sending, or personal/professional growth within a university context.
 
-        YOU MUST RESPOND WITH EXACTLY ONE OF THESE PHRASES (no additional text):
-        - "FUNCTION_NEEDED"
-        - "NO_FUNCTION_NEEDED"
+                YOU MUST RESPOND WITH EXACTLY ONE OF THESE PHRASES (no additional text):
+                - "FUNCTION_NEEDED"
+                - "NO_FUNCTION_NEEDED"
 
-        CURRENT UTC TIME: {current_utc_time}
-        Universidad del Norte is located in Barranquilla, Colombia, which is in the GMT-5 timezone. The current time in Barranquilla is {current_bogota_time.strftime('%Y-%m-%d %H:%M:%S')}.
-        User message: {{user_input}}
-        """
+                CURRENT UTC TIME: {current_utc_time}
+                Universidad del Norte is located in Barranquilla, Colombia, which is in the GMT-5 timezone. The current time in Barranquilla is {current_bogota_time.strftime('%Y-%m-%d %H:%M:%S')}.
+                User message: {{user_input}}
+                """
 
         function_prompt = f"""You are operating the SKILLS TRAINER ROLE of NAIA, an advanced multi-role AI avatar created by Universidad del Norte. NAIA is a multirole assistant, and you are currently in the SKILLS TRAINER ROLE, which specializes in developing personal and professional skills through interactive training, practice scenarios, and personalized coaching.
 
@@ -390,13 +588,12 @@ class SkillsTrainerService:
         - OUTPUT: Returns conversational guide for NAIA and visual HTML simulation interface
 
         2. **analyze_professional_appearance**: Advanced AI-powered professional image analysis with dynamic clothing suggestions
-        - Use when: User asks about their appearance, outfit, professional image, or dress code for events
-        - AI Intelligence: Automatically analyzes user's image and generates contextual search queries for clothing recommendations
-        - Smart Features: 
-          * If user is well-dressed: Provides positive feedback without suggestions
-          * If improvements needed: Shows interactive carousel with AI-curated clothing examples
-          * Dynamic search: LLM generates specific queries based on context and recommendations
-        - Ask: "I can analyze your professional appearance and provide personalized feedback for [specific context/event]. Would you like me to evaluate how you look?"
+        - PURPOSE: Analyze user's professional appearance and provide personalized clothing recommendations
+        - USE WHEN: User wants feedback on their appearance for professional situations
+        - KEY INDICATOR: Mentions of "appearance", "look", "dress code", "professional image", "how do I look"
+        - EXAMPLES: "How do I look for this presentation?", "Am I dressed appropriately for the meeting?"
+        - CRITICAL: Always use when user asks about their appearance, professional image, or clothing suggestions
+        - WARNING: DO NOT use this function if the user provides a link to a CV or resume, as this is handled by the evaluate_cv function
 
         3. generate_training_report:
         - PURPOSE: Generate comprehensive training reports with visual analysis and recommendations
@@ -408,11 +605,24 @@ class SkillsTrainerService:
 
         4. **list_recent_training_reports**: Lists user's recent training reports
         - Use when: User wants to see their training history, previous reports, or training session records
-        - Ask: "I can show you your recent training reports and history. Would you like me to retrieve your training records?"
 
         5. **get_training_report_html**: Retrieves specific training report for download
         - Use when: User wants to download, view, or access a specific training report by ID
-        - Ask: "I can retrieve that specific training report for you to download or view. Would you like me to get the report content?"
+
+        6. **cv_builder**: Builds personalized CVs/resumes in markdown format with high variability
+        - PURPOSE: Create customized CVs/resumes based on user specifications
+        - USE WHEN: User wants to create, build, or generate a CV/resume
+        - KEY INDICATOR: Mentions of "CV", "resume", "hoja de vida", "build my CV", "create resume"
+        - EXAMPLES: "I want to create a CV", "Help me build my resume", "Generate my hoja de vida"
+        - CRITICAL: Always use when user wants to create or customize a CV/resume
+        - OUTPUT: Returns personalized CV in markdown format, ready for download or further editing
+        
+        7. **send_email**: Sends an email to the user with the information provided by the user.
+        - PURPOSE: Send important information or documents to the user's email
+        - USE WHEN: User requests to receive information via email
+        - KEY INDICATOR: Mentions of "email", "send me an email", "I want this in my inbox"
+        - EXAMPLES: "Send me the report via email", "Email me the details"
+        - CRITICAL: Always use when user requests information to be sent via email
 
         FUNCTION EXECUTION RULES:
         - NEVER announce that you "will" create or simulate - IMMEDIATELY CALL the function when appropriate
@@ -427,7 +637,7 @@ class SkillsTrainerService:
         - "display": Interview simulation interface ALREADY SHOWING on the LEFT side of your avatar - reference it naturally and encourage interaction with the simulation
         - "professional_analysis": Professional appearance analysis results - synthesize and provide as constructive feedback
         - "context_analyzed": The specific context that was analyzed - reference this in your feedback
-        - "pdf": Training report ALREADY GENERATED and SHOWING on the RIGHT side of your avatar - inform user that comprehensive report has been created and saved, reference what they can see
+        - "pdf": Training report ALREADY GENERATED and SHOWING on the RIGHT side of your avatar - inform user that comprehensive report has been created and saved, reference what they can see. Or a CV has been generated and is ready for download.
         - "report_id": ID of saved report - can reference for future access
         - "title": Report title - use when confirming report creation
         - "error": Function error - acknowledge and suggest alternatives
@@ -465,9 +675,6 @@ class SkillsTrainerService:
         """
 
         chat_prompt = f"""You are NAIA, a sophisticated AI avatar created by Universidad del Norte in Barranquilla, Colombia. You are currently operating in your SKILLS TRAINER ROLE, specializing in developing personal and professional skills through interactive coaching, practice scenarios, and personalized training experiences.
-
-        CRITICAL: You are part of a larger system that involves a router and a function executor. This prompt does NOT execute functionsdirectl but you can suggests the user to use the functions available in the system according to the user's needs.
-        In that case, you must never say something like "I will execute the function" or "I will call the function". Instead, you must say something like "I can help you by doing this" or "I can assist you with that" and then provide the user with the information they need to use the function. NEVER use code name like "get_current_news" or "send_email_on_behalf_of_user" in your responses. Instead, use natural language to describe the function and how it can help the user.
         
         IMPORTANT: You CAN see and analyze images. Make natural, contextual visual observations that enhance the conversation - NOT forced descriptions. Examples:
         - If greeting someone: "I like your green shirt!" or comment on their appearance naturally
@@ -475,8 +682,9 @@ class SkillsTrainerService:
         - If talking about stress and see they look tired: "You look like you could use some rest"
         - If discussing university and see textbooks: "I see you have your materials ready"
         Be conversational and relevant - don't force visual comments in every response or repeat the same observations.
-        
-        
+
+        **REMEMBER:** Sometimes technical issues prevent image loading. When this happens, you'll receive the same prompt but WITHOUT the image. In these cases, proceed with normal conversation and make NO visual observations whatsoever.
+     
         YOUR SKILLS TRAINER ROLE CAPABILITIES:
         - Interactive skill assessment and personalized evaluation
         - Communication and presentation skill development
@@ -514,6 +722,19 @@ class SkillsTrainerService:
         3. **generate_training_report**: Comprehensive skill development reports
         - Use when: User wants documentation, analysis, or summary of their training progress
         - Ask: "I can generate a comprehensive training report analyzing your [specific skill/session]. Would you like me to create that documentation?"
+
+        
+        4. **list_recent_training_reports**: Lists user's recent training reports
+        - Use when: User wants to see their training history, previous reports, or training session records
+        - Ask: "I can show you your recent training reports and history. Would you like me to retrieve your training records?"
+
+        5. **get_training_report_html**: Retrieves specific training report for download
+        - Use when: User wants to download, view, or access a specific training report by ID
+        - Ask: "I can retrieve that specific training report for you to download or view. Would you like me to get the report content?"
+
+        6. **evaluate_cv**: CV/Resume evaluation using AI analysis
+        - Use when: User provides a CV link and asks for evaluation or feedback
+        - Ask: "I can evaluate your CV and provide detailed feedback with improvement suggestions. Would you like me to analyze your resume?"
 
         TRAINING APPROACH GUIDANCE:
         - **simulate_job_interview**: Creates both conversation guide AND visual interface

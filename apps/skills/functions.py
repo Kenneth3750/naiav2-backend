@@ -8,10 +8,12 @@ from apps.researcher.functions import generate_image_carousel_html
 from apps.skills.models import TrainingReport
 from apps.users.models import User
 from datetime import datetime, timezone, timedelta
-from apps.skills.services import SkillsTrainerDBService
 from apps.skills.models import TrainingReport
 from datetime import timezone, timedelta
 from serpapi import GoogleSearch
+import re 
+import requests
+import tempfile
 load_dotenv()
 
 openai_api_key = os.getenv("open_ai")
@@ -1432,7 +1434,7 @@ def get_training_report_html(report_id: int, user_id: int, status: str = "") -> 
     """
     try:
         set_status(user_id, status, 4)
-        
+        from apps.skills.services import SkillsTrainerDBService
         db_service = SkillsTrainerDBService()
         
         # Obtener el reporte específico
@@ -1487,3 +1489,152 @@ def get_training_report_html(report_id: int, user_id: int, status: str = "") -> 
     except Exception as e:
         print(f"Error retrieving training report HTML: {str(e)}")
         return {"error": str(e)}
+    
+
+def cv_builder(user_id, personal_info, cv_type, experience_level, target_industry, 
+               design_style, sections_to_include, primary_focus, desired_length, language, 
+               experience_details=None, education_details=None, skills_list=None,
+               projects_list=None, achievements_list=None, languages_list=None,
+               certifications_list=None, additional_sections=None, status="Creando CV"):
+    """
+    Construye un CV personalizado en formato markdown con alta variabilidad
+    
+    Args:
+        user_id (int): ID del usuario
+        personal_info (dict): Información personal básica
+            {
+                "full_name": "Nombre completo",
+                "email": "email@ejemplo.com",
+                "phone": "+57 300 123 4567",
+                "location": "Barranquilla, Colombia",
+                "linkedin": "linkedin.com/in/usuario",
+                "portfolio": "portfolio.com" (opcional),
+                "github": "github.com/usuario" (opcional)
+            }
+        cv_type (str): Tipo de CV (cualquier descripción válida)
+        experience_level (str): Nivel de experiencia (cualquier descripción válida)
+        target_industry (str): Industria objetivo (cualquier industria)
+        design_style (str): Estilo de diseño (cualquier estilo descriptivo)
+        sections_to_include (list): Secciones a incluir (cualquier lista de secciones)
+        primary_focus (str): Enfoque principal (cualquier enfoque descriptivo)
+        desired_length (str): Longitud deseada (cualquier descripción de longitud)
+        language (str): Idioma del CV (OBLIGATORIO)
+        experience_details (list, opcional): Lista de experiencias laborales
+        education_details (list, opcional): Información educativa
+        skills_list (list, opcional): Lista de habilidades técnicas y blandas
+        projects_list (list, opcional): Proyectos relevantes
+        achievements_list (list, opcional): Logros destacados
+        languages_list (list, opcional): Idiomas y niveles
+        certifications_list (list, opcional): Certificaciones
+        additional_sections (dict, opcional): Secciones adicionales personalizadas
+        status (str): Mensaje de estado para tracking
+        
+    Returns:
+        dict: Diccionario con markdown del CV bajo la llave "pdf" o error bajo la llave "error"
+    """
+    try:
+        set_status(user_id, status, 4)
+        
+        # Validar información personal requerida
+        required_personal_fields = ["full_name", "email", "phone", "location"]
+        missing_fields = [field for field in required_personal_fields 
+                         if not personal_info.get(field)]
+        
+        if missing_fields:
+            print(f"Missing personal info fields: {missing_fields}")
+            return {
+                "error": f"Información personal incompleta. Faltan: {', '.join(missing_fields)}"
+            }
+        
+        # Validar idioma
+        if not language or not isinstance(language, str):
+            print("Invalid language parameter")
+            return {
+                "error": "El parámetro 'language' es obligatorio y debe ser un string válido"
+            }
+        
+        # Construir contexto detallado para el agente
+        context = {
+            "personal_info": personal_info,
+            "cv_type": cv_type,
+            "experience_level": experience_level,
+            "target_industry": target_industry,
+            "design_style": design_style,
+            "sections_to_include": sections_to_include,
+            "primary_focus": primary_focus,
+            "desired_length": desired_length,
+            "language": language,
+            "experience_details": experience_details or [],
+            "education_details": education_details or [],
+            "skills_list": skills_list or [],
+            "projects_list": projects_list or [],
+            "achievements_list": achievements_list or [],
+            "languages_list": languages_list or [],
+            "certifications_list": certifications_list or [],
+            "additional_sections": additional_sections or {}
+        }
+        
+        # Prompt para el agente CV Builder
+        cv_builder_prompt = f"""Eres un experto en creación de CVs profesionales. Debes crear un CV único en formato MARKDOWN basado en los parámetros proporcionados.
+
+INFORMACIÓN COMPLETA DEL CV:
+{context}
+
+INSTRUCCIONES CRÍTICAS:
+
+1. **IDIOMA**: El CV DEBE estar completamente en {language}. Todo el contenido, headers, y texto deben estar en este idioma.
+2. **VARIABILIDAD ALTA**: Cada CV debe ser ÚNICO en estructura, layout y presentación según los parámetros.
+3. **MARKDOWN PURO**: Usa solo markdown válido (headers, listas, texto, líneas horizontales).
+4. **ADAPTACIÓN TOTAL**: Adapta completamente el CV según todos los parámetros proporcionados:
+   - cv_type: {cv_type}
+   - experience_level: {experience_level}
+   - target_industry: {target_industry}
+   - design_style: {design_style}
+   - primary_focus: {primary_focus}
+   - desired_length: {desired_length}
+
+5. **ESTRUCTURA VARIABLE**: Cambia orden de secciones, estilo de headers, formato de listas según los parámetros.
+6. **CONTENIDO DE CALIDAD**: Si faltan detalles específicos, crea contenido de ejemplo apropiado para el contexto.
+7. **PERSONALIZACIÓN COMPLETA**: Usa vocabulario y enfoque específico para la industria y tipo de CV solicitado.
+
+SECCIONES A INCLUIR: {sections_to_include}
+
+FORMATO DE SALIDA:
+Devuelve SOLO el markdown del CV, sin explicaciones adicionales.
+Asegúrate de que sea un CV completo, profesional y listo para usar que refleje exactamente los parámetros solicitados.
+
+Crea un CV único que destaque según todos los parámetros proporcionados."""
+
+        try:
+            # Llamar a OpenAI para generar el CV
+            client = OpenAI(api_key=os.getenv('open_ai'))
+            
+            response = client.chat.completions.create(
+                model="gpt-4o",
+                messages=[
+                    {
+                        "role": "user",
+                        "content": cv_builder_prompt
+                    }
+                ],
+                max_tokens=2000,
+                temperature=0.7  # Permitir algo de creatividad para variabilidad
+            )
+            
+            cv_markdown = response.choices[0].message.content.strip()
+            
+            return {
+                "pdf": cv_markdown
+            }
+            
+        except Exception as openai_error:
+            print(f"Error generating CV: {str(openai_error)}")
+            return {
+                "error": f"Error al generar el CV: {str(openai_error)}"
+            }
+            
+    except Exception as e:
+        print(f"Unexpected error in cv_builder: {str(e)}")
+        return {
+            "error": f"Error inesperado: {str(e)}"
+        }
