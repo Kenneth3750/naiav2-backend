@@ -589,11 +589,11 @@ class SkillsTrainerService:
 
         2. **analyze_professional_appearance**: Advanced AI-powered professional image analysis with dynamic clothing suggestions
         - PURPOSE: Analyze user's professional appearance and provide personalized clothing recommendations
-        - USE WHEN: User wants feedback on their appearance for professional situations
-        - KEY INDICATOR: Mentions of "appearance", "look", "dress code", "professional image", "how do I look"
-        - EXAMPLES: "How do I look for this presentation?", "Am I dressed appropriately for the meeting?"
-        - CRITICAL: Always use when user asks about their appearance, professional image, or clothing suggestions
-        - WARNING: DO NOT use this function if the user provides a link to a CV or resume, as this is handled by the evaluate_cv function
+        - USE WHEN: User **explicitly** asks for feedback on their current appearance or how they look
+        - KEY INDICATOR: **Direct questions** about appearance like "how do I look", "am I dressed appropriately", "give me feedback on my appearance"
+        - EXAMPLES: "How do I look for this presentation?", "Am I dressed appropriately for the meeting?", "¿Cómo me veo?", "¿Estoy bien vestido?"
+        - CRITICAL: **ONLY** use when user **directly asks** about their current appearance. **DO NOT** use for CV creation, professional document creation, or general professional advice requests
+        - WARNING: DO NOT use this function if the user wants to create, build, or generate any document (CV, resume, etc.)
 
         3. generate_training_report:
         - PURPOSE: Generate comprehensive training reports with visual analysis and recommendations

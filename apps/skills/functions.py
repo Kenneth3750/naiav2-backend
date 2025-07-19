@@ -1492,7 +1492,7 @@ def get_training_report_html(report_id: int, user_id: int, status: str = "") -> 
     
 
 def cv_builder(user_id, personal_info, cv_type, experience_level, target_industry, 
-               design_style, sections_to_include, primary_focus, desired_length, language, 
+               design_style, sections_to_include, primary_focus, desired_length, language,
                experience_details=None, education_details=None, skills_list=None,
                projects_list=None, achievements_list=None, languages_list=None,
                certifications_list=None, additional_sections=None, status="Creando CV"):
@@ -1541,14 +1541,12 @@ def cv_builder(user_id, personal_info, cv_type, experience_level, target_industr
                          if not personal_info.get(field)]
         
         if missing_fields:
-            print(f"Missing personal info fields: {missing_fields}")
             return {
                 "error": f"Información personal incompleta. Faltan: {', '.join(missing_fields)}"
             }
         
         # Validar idioma
         if not language or not isinstance(language, str):
-            print("Invalid language parameter")
             return {
                 "error": "El parámetro 'language' es obligatorio y debe ser un string válido"
             }
@@ -1600,14 +1598,15 @@ INSTRUCCIONES CRÍTICAS:
 SECCIONES A INCLUIR: {sections_to_include}
 
 FORMATO DE SALIDA:
-Devuelve SOLO el markdown del CV, sin explicaciones adicionales.
+Devuelve SOLO el contenido markdown del CV, sin etiquetas de código (```markdown), sin explicaciones adicionales, y sin ningún tipo de wrapper.
+Debe ser markdown puro que se pueda usar directamente.
 Asegúrate de que sea un CV completo, profesional y listo para usar que refleje exactamente los parámetros solicitados.
 
 Crea un CV único que destaque según todos los parámetros proporcionados."""
 
         try:
             # Llamar a OpenAI para generar el CV
-            client = OpenAI(api_key=os.getenv('open_ai'))
+            client = OpenAI(api_key=os.getenv('OPENAI_API_KEY'))
             
             response = client.chat.completions.create(
                 model="gpt-4o",
@@ -1628,13 +1627,11 @@ Crea un CV único que destaque según todos los parámetros proporcionados."""
             }
             
         except Exception as openai_error:
-            print(f"Error generating CV: {str(openai_error)}")
             return {
                 "error": f"Error al generar el CV: {str(openai_error)}"
             }
             
     except Exception as e:
-        print(f"Unexpected error in cv_builder: {str(e)}")
         return {
             "error": f"Error inesperado: {str(e)}"
         }
