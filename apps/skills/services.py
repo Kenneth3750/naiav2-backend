@@ -152,11 +152,6 @@ class SkillsTrainerService:
                                 "type": "string",
                                 "description": "A concise description of the analysis task being performed, using conjugated verbs (e.g., 'Analyzing professional appearance...', 'Evaluating presentation style...') in the same language as the user's question"
                             },
-                            "user_gender": {
-                                "type": "string",
-                                "description": "The gender of the user for personalized clothing suggestions. Options: male and female. This helps the AI tailor clothing recommendations",
-                                "default": None
-                            }
                         },
                         "required": ["context", "user_id", "status"]
                     }

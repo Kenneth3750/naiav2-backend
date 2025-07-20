@@ -11,9 +11,7 @@ from datetime import datetime, timezone, timedelta
 from apps.skills.models import TrainingReport
 from datetime import timezone, timedelta
 from serpapi import GoogleSearch
-import re 
-import requests
-import tempfile
+from services.files import B2FileService
 load_dotenv()
 
 openai_api_key = os.getenv("open_ai")
@@ -876,17 +874,15 @@ def get_simulation_css() -> str:
     """
 
 
-def analyze_professional_appearance(context: str, user_id: int, status: str, user_gender: str = None) -> Dict:
+
+def analyze_professional_appearance(context: str, user_id: int, status: str) -> Dict:
     """
     Analyzes the user's professional appearance and shows clothing suggestions via image carousel if needed.
-    The image is handled automatically by the LLM system.
     
     Args:
         context (str): Analysis context (interview, presentation, cocktail, formal, etc.)
         user_id (int): User ID
         status (str): Status message for tracking
-        user_gender (str, optional): User's declared gender ('male', 'female', 'non-binary', etc.)
-                                   Takes absolute priority over visual analysis
         
     Returns:
         dict: Structured analysis with image carousel if suggestions are needed
@@ -894,26 +890,17 @@ def analyze_professional_appearance(context: str, user_id: int, status: str, use
     try:
         set_status(user_id, status, 4) 
 
-        # Construir parte del prompt sobre género con prioridad al usuario
-        gender_instruction = ""
-        if user_gender:
-            gender_instruction = f"""
-CRITICAL GENDER OVERRIDE: The user has explicitly declared their gender as '{user_gender}'. 
-You MUST use this declared gender for all clothing recommendations and search queries, 
-regardless of what you observe in the image. This user declaration has ABSOLUTE PRIORITY.
-"""
-        else:
-            gender_instruction = """
-GENDER IDENTIFICATION FROM IMAGE: Since no gender was declared by the user, 
-identify the apparent gender presentation from the image to tailor recommendations appropriately.
-"""
+        # Obtener la imagen actual del usuario desde B2
+        file_service = B2FileService()
+        current_image_url = file_service.get_current_file_url(user_id)
+        
+        if not current_image_url:
+            return {"error": "No se encontró imagen actual del usuario"}
 
-        analysis_prompt = f"""You are an expert professional image consultant. I need you to analyze the person's appearance in the image that has been provided, considering the following context: {context}
-
-{gender_instruction}
+        analysis_prompt = f"""You are an expert professional image consultant. I need you to analyze the person's appearance in the image provided, considering the following context: {context}
 
 Evaluate the following aspects:
-1. **GENDER FOR RECOMMENDATIONS**: Use declared gender '{user_gender}' if provided, otherwise identify from image
+1. **GENDER IDENTIFICATION**: Identify the apparent gender presentation from the image to tailor recommendations appropriately
 2. **CLOTHING AND STYLE**: Appropriate for context, quality, colors, formality level
 3. **PERSONAL GROOMING**: Hair, hygiene, makeup (if applicable)
 4. **POSTURE AND BODY LANGUAGE**: Posture, expression, confidence
@@ -921,16 +908,14 @@ Evaluate the following aspects:
 
 CRITICAL: Based on your analysis, determine if this person needs clothing/style improvements or if they are already well-dressed.
 
-GENDER-AWARE SEARCH GUIDELINES:
-{"- USER DECLARED GENDER: Use '" + user_gender + "' for all search terms and recommendations" if user_gender else "- VISUAL IDENTIFICATION: Determine from image appearance"}
+SEARCH QUERY GUIDELINES:
 - If male/masculine: Include "men", "male", "masculine" in search queries
 - If female/feminine: Include "women", "female", "feminine" in search queries  
 - If non-binary: Use "unisex", "gender neutral" terms
-- CONTEXT OVERRIDE: If the context explicitly mentions different gender preferences, respect that
-- EXAMPLES WITH DECLARED GENDER:
-  * Declared male + boda → "elegant wedding guest attire men formal suit"
-  * Declared female + interview → "professional business interview outfit women formal"
-  * Declared male + presentación → "formal presentation attire men business professional"
+- EXAMPLES:
+  * Male + boda → "elegant wedding guest attire men formal suit"
+  * Female + interview → "professional business interview outfit women formal"
+  * Male + presentación → "formal presentation attire men business professional"
 
 You MUST respond with ONLY a valid JSON object in this EXACT format:
 {{
@@ -940,33 +925,38 @@ You MUST respond with ONLY a valid JSON object in this EXACT format:
     "strengths": ["Specific strength 1", "Specific strength 2", "Specific strength 3"],
     "recommendations": ["Specific recommendation 1", "Specific recommendation 2"],
     "improvement_areas": ["area1", "area2"],
-    "gender_identified": "{user_gender if user_gender else 'determined_from_image'}",
-    "gender_source": "{'user_declared' if user_gender else 'visual_analysis'}",
+    "gender_identified": "male/female/non-binary",
     "search_query": "professional business attire interview formal men"
 }}
 
 RULES:
-- ALWAYS prioritize declared gender over visual analysis
 - If person is well-dressed and professional: set "needs_improvement": false and "search_query": ""
 - If they need improvements: set "needs_improvement": true and create appropriate search query
-- The search_query MUST reflect the correct gender (declared or identified)
+- The search_query MUST reflect the correct gender identified
 - Make search_query specific to both context and gender
 - For wedding contexts: "wedding guest attire [gender]" 
 - For formal events: "formal [gender] attire [context]"
 - Keep analysis_summary comprehensive but concise
-- Be constructive and specific in all feedback
-- Always respect user's gender declaration as absolute truth"""
+- Be constructive and specific in all feedback"""
 
         response = client.chat.completions.create(
             model="gpt-4.1",
             messages=[{
                 "role": "user", 
-                "content": analysis_prompt
+                "content": [
+                    {"type": "text", "text": analysis_prompt},
+                    {
+                        "type": "image_url",
+                        "image_url": {
+                            "url": current_image_url,
+                        },
+                    },
+                ]
             }],
             max_tokens=800
         )
         
-        # Usar función similar a _clean_json_response
+        # Limpiar respuesta JSON
         analysis_text = response.choices[0].message.content
         analysis_data = clean_json_response(analysis_text)
 
@@ -981,8 +971,7 @@ RULES:
             "overall_rating": analysis_data.get("overall_rating", 7.0),
             "strengths": analysis_data.get("strengths", []),
             "recommendations": analysis_data.get("recommendations", []),
-            "gender_used": analysis_data.get("gender_identified", user_gender or "not_specified"),
-            "gender_source": analysis_data.get("gender_source", "user_declared" if user_gender else "visual_analysis")
+            "gender_identified": analysis_data.get("gender_identified", "not_specified")
         }
         
         # Verificar si necesita mejoras
@@ -1606,10 +1595,10 @@ Crea un CV único que destaque según todos los parámetros proporcionados."""
 
         try:
             # Llamar a OpenAI para generar el CV
-            client = OpenAI(api_key=os.getenv('OPENAI_API_KEY'))
+            client = OpenAI(api_key=os.getenv('open_ai'))
             
             response = client.chat.completions.create(
-                model="gpt-4o",
+                model="gpt-4.1",
                 messages=[
                     {
                         "role": "user",
