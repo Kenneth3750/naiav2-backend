@@ -985,6 +985,7 @@ def search_contacts_by_name(name: str, user_id: int, status: str = "Buscando con
         # Import required modules
         import urllib.parse
         import time
+        import base64
         
         # Set status for tracking
         if user_id:
@@ -1051,7 +1052,8 @@ def search_contacts_by_name(name: str, user_id: int, status: str = "Buscando con
                                     "department": person.get('department', ''),
                                     "companyName": person.get('companyName', ''),
                                     "source": "people",
-                                    "relevanceScore": person.get('relevanceScore', 0)
+                                    "relevanceScore": person.get('relevanceScore', 0),
+                                    "graph_id": person.get('id', '')  # Store for photo retrieval
                                 }
                                 all_contacts.append(contact)
                                 print(f"Added people contact: {display_name}")
@@ -1111,7 +1113,8 @@ def search_contacts_by_name(name: str, user_id: int, status: str = "Buscando con
                                     "department": contact_item.get('department', ''),
                                     "companyName": contact_item.get('companyName', ''),
                                     "source": "contacts",
-                                    "relevanceScore": 0
+                                    "relevanceScore": 0,
+                                    "graph_id": contact_item.get('id', '')  # Store for photo retrieval
                                 }
                                 all_contacts.append(contact)
                                 print(f"Added contact: {display_name}")
@@ -1192,7 +1195,8 @@ def search_contacts_by_name(name: str, user_id: int, status: str = "Buscando con
                                     "officeLocation": user.get('officeLocation', ''),
                                     "source": "directory",
                                     "relevanceScore": 0,
-                                    "query_type": query_type
+                                    "query_type": query_type,
+                                    "graph_id": user.get('id', '')  # Store for photo retrieval
                                 }
                                 all_contacts.append(contact)
                                 print(f"Added directory user: {display_name} ({email})")
@@ -1256,7 +1260,8 @@ def search_contacts_by_name(name: str, user_id: int, status: str = "Buscando con
                                             "department": user.get('department', ''),
                                             "companyName": user.get('companyName', ''),
                                             "source": "directory_fuzzy",
-                                            "relevanceScore": 0
+                                            "relevanceScore": 0,
+                                            "graph_id": user.get('id', '')  # Store for photo retrieval
                                         }
                                         all_contacts.append(contact)
                                         print(f"Added fuzzy match: {display_name}")
@@ -1381,14 +1386,52 @@ def search_contacts_by_name(name: str, user_id: int, status: str = "Buscando con
         
         filtered_contacts.sort(key=sort_key)
         
-        print(f"Found {len(filtered_contacts)} relevant contacts matching '{name}'")
+        # Get profile photos for each contact (like in search_university_staff)
+        enhanced_contacts = []
+        for contact in filtered_contacts:
+            enhanced_contact = contact.copy()
+            
+            # Try to get user's profile photo
+            try:
+                graph_id = contact.get('graph_id')
+                if graph_id and contact['source'] in ['directory', 'directory_fuzzy']:
+                    # For directory users, use users/{id}/photo
+                    photo_url = f"https://graph.microsoft.com/v1.0/users/{graph_id}/photo/$value"
+                elif graph_id and contact['source'] == 'people':
+                    # For people, try the same approach
+                    photo_url = f"https://graph.microsoft.com/v1.0/users/{graph_id}/photo/$value"
+                elif graph_id and contact['source'] == 'contacts':
+                    # For contacts, try a different approach
+                    photo_url = f"https://graph.microsoft.com/v1.0/me/contacts/{graph_id}/photo/$value"
+                else:
+                    photo_url = None
+                
+                if photo_url:
+                    photo_response = requests.get(photo_url, headers=headers, timeout=10)
+                    if photo_response.status_code == 200:
+                        photo_base64 = base64.b64encode(photo_response.content).decode('utf-8')
+                        enhanced_contact['photo_base64'] = f"data:image/jpeg;base64,{photo_base64}"
+                        print(f"✅ Photo found for {contact.get('displayName', 'Unknown')}")
+                    else:
+                        enhanced_contact['photo_base64'] = None
+                        print(f"❌ No photo for {contact.get('displayName', 'Unknown')} - Status: {photo_response.status_code}")
+                else:
+                    enhanced_contact['photo_base64'] = None
+                    
+            except Exception as e:
+                print(f"❌ Error getting photo for {contact.get('displayName', 'Unknown')}: {str(e)}")
+                enhanced_contact['photo_base64'] = None
+            
+            enhanced_contacts.append(enhanced_contact)
         
-        # Generate HTML display
-        html_display = generate_contacts_html(filtered_contacts, search_name)
+        print(f"Found {len(enhanced_contacts)} relevant contacts matching '{name}'")
+        
+        # Generate HTML display with enhanced styling
+        html_display = generate_contacts_html_enhanced(enhanced_contacts, search_name)
         
         return {
-            "contacts": filtered_contacts,
-            "count": len(filtered_contacts),
+            "contacts": enhanced_contacts,
+            "count": len(enhanced_contacts),
             "display": html_display
         }
     
@@ -1407,6 +1450,182 @@ def search_contacts_by_name(name: str, user_id: int, status: str = "Buscando con
         print(f"Unexpected error: {error_msg}")
         return {"error": error_msg}
 
+
+def generate_contacts_html_enhanced(contacts, search_term):
+    """Generate enhanced HTML display for contact search results with photos and beautiful styling"""
+    
+    if not contacts:
+        return f"""
+        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 40px; text-align: center; background-color: #f8f9fa;">
+            <div style="background-color: white; border-radius: 12px; padding: 40px; box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);">
+                <div style="font-size: 64px; margin-bottom: 20px;">🔍</div>
+                <h2 style="color: #1a365d; margin-bottom: 15px;">No se encontraron contactos</h2>
+                <p style="color: #4a5568; font-size: 16px; margin-bottom: 25px;">
+                    No se encontraron contactos para "<strong>{search_term}</strong>"
+                </p>
+                
+                <div style="background-color: #e6fffa; padding: 20px; border-radius: 8px; text-align: left;">
+                    <h3 style="margin: 0 0 15px 0; color: #234e52;">💡 Sugerencias:</h3>
+                    <ul style="margin: 0; padding-left: 20px; color: #2d3748;">
+                        <li>Verifica la ortografía del nombre completo</li>
+                        <li>Intenta buscar solo por el nombre o apellido</li>
+                        <li>Prueba con variaciones del nombre</li>
+                        <li>Asegúrate de que la persona esté en tu directorio</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+        """
+    
+    # Generate HTML for results
+    html = f"""
+    <div style="font-family: Arial, sans-serif; max-width: 800px; margin: 0 auto; padding: 20px; background-color: #f8f9fa;">
+        <div style="text-align: center; margin-bottom: 30px;">
+            <h1 style="color: #1a365d; margin-bottom: 10px; font-size: 28px;">
+                📞 Contactos Encontrados
+            </h1>
+            <p style="color: #4a5568; font-size: 16px; margin: 0;">
+                Resultados para: <strong>"{search_term}"</strong> ({len(contacts)} encontrados)
+            </p>
+        </div>
+        
+        <div style="display: grid; gap: 20px;">
+    """
+    
+    source_icons = {
+        'people': '👥',
+        'contacts': '📞', 
+        'directory': '🏢',
+        'directory_fuzzy': '🔍'
+    }
+    
+    source_names = {
+        'people': 'Contactos Frecuentes',
+        'contacts': 'Contactos Guardados',
+        'directory': 'Directorio Organizacional',
+        'directory_fuzzy': 'Búsqueda Expandida'
+    }
+    
+    for i, contact in enumerate(contacts, 1):
+        # Extract contact data
+        name = contact.get('displayName', 'Nombre no disponible')
+        email = contact.get('email', 'Email no disponible')
+        job_title = contact.get('jobTitle', '')
+        department = contact.get('department', '')
+        company_name = contact.get('companyName', '')
+        office_location = contact.get('officeLocation', '')
+        photo_base64 = contact.get('photo_base64')
+        match_score = contact.get('match_score', 0)
+        source = contact.get('source', 'unknown')
+        relevance_score = contact.get('relevanceScore', 0)
+        
+        # Determine match quality indicator
+        if match_score >= 100:
+            match_indicator = "🎯 Coincidencia Exacta"
+            match_color = "#10b981"
+        elif match_score >= 85:
+            match_indicator = "✅ Muy Relevante"
+            match_color = "#3b82f6"
+        elif match_score >= 70:
+            match_indicator = "⭐ Relevante"
+            match_color = "#f59e0b"
+        else:
+            match_indicator = "📋 Posible Coincidencia"
+            match_color = "#6b7280"
+        
+        # Build additional info
+        additional_info = []
+        if job_title:
+            additional_info.append(f"<p><strong>💼 Cargo:</strong> {job_title}</p>")
+        if department:
+            additional_info.append(f"<p><strong>🏫 Departamento:</strong> {department}</p>")
+        if company_name:
+            additional_info.append(f"<p><strong>🏢 Empresa:</strong> {company_name}</p>")
+        if office_location:
+            additional_info.append(f"<p><strong>📍 Oficina:</strong> {office_location}</p>")
+        
+        additional_info_html = "".join(additional_info) if additional_info else "<p style='color: #888; font-style: italic;'>No hay información adicional disponible</p>"
+        
+        # Source info
+        source_icon = source_icons.get(source, '📋')
+        source_name = source_names.get(source, 'Fuente Desconocida')
+        
+        # Profile photo section
+        photo_section = ""
+        if photo_base64:
+            photo_section = f"""
+                <div style="text-align: center; margin-bottom: 15px;">
+                    <img src="{photo_base64}" alt="Foto de perfil de {name}" 
+                         style="width: 80px; height: 80px; border-radius: 50%; object-fit: cover; border: 3px solid #667eea;">
+                </div>
+            """
+        else:
+            photo_section = f"""
+                <div style="text-align: center; margin-bottom: 15px;">
+                    <div style="width: 80px; height: 80px; border-radius: 50%; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); display: flex; align-items: center; justify-content: center; margin: 0 auto; color: white; font-size: 24px; font-weight: bold;">
+                        {name[0].upper() if name else '?'}
+                    </div>
+                </div>
+            """
+        
+        html += f"""
+            <div style="background-color: white; border-radius: 12px; padding: 20px; box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1); border-left: 4px solid #667eea;">
+                {photo_section}
+                
+                <div style="text-align: center; margin-bottom: 15px;">
+                    <h2 style="margin: 0 0 5px 0; color: #1a365d; font-size: 22px;">{name}</h2>
+                    <p style="margin: 0 0 10px 0; color: #4a5568; font-size: 14px;">
+                        <strong>📧 Email:</strong> 
+                        <a href="mailto:{email}" style="color: #667eea; text-decoration: none; font-weight: 500;">{email}</a>
+                    </p>
+                    <span style="background-color: {match_color}; color: white; padding: 4px 12px; border-radius: 20px; font-size: 12px; font-weight: bold;">
+                        {match_indicator}
+                    </span>
+                </div>
+                
+                <div style="margin-top: 15px; line-height: 1.6; color: #2d3748;">
+                    {additional_info_html}
+                </div>
+                
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 15px; padding-top: 15px; border-top: 1px solid #e2e8f0;">
+                    <span style="background-color: #e6fffa; color: #234e52; padding: 4px 12px; border-radius: 20px; font-size: 12px; font-weight: bold;">
+                        #{i} • {source_icon} {source_name}
+                    </span>
+                    <span style="background-color: #f0f4f8; color: #2d3748; padding: 4px 12px; border-radius: 20px; font-size: 12px; font-weight: bold;">
+                        Coincidencia: {match_score:.0f}%
+                    </span>
+                </div>
+                
+                <div style="text-align: center; margin-top: 10px;">
+                    <span style="font-size: 12px; color: #888; font-style: italic;">
+                        💡 Para usar este contacto, menciona el <strong>número {i}</strong> en tu mensaje
+                    </span>
+                </div>
+            </div>
+        """
+    
+    html += """
+        </div>
+        
+        <div style="background-color: #e6fffa; padding: 20px; margin-top: 30px; border-radius: 8px; border-left: 4px solid #38b2ac;">
+            <h3 style="margin: 0 0 10px 0; color: #234e52; font-size: 18px;">💡 Cómo usar los resultados</h3>
+            <ul style="margin: 0; padding-left: 20px; color: #2d3748; line-height: 1.6;">
+                <li>Los resultados están ordenados por relevancia y calidad de coincidencia</li>
+                <li>Para seleccionar un contacto, menciona su número: "usar el contacto número 2"</li>
+                <li>Los contactos incluyen información del directorio y contactos guardados</li>
+                <li>Las fotos de perfil se obtienen automáticamente cuando están disponibles</li>
+            </ul>
+        </div>
+        
+        <div style="text-align: center; margin-top: 20px; padding: 15px; background: white; border-radius: 10px; border: 2px dashed #667eea;">
+            <p style="margin: 0; color: #667eea; font-weight: 600; font-size: 14px;">
+                💬 Para usar cualquiera de estos contactos, simplemente menciona su número (ej: "enviar email al contacto número 1")
+            </p>
+        </div>
+    </div>
+    """
+    
+    return html
 
 def generate_contacts_html(contacts, search_term):
     """Generate HTML display for contact search results"""

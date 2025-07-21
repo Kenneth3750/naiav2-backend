@@ -1,8 +1,9 @@
-from .functions import scholar_search, write_document, answer_from_user_rag, create_graph, factual_web_query, deep_content_analysis_for_specific_information, send_email, explain_naia_roles
+from .functions import scholar_search, write_document, answer_from_user_rag, create_graph, factual_web_query, send_email, explain_naia_roles
 from services.files import B2FileService
 from django.core.cache import cache
 import datetime
 from datetime import timedelta, timezone
+from apps.personal.functions import get_current_news
 class ResearcherService:
     def __init__(self):
         self.document_service = B2FileService()
@@ -45,121 +46,121 @@ class ResearcherService:
         print("Processed list of documents: ", list_documents)
         tools = [
                 {
-                "type": "function",
-                "function": {
-                    "name": "scholar_search",
-                    "description": "EXCLUSIVELY for finding academic articles and research papers. Never use for general internet searches. Call this function any time the user wants academic references, citations, or scholarly information.",
-                    "parameters": {
-                    "type": "object",
-                    "properties": {
-                        "query": {
-                        "type": "string",
-                        "description": "The search query in the langugae of the user"
+                    "type": "function",
+                    "function": {
+                        "name": "scholar_search",
+                        "description": "EXCLUSIVELY for finding academic articles and research papers. Never use for general internet searches. Call this function any time the user wants academic references, citations, or scholarly information.",
+                        "parameters": {
+                        "type": "object",
+                        "properties": {
+                            "query": {
+                            "type": "string",
+                            "description": "The search query in the langugae of the user"
+                            },
+                            "query_2":{
+                            "type": "string",
+                            "description": """The search query in the language of the user, but in English. This is used to search in Google Scholar. If the user is asking on english put a different query here, if the user is talking in another language, put the same query here but in English. 
+                            For example, if the user is asking in Spanish, put the same query here but in English. If the user is asking in English, put a different query here"""
+                            },
+                            "num_results": {
+                            "type": "integer",
+                            "description": "The number of results to return"
+                            },
+                            "status": {
+                            "type": "string",
+                            "description": "A concise description of the search task being performed, using conjugated verbs (e.g., 'Buscando artículos sobre...', 'Searching for papers about...') in the same language as the user's question"
+                            },
+                            "user_id": {
+                            "type": "string",
+                            "description": "The ID of the user who is performing the search. Look at the first developer prompt to get the user_id"
+                            },
+                            "language1": {
+                            "type": "string",
+                            "description": "The language of the search query. For example, 'es' for Spanish or 'en' for English"
+                            },
+                            "language2": {
+                            "type": "string",
+                            "description": "The language of the search query in English. For example, 'es' for Spanish or 'en' for English. This default value is 'en' "
+                            },
                         },
-                        "query_2":{
-                        "type": "string",
-                        "description": """The search query in the language of the user, but in English. This is used to search in Google Scholar. If the user is asking on english put a different query here, if the user is talking in another language, put the same query here but in English. 
-                        For example, if the user is asking in Spanish, put the same query here but in English. If the user is asking in English, put a different query here"""
-                        },
-                        "num_results": {
-                        "type": "integer",
-                        "description": "The number of results to return"
-                        },
-                        "status": {
-                        "type": "string",
-                        "description": "A concise description of the search task being performed, using conjugated verbs (e.g., 'Buscando artículos sobre...', 'Searching for papers about...') in the same language as the user's question"
-                        },
-                        "user_id": {
-                        "type": "string",
-                        "description": "The ID of the user who is performing the search. Look at the first developer prompt to get the user_id"
-                        },
-                        "language1": {
-                        "type": "string",
-                        "description": "The language of the search query. For example, 'es' for Spanish or 'en' for English"
-                        },
-                        "language2": {
-                        "type": "string",
-                        "description": "The language of the search query in English. For example, 'es' for Spanish or 'en' for English. This default value is 'en' "
-                        },
-                    },
-                    "required": [
-                        "query",
-                        "num_results",
-                        "status",
-                        "user_id",
-                        "language1",
-                        "language2",
-                        "query_2"
-                    ]
+                        "required": [
+                            "query",
+                            "num_results",
+                            "status",
+                            "user_id",
+                            "language1",
+                            "language2",
+                            "query_2"
+                        ]
+                        }
                     }
-                }
                 },
                 {
-                "type": "function",
-                "function": {
-                    "name": "write_document",
-                    "description": "Creates written documents of any length or complexity. Use for essays, objectives, reports, or any text content. NEVER use for visual content like graphs, charts, or diagrams. This function generates a well-structured academic document in markdown format.",
-                    "parameters": {
-                    "type": "object",
-                    "properties": {
-                        "query": {
-                        "type": "string",
-                        "description": "The content to write about"
+                    "type": "function",
+                    "function": {
+                        "name": "write_document",
+                        "description": "Creates written documents of any length or complexity. Use for essays, objectives, reports, or any text content. NEVER use for visual content like graphs, charts, or diagrams. This function generates a well-structured academic document in markdown format.",
+                        "parameters": {
+                        "type": "object",
+                        "properties": {
+                            "query": {
+                            "type": "string",
+                            "description": "The content to write about"
+                            },
+                            "context": {
+                            "type": "string",
+                            "description": "The context or background information for the document, for default it is empty. Put here references provided by scholar_search or any info provided by the user in order to write the document"
+                            },
+                            "user_id": {
+                            "type": "string",
+                            "description": "The ID of the user who is writing the document. Look at the first developer prompt to get the user_id"
+                            },
+                            "status": {
+                            "type": "string",
+                            "description": "A concise description of what is being written, using conjugated verbs (e.g., 'Redactando documento sobre...', 'Writing report about...') in the same language as the user's question"
+                            },
+                            "query_for_references": {
+                            "type": "string",
+                            "description": "Query to search for academic references. Set to 'None' if the document doesn't require academic references (like simple objectives or basic texts). Only use real references found via scholar_search. Default is 'None'."
+                            },
+                            "num_results": {
+                            "type": "integer",
+                            "description": "The number of results to return. Default is 5, if the user does not specify a number of results, put 5 here, if the user specifies a number of results, put it here"
+                            },
+                            "language_for_references": {
+                            "type": "string",
+                            "description": "The language of the search query. For example, 'es' for Spanish or 'en' for English"
+                            },
+                            "document_type": {
+                            "type": "string",
+                            "description": "The type of document to create. Options: 'academic' (default, formal academic paper), 'report' (technical report), 'essay' (thoughtful essay), 'brief' (concise document), 'creative' (creative writing), 'notes' (study notes), 'presentation' (content for slides). Choose based on user's request or writing purpose."
+                            },
+                            "use_internet": {
+                            "type": "boolean",
+                            "description": "Whether to search the internet for current information on the topic. Default is FALSE. Set to TRUE for comprehensive, up-to-date content when needed."
+                            },
+                            "use_rag": {
+                            "type": "boolean",
+                            "description": "Whether to search the user's personal documents for relevant information. Default is FALSE. Set to TRUE when the topic might relate to the user's uploaded files."
+                            },
+                            "specific_documents": {
+                            "type": "array",
+                            "items": {
+                                "type": "string"
+                            },
+                            "description": "Optional list of specific document names to search in the user's library. Leave empty to search all documents."
+                            }
                         },
-                        "context": {
-                        "type": "string",
-                        "description": "The context or background information for the document, for default it is empty. Put here references provided by scholar_search or any info provided by the user in order to write the document"
-                        },
-                        "user_id": {
-                        "type": "string",
-                        "description": "The ID of the user who is writing the document. Look at the first developer prompt to get the user_id"
-                        },
-                        "status": {
-                        "type": "string",
-                        "description": "A concise description of what is being written, using conjugated verbs (e.g., 'Redactando documento sobre...', 'Writing report about...') in the same language as the user's question"
-                        },
-                        "query_for_references": {
-                        "type": "string",
-                        "description": "Query to search for academic references. Set to 'None' if the document doesn't require academic references (like simple objectives or basic texts). Only use real references found via scholar_search. Default is 'None'."
-                        },
-                        "num_results": {
-                        "type": "integer",
-                        "description": "The number of results to return. Default is 5, if the user does not specify a number of results, put 5 here, if the user specifies a number of results, put it here"
-                        },
-                        "language_for_references": {
-                        "type": "string",
-                        "description": "The language of the search query. For example, 'es' for Spanish or 'en' for English"
-                        },
-                        "document_type": {
-                        "type": "string",
-                        "description": "The type of document to create. Options: 'academic' (default, formal academic paper), 'report' (technical report), 'essay' (thoughtful essay), 'brief' (concise document), 'creative' (creative writing), 'notes' (study notes), 'presentation' (content for slides). Choose based on user's request or writing purpose."
-                        },
-                        "use_internet": {
-                        "type": "boolean",
-                        "description": "Whether to search the internet for current information on the topic. Default is FALSE. Set to TRUE for comprehensive, up-to-date content when needed."
-                        },
-                        "use_rag": {
-                        "type": "boolean",
-                        "description": "Whether to search the user's personal documents for relevant information. Default is FALSE. Set to TRUE when the topic might relate to the user's uploaded files."
-                        },
-                        "specific_documents": {
-                        "type": "array",
-                        "items": {
-                            "type": "string"
-                        },
-                        "description": "Optional list of specific document names to search in the user's library. Leave empty to search all documents."
+                        "required": [
+                            "query",
+                            "user_id",
+                            "status",
+                            "document_type",
+                            "use_internet",
+                            "use_rag"
+                        ]
                         }
-                    },
-                    "required": [
-                        "query",
-                        "user_id",
-                        "status",
-                        "document_type",
-                        "use_internet",
-                        "use_rag"
-                    ]
                     }
-                }
                 },
 
                 {
@@ -269,39 +270,6 @@ class ResearcherService:
                 {
                 "type": "function",
                 "function": {
-                    "name": "deep_content_analysis_for_specific_information",
-                    "description": "Performs deep content analysis on the user's documents to extract specific information. This function is used for user query detailed analysis and also for deep content analysis of a specific web page.",
-                    "parameters": {
-                    "type": "object",
-                    "properties": {
-                        "query": {
-                        "type": "string",
-                        "description": """The specific question or query to analyze within the user's documents. This should be a clear and concise request for information."""
-                        },
-                        "url": {
-                        "type": "string",
-                        "description": """URL of the web page to analyze. This is used for deep content analysis and should be a valid URL."""
-                        },
-                        "user_id": {
-                        "type": "integer",
-                        "description": "The ID of the user requesting the deep content analysis. Look at the first developer prompt to get the user_id"
-                        },
-                        "status": {
-                        "type": "string",
-                        "description": "A concise description of the task being performed, using conjugated verbs (e.g., 'Analizando contenido sobre...', 'Conducting deep analysis of...') in the same language as the user's question"
-                        }
-                    },
-                    "required": [
-                        "query",
-                        "user_id",
-                        "status"
-                    ]
-                    }
-                }
-                },
-                {
-                "type": "function",
-                "function": {
                     "name": "send_email",
                     "description": "Send an email to the user. This function is used to send an email to the user with the information provided by the user.",
                     "parameters": {
@@ -340,29 +308,62 @@ class ResearcherService:
                 }
                 },
                 {
-                "type": "function",
-                "function": {
-                    "name": "explain_naia_roles",
-                    "description": "Generate a carousel with explanations of all five NAIA roles. ALWAYS use this function when users ask about what roles NAIA has or ask for an explanation of NAIA's capabilities.",
-                    "parameters": {
-                    "type": "object",
-                    "properties": {
-                        "auto_slide_interval": {
-                        "type": "integer",
-                        "description": "The interval in milliseconds for auto-advancing the carousel slides. Default is 3000ms (3 seconds)."
+                    "type": "function",
+                    "function": {
+                        "name": "explain_naia_roles",
+                        "description": "Generate a carousel with explanations of all five NAIA roles. ALWAYS use this function when users ask about what roles NAIA has or ask for an explanation of NAIA's capabilities.",
+                        "parameters": {
+                        "type": "object",
+                        "properties": {
+                            "auto_slide_interval": {
+                            "type": "integer",
+                            "description": "The interval in milliseconds for auto-advancing the carousel slides. Default is 3000ms (3 seconds)."
+                            },
+                            "user_id": {
+                            "type": "integer",
+                            "description": "The ID of the user requesting the role explanation. Look at the first developer prompt to get the user_id"
+                            },
+                            "status": {
+                            "type": "string",
+                            "description": "A concise description of the role explanation task being performed, using conjugated verbs (e.g., 'Explicando los roles de NAIA...', 'Showing NAIA's capabilities...') in the same language as the user's question"
+                            }
                         },
-                        "user_id": {
-                        "type": "integer",
-                        "description": "The ID of the user requesting the role explanation. Look at the first developer prompt to get the user_id"
-                        },
-                        "status": {
-                        "type": "string",
-                        "description": "A concise description of the role explanation task being performed, using conjugated verbs (e.g., 'Explicando los roles de NAIA...', 'Showing NAIA's capabilities...') in the same language as the user's question"
+                        "required": ["user_id", "status"]
                         }
-                    },
-                    "required": ["user_id", "status"]
                     }
-                }
+                },
+                {
+                    "type": "function",
+                    "function": {
+                        "name": "get_current_news",
+                        "description": "Gets the latest news from a specific location with modern and attractive visualization.",
+                        "parameters": {
+                        "type": "object",
+                        "properties": {
+                            "location": {
+                            "type": "string",
+                            "description": "The location to get news from (city, country, or region). Example: 'Barranquilla', 'Colombia', 'Atlántico'"
+                            },
+                            "user_id": {
+                            "type": "integer",
+                            "description": "The ID of the user requesting the news. Look in the first developer prompt to get the user_id"
+                            },
+                            "status": {
+                            "type": "string",
+                            "description": "A concise description of the task being performed, using conjugated verbs (e.g., 'Getting news from...', 'Searching news about...') in the same language as the user's question"
+                            },
+                            "query": {
+                            "type": "string",
+                            "description": "Specific query to search for news. Example: 'latest news from Barranquilla', 'breaking news Colombia', 'recent news Atlántico', written in the same language as the user's question"
+                            },
+                            "language": {
+                            "type": "string",
+                            "description": "The language in which the news should be retrieved. Example: 'es' for Spanish, 'en' for English, always use the two letter ISO 639-1 code",
+                            }
+                        },
+                        "required": ["location", "user_id", "status", "query", "language"]
+                        }
+                    }
                 }
             ]
         
@@ -372,8 +373,8 @@ class ResearcherService:
             "answer_from_user_rag": answer_from_user_rag,
             "factual_web_query": factual_web_query,
             "create_graph": create_graph,
-            "deep_content_analysis_for_specific_information": deep_content_analysis_for_specific_information,
             "send_email": send_email,
+            "get_current_news": get_current_news,
             "explain_naia_roles": explain_naia_roles
         }
 
@@ -392,7 +393,7 @@ class ResearcherService:
         3. answer_from_user_rag - Searches within user's uploaded documents
         4. factual_web_query - Finds factual information from reliable internet sources
         5. create_graph - Creates data visualizations (with built-in internet search)
-        6. deep_content_analysis - Performs comprehensive research on specific topics
+        6. get_current_news - Retrieves the latest news from a specific location
         7. send_email - Sends information via email to specified recipients
         8. explain_naia_roles - Shows a visual carousel explaining all NAIA roles
 
@@ -408,6 +409,12 @@ class ResearcherService:
         9. User wants information about specific courses, departments, or programs
         10. User asks about a topic that might need internet search to verify or find details
         11. User asks about NAIA's roles (use explain_naia_roles function)
+        12. User asks for the latest news from a specific location (use get_current_news function)
+        13. User requests to send information via email (use send_email function)
+        14. User wants news about current events or recent developments (use get_current_news function)
+        15. User wants to know about the latest news from a specific location (use get_current_news function)
+        16. User wants news about current events or recent developments (use get_current_news function)
+
 
         IMMEDIATE FUNCTION ROUTING TRIGGERS:
         - Questions with "who is", "what is", "when did", "where is", "why did", "how many"
@@ -434,7 +441,9 @@ class ResearcherService:
         - "What does my document say about [topic]"
         - "Send an email about [topic]"
         - "Email this information to [address]"
-
+        - "Quiero las noticias mas recientes de la guerra en Ucrania" / "I want the latest news about the war in Ukraine"
+        - "Quiero saber las últimas noticias de Barranquilla" / "I want to know the latest news from Barranquilla"
+        
         EXAMPLES OF "NO_FUNCTION_NEEDED":
         - "Hello, how are you?"
         - "What's your name?"
@@ -567,11 +576,12 @@ class ResearcherService:
         - NOTE: Has its own internet search - DO NOT use factual_web_query before this
         - EXAMPLES: "Create a graph of Colombia's GDP", "Show me population statistics"
 
-        6. deep_content_analysis:
-        - PURPOSE: Conduct thorough research on specific topics or webpages
-        - USE WHEN: User needs comprehensive information requiring synthesis across sources
-        - KEY INDICATOR: Complex questions requiring depth and multiple sources
-        - EXAMPLES: "Analyze the impact of climate change on Colombian agriculture", "Research the history of Universidad del Norte in detail"
+        6. get_current_news:
+        - PURPOSE: Obtener las últimas noticias de una ubicación específica con visualización moderna
+        - USE WHEN: Usuario pide noticias, eventos actuales, o información sobre lo que está pasando en un lugar
+        - KEY INDICATOR: Menciones de "noticias", "news", "eventos", "qué está pasando", "última hora"
+        - EXAMPLES: "¿Qué noticias hay de Barranquilla?", "Tell me about current events in Colombia"
+        - CRITICAL: Siempre usar cuando el usuario quiera mantenerse informado sobre una ubicación
 
         7. send_email:
         - PURPOSE: Send emails to specific recipients
@@ -765,9 +775,13 @@ class ResearcherService:
         - Use when: User wants charts, graphs, visual data representations, data analysis
         - Ask: "I can create a [specific type of visualization] showing [data topic]. Would you like me to generate that visualization for you?"
 
-        6. **deep_content_analysis**: Perform comprehensive research on specific topics
-        - Use when: User needs in-depth analysis, detailed research, comprehensive investigation of complex topics
-        - Ask: "I can perform a comprehensive analysis of [specific topic/question]. Would you like me to conduct that deep research for you?"
+        6. **get_current_news**: Get the latest news from a specific location
+        - Use when: User wants current events, news updates, or information about recent developments in a specific area
+        - Ask: "I can get the latest news from [specific location]. Would you like me to retrieve that information for you?"
+
+        7. **send_email**: Send information via email to specified recipients
+        - Use when: User requests to send information, documents, or summaries via email
+        - Ask: "I can send an email with the requested information to [recipient]. Would you like me to proceed with that?"
 
         RESEARCH METHODOLOGY GUIDANCE:
         - **create_graph** has built-in internet search, so NEVER suggest factual_web_query before graphing

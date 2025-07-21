@@ -1,5 +1,5 @@
 from apps.uniguide.functions import send_email, query_university_rag, get_university_calendar_multi_month, get_virtual_campus_tour, search_internet_for_uni_answers
-from apps.personal.functions import create_calendar_event
+from apps.personal.functions import create_calendar_event, search_contacts_by_name
 import datetime
 from datetime import timedelta, timezone
 from apps.chat.functions import get_last_four_messages
@@ -227,6 +227,35 @@ class UniGuideService:
                             "required": ["user_id", "status"],
                         }
                     }
+                },
+                {
+                    "type": "function",
+                    "function": {
+                        "name": "search_contacts_by_name",
+                        "description": "Searches for contacts by name using Microsoft Graph API. Useful when the user specifically wants to find someone's contact information without sending an email immediately.",
+                        "parameters": {
+                        "type": "object",
+                        "properties": {
+                            "name": {
+                            "type": "string",
+                            "description": "The name to search for. Can be partial name, first name, last name, or full name. Example: 'Juan', 'Pérez', 'Dr. García'"
+                            },
+                            "user_id": {
+                            "type": "integer",
+                            "description": "The ID of the user making the search. Look at the first developer prompt to get the user_id"
+                            },
+                            "status": {
+                            "type": "string",
+                            "description": "A concise description of the search task being performed, using conjugated verbs (e.g., 'Buscando contacto...', 'Searching for contact...') in the same language as the user's question"
+                            }
+                        },
+                        "required": [
+                            "name",
+                            "user_id",
+                            "status"
+                        ]
+                        }
+                    }
                 }
         ]
 
@@ -237,6 +266,7 @@ class UniGuideService:
             "get_virtual_campus_tour": get_virtual_campus_tour,
             "search_internet_for_uni_answers": search_internet_for_uni_answers,
             "create_calendar_event": create_calendar_event,
+            "search_contacts_by_name": search_contacts_by_name,
             "explain_naia_roles": explain_naia_roles
         }
 
@@ -256,7 +286,9 @@ class UniGuideService:
         4. get_virtual_campus_tour: Generate interactive virtual tour of university facilities with images and detailed information.
         5. search_internet_for_uni_answers: Search internet for VERY SPECIFIC details about UniNorte that are not in official documents (architectural details, specific measurements, etc.)
         6. create_calendar_event: Add university events to user's personal calendar so they don't miss them.
-        
+        7. search_contacts_by_name: Searches for university email contacts by name using Microsoft Graph API.
+        8. explain_naia_roles: Show a visual explanation of all NAIA roles and capabilities.
+                
         ALWAYS ROUTE TO "FUNCTION_NEEDED" WHEN:
 
         **CRITICAL UNIVERSITY QUESTIONS RULE (ALWAYS → FUNCTION_NEEDED):**
@@ -297,9 +329,11 @@ class UniGuideService:
         23. User asks "rebuscadas" (far-fetched) questions about campus that require specific observation
         24. User asks about number of floors, windows, specific colors, exact measurements of campus elements
         25. User asks about very detailed campus information that goes beyond general administrative knowledge
+        26. User wants to search the email of a contact or send an email to a specific person
+        27. User wants to find a contact's email address
 
         **CRITICAL CAMPUS FACILITIES & INSTALLATIONS DETECTION** (ALWAYS → FUNCTION_NEEDED):
-        26. User mentions ANY campus facility, installation, or physical space including:
+        28. User mentions ANY campus facility, installation, or physical space including:
             - Piscina, piscinas (pool, pools)
             - Biblioteca, bibliotecas (library, libraries)
             - Laboratorios, labs (laboratories)
@@ -312,7 +346,7 @@ class UniGuideService:
             - Bloques, torres (blocks, towers)
             - Canchas deportivas (sports courts)
             - Zonas de estudio, áreas comunes (study areas, common areas)
-        27. User asks about campus facilities with phrases like:
+        29. User asks about campus facilities with phrases like:
             - "me puedes hablar de...", "tell me about..."
             - "¿qué hay de...?", "what about...?"
             - "vi que tienen...", "I saw that you have..."
@@ -321,25 +355,25 @@ class UniGuideService:
             - "quiero conocer...", "I want to know about..."
             - "háblame de...", "tell me about..."
             - "por ahí vi que...", "I saw that..."
-        28. User mentions wanting to see, visit, or explore ANY campus location
-        29. User asks about campus infrastructure, installations, or physical spaces
-        30. User references having seen or heard about campus facilities
-        31. User asks about availability, access, or usage of campus spaces
-        32. User wants to add an event to their personal calendar related to campus facilities or events
-        33. User wants to make a reminder for university events or activities
+        30. User mentions wanting to see, visit, or explore ANY campus location
+        31. User asks about campus infrastructure, installations, or physical spaces
+        32. User references having seen or heard about campus facilities
+        33. User asks about availability, access, or usage of campus spaces
+        34. User wants to add an event to their personal calendar related to campus facilities or events
+        35. User wants to make a reminder for university events or activities
 
         **NEW CRITICAL CALENDAR TRIGGERS** (ALWAYS → FUNCTION_NEEDED):
-        34. User mentions ANY SPECIFIC MONTHS by name ("enero", "febrero", "marzo", "abril", "mayo", "junio", "julio", "agosto", "septiembre", "octubre", "noviembre", "diciembre", "january", "february", "march", "april", "may", "june", "july", "august", "september", "october", "november", "december")
-        35. User explicitly asks to search or verify: "búscalo", "búscalo en el calendario", "search for it", "look it up", "check it", "verify it", "find it", "consulta", "verifica", "encuentra"
-        36. User mentions date ranges: "entre [mes] y [mes]", "between [month] and [month]", "debe ser entre", "should be between"
-        37. User asks about specific event timing: "cuando es", "when is", "cuándo será", "when will it be", "qué fecha", "what date"
-        38. User mentions timeframes: "el próximo mes", "next month", "este semestre", "this semester", "próximamente", "upcoming"
-        39. User asks about specific ceremony types: "ceremonia de grados", "graduation ceremony", "ceremonia de graduación", "grado", "graduation"
-        40. User corrects or clarifies previous information about dates or events
-        41. User asks for verification of information previously mentioned by the assistant
-        42. User asks about NAIA's roles, capabilities, or what NAIA can do
-        43. User wants to know what services or assistance NAIA provides
-        44. User asks questions like "what can you do?", "what roles do you have?", "explain your capabilities"
+        36. User mentions ANY SPECIFIC MONTHS by name ("enero", "febrero", "marzo", "abril", "mayo", "junio", "julio", "agosto", "septiembre", "octubre", "noviembre", "diciembre", "january", "february", "march", "april", "may", "june", "july", "august", "september", "october", "november", "december")
+        37. User explicitly asks to search or verify: "búscalo", "búscalo en el calendario", "search for it", "look it up", "check it", "verify it", "find it", "consulta", "verifica", "encuentra"
+        38. User mentions date ranges: "entre [mes] y [mes]", "between [month] and [month]", "debe ser entre", "should be between"
+        39. User asks about specific event timing: "cuando es", "when is", "cuándo será", "when will it be", "qué fecha", "what date"
+        40. User mentions timeframes: "el próximo mes", "next month", "este semestre", "this semester", "próximamente", "upcoming"
+        41. User asks about specific ceremony types: "ceremonia de grados", "graduation ceremony", "ceremonia de graduación", "grado", "graduation"
+        42. User corrects or clarifies previous information about dates or events
+        43. User asks for verification of information previously mentioned by the assistant
+        44. User asks about NAIA's roles, capabilities, or what NAIA can do
+        45. User wants to know what services or assistance NAIA provides
+        46. User asks questions like "what can you do?", "what roles do you have?", "explain your capabilities"
 
         **PROMOTIONAL/COMPARATIVE QUESTIONS ABOUT UNINORTE (ALWAYS → FUNCTION_NEEDED):**
         - Questions comparing UniNorte advantages vs other universities
@@ -399,6 +433,8 @@ class UniGuideService:
         - "Explica los roles de NAIA" / "Explain NAIA's roles"
         - "Cuáles son tus capacidades" / "What are your capabilities?"
         - "Qué puede hacer NAIA" / "What can NAIA do?"
+        - "Cual es el correo de [contact_name]" / "What is the email of [contact_name]"
+        - "Dame el contacto de [contact_name]" / "Give me the contact of [contact_name]"
 
 
         CRITICAL EVENT DETECTION PATTERNS (ALWAYS → FUNCTION_NEEDED):
@@ -669,6 +705,15 @@ class UniGuideService:
         - EXAMPLES: "Add the graduation ceremony to my calendar", "Remind me about the soccer tournament", "I want to attend the dermatology symposium"
         - PROACTIVE SUGGESTIONS: When showing calendar events, suggest adding interesting ones: "Would you like me to add any of these events to your personal calendar?"
         - CRITICAL: Always encourage users to save university events they're interested in to their personal calendar
+
+        7. search_contacts_by_name:
+        - PURPOSE: Buscar contactos por nombre usando Microsoft Graph API
+        - USE WHEN: Usuario quiere encontrar información de contacto de alguien sin enviar un correo inmediatamente
+        - KEY INDICATOR: Menciones de "buscar contacto", "encontrar email", "contacto de", "cuál es el email de"
+        - EXAMPLES: "Busca el contacto de Juan Pérez", "What's the email of Dr. García?"
+        - CRITICAL: Usar para buscar información de contacto antes de enviar un correo
+        - The function returns an html with the contacts found followed ny a number, this number is useful when the users wants to send an email to one of those emails and the user mentions the number of the contact, for example "el segundo" or "opción 1", you must use that number to send the email to the contact with that number to know which contact the user is referring to.
+        - In case the user wants to send email to person and he/she only mentions the name of the person, you must use this function to find the contact and then send the email to that contact.
 
         8. explain_naia_roles:
         - PURPOSE: Show a visual explanation of all NAIA roles and capabilities
@@ -1015,6 +1060,10 @@ class UniGuideService:
         6. **create_calendar_event**: Add university events to user's personal calendar
         - Use when: User shows interest in a university event or wants reminders
         - Ask: "I can add [specific event] to your personal calendar so you don't miss it. Would you like me to create that reminder for you?"
+        
+        7. **search_contacts_by_name**: Find contacts by name using Microsoft Graph API
+        - Use when: User wants to find contact information without sending an email immediately
+        - Ask: "I can search for the contact information of [contact_name]. Would you like me to do that?"
 
         HANDLING "TRY AGAIN" OR "DO IT AGAIN" REQUESTS:
         When user says "do it again", "try again", "please do it", etc. after a failed function:

@@ -1,7 +1,8 @@
 from datetime import timedelta, timezone
 from apps.chat.functions import get_last_four_messages
-from apps.recepcionist.functions import search_university_staff, answer_question_of_uni_premises, query_recepcionist_rag, get_location_events, get_restaurants, get_location_places
+from apps.recepcionist.functions import answer_question_of_uni_premises, query_recepcionist_rag, get_location_events, get_restaurants, get_location_places
 from apps.researcher.functions import send_email, explain_naia_roles
+from apps.personal.functions import search_contacts_by_name
 import datetime
 from datetime import timedelta, timezone
 
@@ -16,25 +17,29 @@ class RecepcionistService:
             {
                 "type": "function",
                 "function": {
-                    "name": "search_university_staff",
-                    "description": "Search for university staff, professors, and employees by name to get their contact information, office location, job title, and other details",
+                    "name": "search_contacts_by_name",
+                    "description": "Searches for contacts by name using Microsoft Graph API. Useful when the user specifically wants to find someone's contact information without sending an email immediately.",
                     "parameters": {
                     "type": "object",
                     "properties": {
                         "name": {
                         "type": "string",
-                        "description": "The name or partial name of the university staff member to search for"
+                        "description": "The name to search for. Can be partial name, first name, last name, or full name. Example: 'Juan', 'Pérez', 'Dr. García'"
                         },
                         "user_id": {
                         "type": "integer",
-                        "description": "The ID of the user making the request, used for logging and tracking purposes. This id is provided in the prompt, so you must use it directly without asking the user for it."
+                        "description": "The ID of the user making the search. Look at the first developer prompt to get the user_id"
                         },
                         "status": {
-                        "type": "string", 
-                        "description": "A concise description of the calendar creation task, using conjugated verbs (e.g., 'Buscar información sobre [nombre del personal universitario]') in the same language as the user's question" ,
+                        "type": "string",
+                        "description": "A concise description of the search task being performed, using conjugated verbs (e.g., 'Buscando contacto...', 'Searching for contact...') in the same language as the user's question"
                         }
                     },
-                    "required": ["name", "user_id", "status"],
+                    "required": [
+                        "name",
+                        "user_id",
+                        "status"
+                    ]
                     }
                 }
             },
@@ -268,14 +273,14 @@ class RecepcionistService:
                                 "description": "A concise description of the role explanation task being performed, using conjugated verbs (e.g., 'Explicando los roles de NAIA...', 'Showing NAIA's capabilities...') in the same language as the user's question"
                             }
                         },
-                        "required": []
+                        "required": ["user_id", "status"],
                     }
                 }
             }
         ]
 
         available_functions = {
-            "search_university_staff": search_university_staff,
+            "search_contacts_by_name": search_contacts_by_name,
             "answer_question_of_uni_premises": answer_question_of_uni_premises,
             "query_recepcionist_rag": query_recepcionist_rag,
             "get_location_events": get_location_events,
@@ -295,7 +300,7 @@ class RecepcionistService:
                         CRITICAL: The system WILL NOT search for information or execute functions UNLESS you say "FUNCTION_NEEDED".
 
                         AVAILABLE RECEPTION FUNCTIONS:
-                        1. search_university_staff - Searches for university professors, staff, and employees by name to get contact information, office location, and job details
+                        1. search_contacts_by_name - Searches for university email contacts by name using Microsoft Graph API.
                         2. answer_question_of_uni_premises - Answers questions about university premises, such as locations, facilities, and general information about the university campus.
                         3. query_recepcionist_rag - Searches for detailed information about restaurant menus, food prices, meal options, and dining services on campus
                         4. get_location_events - Finds events happening in a specific location using Google Events, defaults to Barranquilla
@@ -543,11 +548,15 @@ class RecepcionistService:
         ## AVAILABLE FUNCTIONS
         
         **CURRENT FUNCTIONS YOU CAN USE:**
-        1. search_university_staff(name): Search for university staff, professors, and employees by name
-           - PURPOSE: Find contact information, office location, job title, and other details for university personnel
-           - USE WHEN: User asks about finding specific university staff/faculty/employees by name
-           - EXAMPLES: "Find Professor García", "Where is Dr. Smith's office?", "Contact info for coordinator López"
-           - RETURNS: Detailed information displayed visually with photos, contact details, office locations
+        1. search_contacts_by_name(name):
+            - PURPOSE: Buscar contactos por nombre usando Microsoft Graph API
+            - USE WHEN: Usuario quiere encontrar información de contacto de alguien sin enviar un correo inmediatamente
+            - KEY INDICATOR: Menciones de "buscar contacto", "encontrar email", "contacto de", "cuál es el email de"
+            - EXAMPLES: "Busca el contacto de Juan Pérez", "What's the email of Dr. García?"
+            - CRITICAL: Usar para buscar información de contacto antes de enviar un correo
+            - The function returns an html with the contacts found followed ny a number, this number is useful when the users wants to send an email to one of those emails and the user mentions the number of the contact, for example "el segundo" or "opción 1", you must use that number to send the email to the contact with that number to know which contact the user is referring to.
+            - In case the user wants to send email to person and he/she only mentions the name of the person, you must use this function to find the contact and then send the email to that contact.
+
 
         2. answer_question_of_uni_premises(place): Answer questions about university premises, such as locations, facilities, and general information about the university campus.
             - PURPOSE: Provide information about university premises like restaurants, gyms, and other facilities
@@ -648,7 +657,7 @@ class RecepcionistService:
         - Patient and thorough in assistance
 
         **WHAT YOU CAN DO:**
-        - Search for university staff, faculty, and employee information using search_university_staff function
+        - Search for university staff, faculty, and employee information using search_contacts_by_name function
         - Provide contact details and office locations for university personnel
         - Offer general administrative guidance within your knowledge
         - Help connect people with the right university contacts
@@ -777,11 +786,10 @@ class RecepcionistService:
         ## AVAILABLE SERVICES AND FUNCTIONS ##
 
         **CURRENT CAPABILITIES:**
-        1. **University Staff Search**: I can search for university professors, staff, and employees by name to find:
-           - Contact information (email, phone)
-           - Office locations and addresses
-           - Job titles and departments
-           - Professional photos when available
+        1. **search_contacts_by_name**: Find contacts by name using Microsoft Graph API
+        - Use when: User wants to find contact information without sending an email immediately
+        - Ask: "I can search for the contact information of [contact_name]. Would you like me to do that?"
+        - Don't say: "I will search for that person"
 
         2. **University Premises Information**: I can provide detailed information about campus facilities including:
            - Restaurant and dining locations with hours and services

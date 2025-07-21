@@ -15,37 +15,37 @@ class PersonalAssistantService:
         
         tools = [
             {
-            "type": "function",
-            "function": {
-                "name": "get_current_news",
-                "description": "Gets the latest news from a specific location with modern and attractive visualization.",
-                "parameters": {
-                "type": "object",
-                "properties": {
-                    "location": {
-                    "type": "string",
-                    "description": "The location to get news from (city, country, or region). Example: 'Barranquilla', 'Colombia', 'Atlántico'"
+                "type": "function",
+                "function": {
+                    "name": "get_current_news",
+                    "description": "Gets the latest news from a specific location with modern and attractive visualization.",
+                    "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "location": {
+                        "type": "string",
+                        "description": "The location to get news from (city, country, or region). Example: 'Barranquilla', 'Colombia', 'Atlántico'"
+                        },
+                        "user_id": {
+                        "type": "integer",
+                        "description": "The ID of the user requesting the news. Look in the first developer prompt to get the user_id"
+                        },
+                        "status": {
+                        "type": "string",
+                        "description": "A concise description of the task being performed, using conjugated verbs (e.g., 'Getting news from...', 'Searching news about...') in the same language as the user's question"
+                        },
+                        "query": {
+                        "type": "string",
+                        "description": "Specific query to search for news. Example: 'latest news from Barranquilla', 'breaking news Colombia', 'recent news Atlántico', written in the same language as the user's question"
+                        },
+                        "language": {
+                        "type": "string",
+                        "description": "The language in which the news should be retrieved. Example: 'es' for Spanish, 'en' for English, always use the two letter ISO 639-1 code",
+                        }
                     },
-                    "user_id": {
-                    "type": "integer",
-                    "description": "The ID of the user requesting the news. Look in the first developer prompt to get the user_id"
-                    },
-                    "status": {
-                    "type": "string",
-                    "description": "A concise description of the task being performed, using conjugated verbs (e.g., 'Getting news from...', 'Searching news about...') in the same language as the user's question"
-                    },
-                    "query": {
-                    "type": "string",
-                    "description": "Specific query to search for news. Example: 'latest news from Barranquilla', 'breaking news Colombia', 'recent news Atlántico', written in the same language as the user's question"
-                    },
-                    "language": {
-                    "type": "string",
-                    "description": "The language in which the news should be retrieved. Example: 'es' for Spanish, 'en' for English, always use the two letter ISO 639-1 code",
+                    "required": ["location", "user_id", "status", "query", "language"]
                     }
-                },
-                "required": ["location", "user_id", "status", "query", "language"]
                 }
-            }
             },
             {
                 "type": "function",
@@ -252,7 +252,8 @@ class PersonalAssistantService:
                             }
                         },
                         "required": [
-                            "user_id"
+                            "user_id",
+                            "status"
                         ]
                     }
                 }
@@ -309,7 +310,7 @@ class PersonalAssistantService:
         - get_current_news: Retrieves the latest news from a specific location with modern visualization.
         - get_weather: Retrieves weather information for a specific location with modern visualization.
         - send_email_on_behalf_of_user: Sends an email on behalf of the user using their Microsoft Graph API token.
-        - search_contacts_by_name: Searches for contacts by name using Microsoft Graph API.
+        - search_contacts_by_name: Searches for university email contacts by name using Microsoft Graph API.
         - read_calendar_events: Reads and displays calendar events for a specified date range.
         - create_calendar_event: Creates a personal reminder or event in the user's calendar.
         - read_user_emails: Reads emails from the user's inbox without marking them as read.
@@ -347,6 +348,8 @@ class PersonalAssistantService:
         27. User asks about NAIA's roles, capabilities, or what NAIA can do
         28. User wants to know what services or assistance NAIA provides
         29. User asks questions like "what can you do?", "what roles do you have?", "explain your capabilities"
+        30. User wants to know about the latest news from a specific location (use get_current_news function)
+        31. User wants news about current events or recent developments (use get_current_news function)
 
         IMMEDIATE FUNCTION ROUTING TRIGGERS:
         - "Intentalo otra vez" / "Try again"
@@ -390,6 +393,8 @@ class PersonalAssistantService:
         - "Mandale un correo al segundo contacto" / "Send an email to the second contact"
         - "Que roles tienes" / "What roles do you have?"
         - "Que tiene NAIA" / "What does NAIA have?"
+        - "Quiero las noticias mas recientes de la guerra en Ucrania" / "I want the latest news about the war in Ukraine"
+        - "Quiero saber las últimas noticias de Barranquilla" / "I want to know the latest news from Barranquilla"
 
 
         CONTEXT-AWARE ROUTING BASED ON CONVERSATION HISTORY:
