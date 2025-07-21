@@ -3,7 +3,7 @@ from datetime import timedelta, timezone
 from apps.chat.functions import get_last_four_messages
 from apps.skills.repositories import SkillsTrainerRepository
 from apps.skills.functions import simulate_job_interview, analyze_professional_appearance, generate_training_report, list_recent_training_reports, get_training_report_html, cv_builder
-from apps.researcher.functions import send_email
+from apps.researcher.functions import send_email, explain_naia_roles
 class SkillsTrainerService:
     def retrieve_tools(self, user_id, messages):
 
@@ -306,6 +306,31 @@ class SkillsTrainerService:
                         "required": ["personal_info", "cv_type", "experience_level", "target_industry", "design_style", "sections_to_include", "primary_focus", "desired_length", "language", "user_id", "status"]
                     }
                 }
+            },
+            {
+                "type": "function",
+                "function": {
+                    "name": "explain_naia_roles",
+                    "description": "Generate a carousel with explanations of all five NAIA roles. ALWAYS use this function when users ask about what roles NAIA has or ask for an explanation of NAIA's capabilities.",
+                    "parameters": {
+                        "type": "object",
+                        "properties": {
+                            "auto_slide_interval": {
+                                "type": "integer",
+                                "description": "The interval in milliseconds for auto-advancing the carousel slides. Default is 3000ms (3 seconds)."
+                            },
+                            "user_id": {
+                                "type": "integer",
+                                "description": "The ID of the user requesting the role explanation. Look at the first developer prompt to get the user_id"
+                            },
+                            "status": {
+                                "type": "string",
+                                "description": "A concise description of the role explanation task being performed, using conjugated verbs (e.g., 'Explicando los roles de NAIA...', 'Showing NAIA's capabilities...') in the same language as the user's question"
+                            }
+                        },
+                        "required": ["user_id", "status"],
+                    }
+                }
             }
         ]
 
@@ -316,7 +341,8 @@ class SkillsTrainerService:
             "list_recent_training_reports": list_recent_training_reports,
             "get_training_report_html": get_training_report_html,
             "cv_builder": cv_builder,
-            "send_email": send_email
+            "send_email": send_email,
+            "explain_naia_roles": explain_naia_roles
         }
 
         current_utc_time = datetime.datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S")
@@ -365,6 +391,9 @@ class SkillsTrainerService:
                 32. User asks to compose, write, or draft an email
                 33. User mentions sending professional correspondence
                 34. User requests email assistance or email sending
+                35. User asks about NAIA's roles, capabilities, or what NAIA can do
+                36. User wants to know what services or assistance NAIA provides
+                37. User asks questions like "what can you do?", "what roles do you have?", "explain your capabilities"
 
 
                 IMMEDIATE FUNCTION ROUTING TRIGGERS:
@@ -420,9 +449,14 @@ class SkillsTrainerService:
                 - "Redactar email" / "Draft email"
                 - "Componer correo" / "Compose email"
                 - "Quiero enviar un correo" / "I want to send an email"
-                - "Ayúdame a enviar un email" / "Help me send an email"
+                - "Ayúdame a enviar un email" / "Help me send an email" (with the info already provided)
+                - "Que roles tienes" / "What roles do you have?"
+                - "Que tiene NAIA" / "What does NAIA have?"
+                - "Que puede hacer NAIA" / "What can NAIA do?"
+                - "Explica los roles de NAIA" / "Explain NAIA's roles"
+                - "Cuáles son tus capacidades" / "What are your capabilities?"
+                - "Qué puede hacer NAIA" / "What can NAIA do?"
 
-                
                 CONTEXT-AWARE ROUTING BASED ON CONVERSATION HISTORY:
                 PREVIOUS MESSAGES: {last_messages_text}
 
@@ -619,6 +653,13 @@ class SkillsTrainerService:
         - EXAMPLES: "Send me the report via email", "Email me the details"
         - CRITICAL: Always use when user requests information to be sent via email
 
+        8. explain_naia_roles:
+        - PURPOSE: Show a visual explanation of all NAIA roles and capabilities
+        - USE WHEN: User asks about NAIA's roles, capabilities, or what NAIA can do
+        - KEY INDICATOR: Questions like "what roles do you have", "what can you do", "explain your capabilities", "what services do you provide"
+        - EXAMPLES: "What roles can you perform?", "Tell me about your roles", "What can you do?", "Show me NAIA's capabilities"
+        - CRITICAL: ALWAYS use this function when the user asks about NAIA's roles or capabilities
+
         FUNCTION EXECUTION RULES:
         - NEVER announce that you "will" create or simulate - IMMEDIATELY CALL the function when appropriate
         - Functions should be called seamlessly as part of providing excellent training experience
@@ -736,6 +777,13 @@ class SkillsTrainerService:
         - **analyze_professional_appearance**: Provides specific, actionable appearance feedback
         - **generate_training_report**: Creates professional HTML reports with visual analytics
         - Functions can be used in sequence for comprehensive skill development
+
+        PLATFORM AWARENESS:
+        - You are part of NAIA, a multi-role AI assistant platform at Universidad del Norte
+        - You can explain all available NAIA roles when users ask about capabilities
+        - When users ask "what can you do?" or "what roles do you have?", suggest them that you can explain all roles in depth
+        - Use the explain_naia_roles function to show a visual carousel of all NAIA roles
+        - NAIA has 5 specialized roles: Researcher, Skills Trainer, Personal Assistant, Uniguide and Receptionist
 
         HANDLING TRAINING "RETRY" REQUESTS:
         When user says "do the simulation again", "try the practice again" after a failed function:

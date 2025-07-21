@@ -2,6 +2,7 @@ import datetime
 from apps.chat.functions import get_last_four_messages
 from datetime import timedelta, timezone
 from apps.personal.functions import get_current_news, get_weather, send_email_on_behalf_of_user, search_contacts_by_name, read_calendar_events, create_calendar_event, read_user_emails
+from apps.researcher.functions import explain_naia_roles
 class PersonalAssistantService:
     def retrieve_tools(self, user_id, messages):
 
@@ -255,6 +256,31 @@ class PersonalAssistantService:
                         ]
                     }
                 }
+            },
+            {
+                "type": "function",
+                "function": {
+                    "name": "explain_naia_roles",
+                    "description": "Generate a carousel with explanations of all five NAIA roles. ALWAYS use this function when users ask about what roles NAIA has or ask for an explanation of NAIA's capabilities.",
+                    "parameters": {
+                        "type": "object",
+                        "properties": {
+                            "auto_slide_interval": {
+                                "type": "integer",
+                                "description": "The interval in milliseconds for auto-advancing the carousel slides. Default is 3000ms (3 seconds)."
+                            },
+                            "user_id": {
+                                "type": "integer",
+                                "description": "The ID of the user requesting the role explanation. Look at the first developer prompt to get the user_id"
+                            },
+                            "status": {
+                                "type": "string",
+                                "description": "A concise description of the role explanation task being performed, using conjugated verbs (e.g., 'Explicando los roles de NAIA...', 'Showing NAIA's capabilities...') in the same language as the user's question"
+                            }
+                        },
+                        "required": ["user_id", "status"]
+                    }
+                }
             }
         ]
 
@@ -265,7 +291,8 @@ class PersonalAssistantService:
             "search_contacts_by_name": search_contacts_by_name,
             "read_calendar_events": read_calendar_events,
             "create_calendar_event": create_calendar_event,
-            "read_user_emails": read_user_emails
+            "read_user_emails": read_user_emails,
+            "explain_naia_roles": explain_naia_roles
         }
 
         current_utc_time = datetime.datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S")
@@ -317,6 +344,9 @@ class PersonalAssistantService:
         24. User wants to add something to their calendar
         25. User requests to set up an appointment or reminder
         26. User wants to create a personal event or note
+        27. User asks about NAIA's roles, capabilities, or what NAIA can do
+        28. User wants to know what services or assistance NAIA provides
+        29. User asks questions like "what can you do?", "what roles do you have?", "explain your capabilities"
 
         IMMEDIATE FUNCTION ROUTING TRIGGERS:
         - "Intentalo otra vez" / "Try again"
@@ -358,6 +388,9 @@ class PersonalAssistantService:
         - "Crear evento..." / "Create event..."
         - "Añadir recordatorio..." / "Add reminder..."
         - "Mandale un correo al segundo contacto" / "Send an email to the second contact"
+        - "Que roles tienes" / "What roles do you have?"
+        - "Que tiene NAIA" / "What does NAIA have?"
+
 
         CONTEXT-AWARE ROUTING BASED ON CONVERSATION HISTORY:
         PREVIOUS MESSAGES: {last_messages_text}
@@ -400,6 +433,9 @@ class PersonalAssistantService:
         - "Put a reminder to submit the project"
         - "Send an email to the second contact"
         - "Envía un correo a la opción 1"
+        - "What roles do you have?"
+        - "What are the capabilities of NAIA?"
+        - "Explícame los roles de NAIA"
 
         WHEN IN DOUBT: Choose "FUNCTION_NEEDED" for any task that a personal assistant would typically handle within a university context.
 
@@ -524,6 +560,13 @@ class PersonalAssistantService:
           * unread_only: true cuando específicamente pidan emails no leídos
           * search_query: cuando busquen emails de alguien específico o con cierto asunto
         - NOTE: Siempre informar al usuario que los emails no se marcan como leídos y pueden usar el enlace de Outlook para responder
+
+        8. explain_naia_roles:
+        - PURPOSE: Show a visual explanation of all NAIA roles and capabilities
+        - USE WHEN: User asks about NAIA's roles, capabilities, or what NAIA can do
+        - KEY INDICATOR: Questions like "what roles do you have", "what can you do", "explain your capabilities", "what services do you provide"
+        - EXAMPLES: "What roles can you perform?", "Tell me about your roles", "What can you do?", "Show me NAIA's capabilities"
+        - CRITICAL: ALWAYS use this function when the user asks about NAIA's roles or capabilities
 
         RESULT INTERPRETATION - FRONTEND CONTEXT:
         You are an AI assistant operating in a web frontend where visual content is automatically displayed to users.
@@ -655,6 +698,13 @@ class PersonalAssistantService:
         - Detail-oriented and reliable
         - Excellent communication skills
         - Supportive and solution-focused
+
+        PLATFORM AWARENESS:
+        - You are part of NAIA, a multi-role AI assistant platform at Universidad del Norte
+        - You can explain all available NAIA roles when users ask about capabilities
+        - When users ask "what can you do?" or "what roles do you have?", suggest them that you can explain all roles in depth
+        - Use the explain_naia_roles function to show a visual carousel of all NAIA roles
+        - NAIA has 5 specialized roles: Researcher, Skills Trainer, Personal Assistant, Uniguide and Recepcionist
 
         ⚠️ CRITICAL: NAME RECOGNITION INSTRUCTIONS ⚠️
         Always recognize variants of your name due to speech recognition errors:

@@ -3,6 +3,7 @@ from apps.personal.functions import create_calendar_event
 import datetime
 from datetime import timedelta, timezone
 from apps.chat.functions import get_last_four_messages
+from apps.researcher.functions import explain_naia_roles
 class UniGuideService:
     def retrieve_tools(self, user_id, messages):
 
@@ -201,6 +202,31 @@ class UniGuideService:
                             "required": ["title", "start_datetime", "end_datetime", "user_id", "status"]
                         }
                     }
+                },
+                {
+                    "type": "function",
+                    "function": {
+                        "name": "explain_naia_roles",
+                        "description": "Generate a carousel with explanations of all five NAIA roles. ALWAYS use this function when users ask about what roles NAIA has or ask for an explanation of NAIA's capabilities.",
+                        "parameters": {
+                            "type": "object",
+                            "properties": {
+                                "auto_slide_interval": {
+                                    "type": "integer",
+                                    "description": "The interval in milliseconds for auto-advancing the carousel slides. Default is 3000ms (3 seconds)."
+                                },
+                                "user_id": {
+                                    "type": "integer",
+                                    "description": "The ID of the user requesting the role explanation. Look at the first developer prompt to get the user_id"
+                                },
+                                "status": {
+                                    "type": "string",
+                                    "description": "A concise description of the role explanation task being performed, using conjugated verbs (e.g., 'Explicando los roles de NAIA...', 'Showing NAIA's capabilities...') in the same language as the user's question"
+                                }
+                            },
+                            "required": ["user_id", "status"],
+                        }
+                    }
                 }
         ]
 
@@ -210,7 +236,8 @@ class UniGuideService:
             "get_university_calendar_multi_month": get_university_calendar_multi_month,
             "get_virtual_campus_tour": get_virtual_campus_tour,
             "search_internet_for_uni_answers": search_internet_for_uni_answers,
-            "create_calendar_event": create_calendar_event 
+            "create_calendar_event": create_calendar_event,
+            "explain_naia_roles": explain_naia_roles
         }
 
         current_utc_time = datetime.datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S")
@@ -310,6 +337,9 @@ class UniGuideService:
         39. User asks about specific ceremony types: "ceremonia de grados", "graduation ceremony", "ceremonia de graduación", "grado", "graduation"
         40. User corrects or clarifies previous information about dates or events
         41. User asks for verification of information previously mentioned by the assistant
+        42. User asks about NAIA's roles, capabilities, or what NAIA can do
+        43. User wants to know what services or assistance NAIA provides
+        44. User asks questions like "what can you do?", "what roles do you have?", "explain your capabilities"
 
         **PROMOTIONAL/COMPARATIVE QUESTIONS ABOUT UNINORTE (ALWAYS → FUNCTION_NEEDED):**
         - Questions comparing UniNorte advantages vs other universities
@@ -362,7 +392,14 @@ class UniGuideService:
         - **CAMPUS FACILITIES MENTIONS**: Any mention of specific campus installations, buildings, or spaces
         - Requests for virtual tours or campus exploration
         - Requests adding events to personal calendar
-        - Reuqests to make a reminder for university events
+        - Requests to make a reminder for university events
+        - "Que roles tienes" / "What roles do you have?"
+        - "Que tiene NAIA" / "What does NAIA have?"
+        - "Que puede hacer NAIA" / "What can NAIA do?"
+        - "Explica los roles de NAIA" / "Explain NAIA's roles"
+        - "Cuáles son tus capacidades" / "What are your capabilities?"
+        - "Qué puede hacer NAIA" / "What can NAIA do?"
+
 
         CRITICAL EVENT DETECTION PATTERNS (ALWAYS → FUNCTION_NEEDED):
         - "wanted to go to [any event]" or "queria ir al [any event]"
@@ -632,6 +669,13 @@ class UniGuideService:
         - EXAMPLES: "Add the graduation ceremony to my calendar", "Remind me about the soccer tournament", "I want to attend the dermatology symposium"
         - PROACTIVE SUGGESTIONS: When showing calendar events, suggest adding interesting ones: "Would you like me to add any of these events to your personal calendar?"
         - CRITICAL: Always encourage users to save university events they're interested in to their personal calendar
+
+        8. explain_naia_roles:
+        - PURPOSE: Show a visual explanation of all NAIA roles and capabilities
+        - USE WHEN: User asks about NAIA's roles, capabilities, or what NAIA can do
+        - KEY INDICATOR: Questions like "what roles do you have", "what can you do", "explain your capabilities", "what services do you provide"
+        - EXAMPLES: "What roles can you perform?", "Tell me about your roles", "What can you do?", "Show me NAIA's capabilities"
+        - CRITICAL: ALWAYS use this function when the user asks about NAIA's roles or capabilities
 
         
         ## STRICT ROLE LIMITATIONS
@@ -1003,6 +1047,13 @@ class UniGuideService:
         - Always focus on connecting students with appropriate university services rather than trying to be all services yourself
         - When users want to explore campus: Offer virtual tours and detailed facility information
         - When users ask about locations: Provide virtual tour access to help them explore university spaces
+
+        PLATFORM AWARENESS:
+        - You are part of NAIA, a multi-role AI assistant platform at Universidad del Norte
+        - You can explain all available NAIA roles when users ask about capabilities
+        - When users ask "what can you do?" or "what roles do you have?", suggest them that you can explain all roles in depth
+        - Use the explain_naia_roles function to show a visual carousel of all NAIA roles
+        - NAIA has 5 specialized roles: Researcher, Skills Trainer, Personal Assistant, Uniguide and Receptionist
 
         ⚠️ CRITICAL: NAME RECOGNITION INSTRUCTIONS ⚠️
         Always recognize variants of your name due to speech recognition errors. If the user says any of these names, understand they are referring to you:

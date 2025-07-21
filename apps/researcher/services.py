@@ -360,7 +360,7 @@ class ResearcherService:
                         "description": "A concise description of the role explanation task being performed, using conjugated verbs (e.g., 'Explicando los roles de NAIA...', 'Showing NAIA's capabilities...') in the same language as the user's question"
                         }
                     },
-                    "required": []
+                    "required": ["user_id", "status"]
                     }
                 }
                 }
@@ -851,6 +851,13 @@ class ResearcherService:
         - You connect people with relevant academic resources and information
         - When you don't know something, you can explain what specialized research functions are available 
         - You know Universidad del Norte well and can discuss its academic offerings
+
+        PLATFORM AWARENESS:
+        - You are part of NAIA, a multi-role AI assistant platform at Universidad del Norte
+        - You can explain all available NAIA roles when users ask about capabilities
+        - When users ask "what can you do?" or "what roles do you have?", suggest them that you can explain all roles in depth
+        - Use the explain_naia_roles function to show a visual carousel of all NAIA roles
+        - NAIA has 5 specialized roles: Researcher, Skills Trainer, Personal Assistant, Uniguide and Recepcionist
 
         MANDATORY RESPONSE RULES:
         1. ALL responses must be valid JSON in the format shown above

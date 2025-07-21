@@ -1896,68 +1896,83 @@ def explain_naia_roles(user_id, status, auto_slide_interval=3000):
     set_status(user_id, status, 1)  
     html_content = generate_roles_carousel_html(auto_slide_interval=auto_slide_interval)
     
-    # Detailed information about each role based on official documentation
+    # Detailed information about each role based on current implementation
     roles_details = {
         "researcher": {
             "title": "Research Assistant",
-            "description": "The Research Assistant role helps with document drafting, searching for academic articles, analyzing texts, and generating content. It offers professional support for research and academic writing tasks.",
+            "description": "Advanced academic research assistant specializing in scholarly work, literature searches, document creation, and comprehensive analysis. Provides professional support for academic inquiries and educational content creation.",
             "capabilities": [
-                "Literature search and citation management",
-                "Academic writing assistance and document drafting",
-                "Text analysis and comparative reviews",
-                "Research methodology guidance",
-                "Data visualization and presentation"
-            ]
-        },
-        "receptionist": {
-            "title": "Receptionist",
-            "description": "The Receptionist role attends to visitors, manages reservations for common areas, sends messages, provides tourist information, and recommends restaurants and local events.",
-            "capabilities": [
-                "Visitor management and check-in assistance",
-                "Scheduling and coordination of common spaces",
-                "Message handling and communication",
-                "Local information and recommendations",
-                "Event coordination support"
+                "Academic literature search and citation management (scholar_search)",
+                "Comprehensive document creation in markdown format (write_document)",
+                "Search and analysis of user's uploaded documents (answer_from_user_rag)",
+                "Factual information retrieval from reliable web sources (factual_web_query)",
+                "Data visualization and interactive chart creation (create_graph)",
+                "Deep content analysis and comprehensive research (deep_content_analysis)",
+                "Professional email composition and sending (send_email)",
+                "Multi-source research synthesis and academic writing support"
             ]
         },
         "trainer": {
             "title": "Personal Skills Trainer",
-            "description": "The Personal Skills Trainer helps improve communication, leadership, and teamwork through simulations, language practice, advice on clothing and posture, and provides personalized training summaries.",
+            "description": "Interactive skills development specialist focusing on professional growth through simulations, practice scenarios, and personalized training. Helps improve communication, presentation, and professional capabilities.",
             "capabilities": [
-                "Communication skill development exercises",
-                "Leadership and teamwork simulations",
-                "Language practice and feedback",
-                "Professional presentation guidance",
-                "Personalized improvement tracking"
+                "Interactive job interview simulations with personalized questions (simulate_job_interview)",
+                "Professional appearance and image analysis with style recommendations (analyze_professional_appearance)",
+                "Comprehensive training reports with performance analytics (generate_training_report)",
+                "Training history tracking and report management (list_recent_training_reports, get_training_report_html)",
+                "Personalized CV/Resume builder with multiple styles (cv_builder)",
+                "Communication and presentation skill development",
+                "Leadership and teamwork training exercises",
+                "Professional image consulting and feedback"
             ]
         },
         "assistant": {
             "title": "Personal Assistant",
-            "description": "The Personal Assistant manages daily tasks such as sending emails, scheduling meetings, creating reminders, attending to visitors, providing agenda information, weather updates, and assisting with other administrative tasks.",
+            "description": "Professional administrative assistant specializing in daily task management, communication, and organizational support. Manages emails, scheduling, and provides administrative coordination within the university environment.",
             "capabilities": [
-                "Email and communication management",
-                "Calendar and scheduling coordination",
-                "Task and reminder tracking",
-                "Information gathering and reporting",
-                "Administrative workflow optimization"
+                "Current news retrieval with modern visual presentation (get_current_news)",
+                "Weather information and forecasts with elegant displays (get_weather)",
+                "Email composition and sending on behalf of users (send_email_on_behalf_of_user)",
+                "Contact search and management using Microsoft Graph (search_contacts_by_name)",
+                "Calendar event reading and schedule management (read_calendar_events)",
+                "Personal reminder and calendar event creation (create_calendar_event)",
+                "Email inbox management with filtering options (read_user_emails)",
+                "Administrative task coordination and workflow optimization"
             ]
         },
         "guide": {
             "title": "University Guide",
-            "description": "The University Guide provides information about courses, events, activities, and campus locations, searches for data in university documentation, and sends relevant academic information to students' personal email addresses.",
+            "description": "Comprehensive university information specialist and mental health support connector. Provides guidance on university services, academic procedures, campus navigation, and facilitates mental health resource connections.",
             "capabilities": [
+                "Personalized mental health screening questionnaires (mental_health_screening_tool)",
+                "University information search from official documents (query_university_rag)",
+                "Multi-month university calendar and event information (get_university_calendar_multi_month)",
+                "Interactive virtual campus tours with facility details (get_virtual_campus_tour)",
+                "University procedure and administrative guidance",
                 "Campus navigation and location assistance",
-                "Course and academic program information",
-                "University event and activity updates",
-                "Academic resources and documentation access",
-                "Administrative procedures guidance"
+                "Student support service connections",
+                "Mental health resource facilitation and professional referrals"
+            ]
+        },
+        "receptionist": {
+            "title": "University Receptionist",
+            "description": "Professional reception services specializing in visitor assistance, university personnel information, campus facility guidance, and local area recommendations. Provides comprehensive support for campus navigation and external location services.",
+            "capabilities": [
+                "University staff and faculty directory search (search_university_staff)",
+                "Campus premises and facility information (answer_question_of_uni_premises)",
+                "University service and menu information access (query_recepcionist_rag)",
+                "Local event discovery and recommendations (get_location_events)",
+                "Restaurant recommendations with ratings and reviews (get_restaurants)",
+                "Tourist attractions and places to visit (get_location_places)",
+                "Visitor management and assistance",
+                "Professional correspondence and communication support"
             ]
         }
     }
     
     return {
         "graph": html_content,
-        "title": "NAIA's Available Roles",
+        "title": "NAIA's Available Roles and Capabilities",
         "roles_info": roles_details,
-        "context": "NAIA (Nimble Artificial Intelligence Assistant) is a multimodal, multirole assistant designed to provide personalized assistance in the university environment. NAIA integrates multiple AI tools including language models, facial recognition, image description, and voice-to-text/text-to-voice conversion. With its visual capabilities, NAIA can make observations about the environment, enriching interaction. These five roles help address different needs within the university community, reducing stress and mental fatigue associated with work overload."
+        "context": "NAIA (Nimble Artificial Intelligence Assistant) is a comprehensive multimodal, multi-role AI assistant designed specifically for Universidad del Norte. NAIA integrates advanced AI technologies including large language models, computer vision, speech recognition, and text-to-speech conversion to provide personalized, intelligent assistance across five specialized roles. Each role addresses different aspects of university life - from academic research and skill development to administrative support and campus guidance - helping reduce cognitive load and enhance productivity within the university community."
     }

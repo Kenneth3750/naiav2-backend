@@ -1,7 +1,7 @@
 from datetime import timedelta, timezone
 from apps.chat.functions import get_last_four_messages
 from apps.recepcionist.functions import search_university_staff, answer_question_of_uni_premises, query_recepcionist_rag, get_location_events, get_restaurants, get_location_places
-from apps.researcher.functions import send_email
+from apps.researcher.functions import send_email, explain_naia_roles
 import datetime
 from datetime import timedelta, timezone
 
@@ -247,6 +247,31 @@ class RecepcionistService:
                     }
                 }
             },
+            {
+                "type": "function",
+                "function": {
+                    "name": "explain_naia_roles",
+                    "description": "Generate a carousel with explanations of all five NAIA roles. ALWAYS use this function when users ask about what roles NAIA has or ask for an explanation of NAIA's capabilities.",
+                    "parameters": {
+                        "type": "object",
+                        "properties": {
+                            "auto_slide_interval": {
+                                "type": "integer",
+                                "description": "The interval in milliseconds for auto-advancing the carousel slides. Default is 3000ms (3 seconds)."
+                            },
+                            "user_id": {
+                                "type": "integer",
+                                "description": "The ID of the user requesting the role explanation. Look at the first developer prompt to get the user_id"
+                            },
+                            "status": {
+                                "type": "string",
+                                "description": "A concise description of the role explanation task being performed, using conjugated verbs (e.g., 'Explicando los roles de NAIA...', 'Showing NAIA's capabilities...') in the same language as the user's question"
+                            }
+                        },
+                        "required": []
+                    }
+                }
+            }
         ]
 
         available_functions = {
@@ -256,7 +281,8 @@ class RecepcionistService:
             "get_location_events": get_location_events,
             "get_restaurants": get_restaurants,
             "get_location_places": get_location_places,
-            "send_email": send_email
+            "send_email": send_email,
+            "explain_naia_roles": explain_naia_roles
         }
 
         current_utc_time = datetime.datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S")
@@ -266,158 +292,215 @@ class RecepcionistService:
 
         router_prompt = f"""You are a specialized router for NAIA, an AI assistant at Universidad del Norte. Your ONLY job is to determine whether a user message requires a specialized function or can be handled with a simple chat response.
 
-                CRITICAL: The system WILL NOT search for information or execute functions UNLESS you say "FUNCTION_NEEDED".
+                        CRITICAL: The system WILL NOT search for information or execute functions UNLESS you say "FUNCTION_NEEDED".
 
-                AVAILABLE RECEPTION FUNCTIONS:
-                1. search_university_staff - Searches for university professors, staff, and employees by name to get contact information, office location, and job details
-                2. answer_question_of_uni_premises - Answers questions about university premises, such as locations, facilities, and general information about the university campus.
-                3. query_recepcionist_rag - Searches for detailed information about restaurant menus, food prices, meal options, and dining services on campus
+                        AVAILABLE RECEPTION FUNCTIONS:
+                        1. search_university_staff - Searches for university professors, staff, and employees by name to get contact information, office location, and job details
+                        2. answer_question_of_uni_premises - Answers questions about university premises, such as locations, facilities, and general information about the university campus.
+                        3. query_recepcionist_rag - Searches for detailed information about restaurant menus, food prices, meal options, and dining services on campus
+                        4. get_location_events - Finds events happening in a specific location using Google Events, defaults to Barranquilla
+                        5. get_restaurants - Finds restaurants and dining options in a specific location using Google Local search, defaults to Barranquilla
+                        6. get_location_places - Discovers places to visit and tourist attractions in a specific location using Google Local search, defaults to Barranquilla
+                        7. send_email - Sends an email to the user with the provided information
+                        8. explain_naia_roles - Generates a carousel with explanations of all five NAIA roles, used when users ask about NAIA's capabilities
 
-                ## UNIVERSITY PREMISES CONTEXT ##
-                
-                AVAILABLE UNIVERSITY PLACES (be flexible with names and spellings):
-                
-                **RESTAURANTS & FOOD:**
-                - "Restaurante Bocas de Ceniza" → users may say: "bocas", "bocas de ceniza", "bocas restaurant"
-                - "Restaurante du Nord Plaza" → users may say: "plaza", "du nord plaza", "norte plaza", "restaurant plaza"
-                - "Café du Nord" → users may say: "cafe", "du nord cafe", "cafe du nord", "norte cafe"
-                - "Restaurante 1966" → users may say: "1966", "restaurant 1966", "mil novecientos"
-                - "du Nord Exprès" → users may say: "express", "du nord express", "expres", "norte express"
-                - "du Nord Terrasse" → users may say: "terrasse", "terrace", "terraza", "du nord terraza"
-                - "Le Petit" → users may say: "petit", "le petit", "el petit"
-                - "La Esquina" → users may say: "esquina", "la esquina"
-                - "El Contenedor" → users may say: "contenedor", "el contenedor"
-                - "La Crepería" → users may say: "creperia", "crepes", "la creperia"
-                - "du Nord H" → users may say: "du nord h", "norte h", "h"
-                - "La Gelateria" → users may say: "gelateria", "gelatos", "helados"
-                - "Hot Dogs" → users may say: "hot dogs", "hotdogs", "perros"
-                
-                **STORES & SERVICES:**
-                - "Librería y Papelería KM5" → users may say: "libreria", "papeleria", "km5", "libreria km5"
-                - "du Nord Store" → users may say: "store", "tienda", "du nord store", "norte store"
-                - "du Nord Graphique" → users may say: "graphique", "graphic", "grafic", "graphit", "du nord graphic"
-                - "Almacen Mapuka" → users may say: "mapuka", "almacen mapuka"
-                - "Droguería" → users may say: "drogueria", "farmacia", "drugstore"
-                
-                **SPORTS & RECREATION:**
-                - "Gimnasio Uninorte" → users may say: "gimnasio", "gym", "gimnasio uninorte"
-                - "Coliseo" → users may say: "coliseo", "coliseum"
-                - "Centro Deportivo Roble Amarillo" → users may say: "roble amarillo", "centro deportivo", "roble"
-                
-                **DIGITAL & OTHER:**
-                - "Zonas Digitales" → users may say: "zonas digitales", "digital zones", "zonas"
-                - "Le Salón" → users may say: "salon", "le salon", "el salon"
-                - "Vending Machines" → users may say: "vending", "maquinas", "vending machines"
+                        ## UNIVERSITY PREMISES CONTEXT ##
+                        
+                        AVAILABLE UNIVERSITY PLACES (be flexible with names and spellings):
+                        
+                        **RESTAURANTS & FOOD:**
+                        - "Restaurante Bocas de Ceniza" → users may say: "bocas", "bocas de ceniza", "bocas restaurant"
+                        - "Restaurante du Nord Plaza" → users may say: "plaza", "du nord plaza", "norte plaza", "restaurant plaza"
+                        - "Café du Nord" → users may say: "cafe", "du nord cafe", "cafe du nord", "norte cafe"
+                        - "Restaurante 1966" → users may say: "1966", "restaurant 1966", "mil novecientos"
+                        - "du Nord Exprès" → users may say: "express", "du nord express", "expres", "norte express"
+                        - "du Nord Terrasse" → users may say: "terrasse", "terrace", "terraza", "du nord terraza"
+                        - "Le Petit" → users may say: "petit", "le petit", "el petit"
+                        - "La Esquina" → users may say: "esquina", "la esquina"
+                        - "El Contenedor" → users may say: "contenedor", "el contenedor"
+                        - "La Crepería" → users may say: "creperia", "crepes", "la creperia"
+                        - "du Nord H" → users may say: "du nord h", "norte h", "h"
+                        - "La Gelateria" → users may say: "gelateria", "gelatos", "helados"
+                        - "Hot Dogs" → users may say: "hot dogs", "hotdogs", "perros"
+                        
+                        **STORES & SERVICES:**
+                        - "Librería y Papelería KM5" → users may say: "libreria", "papeleria", "km5", "libreria km5"
+                        - "du Nord Store" → users may say: "store", "tienda", "du nord store", "norte store"
+                        - "du Nord Graphique" → users may say: "graphique", "graphic", "grafic", "graphit", "du nord graphic"
+                        - "Almacen Mapuka" → users may say: "mapuka", "almacen mapuka"
+                        - "Droguería" → users may say: "drogueria", "farmacia", "drugstore"
+                        
+                        **SPORTS & RECREATION:**
+                        - "Gimnasio Uninorte" → users may say: "gimnasio", "gym", "gimnasio uninorte"
+                        - "Coliseo" → users may say: "coliseo", "coliseum"
+                        - "Centro Deportivo Roble Amarillo" → users may say: "roble amarillo", "centro deportivo", "roble"
+                        
+                        **DIGITAL & OTHER:**
+                        - "Zonas Digitales" → users may say: "zonas digitales", "digital zones", "zonas"
+                        - "Le Salón" → users may say: "salon", "le salon", "el salon"
+                        - "Vending Machines" → users may say: "vending", "maquinas", "vending machines"
 
-                ## ROUTING RULES ##
-                
-                ALWAYS ROUTE TO "FUNCTION_NEEDED" WHEN:
-                1. User asks about ANY SPECIFIC PERSON by name who could be university staff/faculty/employee
-                2. User wants to find contact information for university personnel
-                3. User asks about professor/staff office locations or contact details
-                4. User mentions wanting to locate or contact university personnel
-                5. User asks questions like "¿Dónde está el profesor X?", "¿Cómo contacto a...?", "¿Cuál es la oficina de...?"
-                6. User mentions specific names of university staff/faculty
-                7. User asks about departments heads, coordinators, or administrative staff
-                8. User needs to find university employee information
-                
-                **PREMISES-RELATED QUERIES (ALWAYS FUNCTION_NEEDED):**
-                9. Ask about ANY university premises from the list above (even with misspellings)
-                10. Questions about locations: "¿Dónde está/queda...?", "Where is...?", "ubicación de..."
-                11. Questions about schedules/hours: "¿A qué hora abre/cierra...?", "What time does ... open/close?", "horarios de..."
-                12. Questions about services: "¿Qué venden en...?", "What do they sell at...?", "servicios de..."
-                13. General facility questions: "¿Cómo es...?", "Tell me about...", "información sobre..."
-                14. ANY question that could relate to campus facilities, restaurants, stores, or services
+                        ## ROUTING RULES ##
+                        
+                        ALWAYS ROUTE TO "FUNCTION_NEEDED" WHEN:
+                        1. User asks about ANY SPECIFIC PERSON by name who could be university staff/faculty/employee
+                        2. User wants to find contact information for university personnel
+                        3. User asks about professor/staff office locations or contact details
+                        4. User mentions wanting to locate or contact university personnel
+                        5. User asks questions like "¿Dónde está el profesor X?", "¿Cómo contacto a...?", "¿Cuál es la oficina de...?"
+                        6. User mentions specific names of university staff/faculty
+                        7. User asks about departments heads, coordinators, or administrative staff
+                        8. User needs to find university employee information
+                        9. User asks about university staff roles or responsibilities
+                        10. User asks for things to do outside the university, like events or places to visit in Barranquilla or any other location
+                        11. User asks about university premises, facilities, or services
+                        12. User asks about restaurant menus, food prices, meal options, or dining services
+                        13. User asks about specific places on campus, even with misspellings or partial names
+                        14. User asks about events happening in any location (concerts, festivals, activities, etc.)
+                        15. User asks about restaurants outside the university in any city or location
+                        16. User asks about places to visit, tourist attractions, or things to do in any location
+                        17. User requests to send or receive information via email
+                        18. User asks about NAIA's roles, capabilities, or what NAIA can do
+                        19. User wants to know about NAIA's services or available functions
+                        20. User asks questions like "what can you do", "what roles do you have", "tell me about your capabilities"
+                                        
+                        **PREMISES-RELATED QUERIES (ALWAYS FUNCTION_NEEDED):**
+                        21. Ask about ANY university premises from the list above (even with misspellings)
+                        22. Questions about locations: "¿Dónde está/queda...?", "Where is...?", "ubicación de..."
+                        23. Questions about schedules/hours: "¿A qué hora abre/cierra...?", "What time does ... open/close?", "horarios de..."
+                        24. Questions about services: "¿Qué venden en...?", "What do they sell at...?", "servicios de..."
+                        25. General facility questions: "¿Cómo es...?", "Tell me about...", "información sobre..."
+                        26. ANY question that could relate to campus facilities, restaurants, stores, or services
 
-                **MENU/FOOD-RELATED QUERIES (ALWAYS FUNCTION_NEEDED):**
-                15. Questions about restaurant menus: "¿Cuál es el menú de...?", "What's on the menu at...?", "menú del..."
-                16. Questions about food prices: "¿Cuánto cuesta...?", "What are the prices at...?", "precios del..."
-                17. Questions about meal options: "¿Qué comida hay en...?", "What food do they serve...?", "opciones de comida"
-                18. Questions about specific dishes or drinks: "¿Tienen pizza?", "Do they serve coffee?", "bebidas disponibles"
-                19. Questions about dietary options: "¿Hay opciones veganas?", "Do they have gluten-free food?", "comida saludable"
-                20. User does not know what to eat or asks for suggestions: "No sé qué comer hoy", "What should I eat today?", "Sugerencias de comida"
-                21. Anything related to food on campus, restaurant services, or dining options
-                22. User wants the menu or food information for a specific restaurant or place on campus
+                        **MENU/FOOD-RELATED QUERIES (ALWAYS FUNCTION_NEEDED):**
+                        27. Questions about restaurant menus: "¿Cuál es el menú de...?", "What's on the menu at...?", "menú del..."
+                        28. Questions about food prices: "¿Cuánto cuesta...?", "What are the prices at...?", "precios del..."
+                        29. Questions about meal options: "¿Qué comida hay en...?", "What food do they serve...?", "opciones de comida"
+                        30. Questions about specific dishes or drinks: "¿Tienen pizza?", "Do they serve coffee?", "bebidas disponibles"
+                        31. Questions about dietary options: "¿Hay opciones veganas?", "Do they have gluten-free food?", "comida saludable"
+                        32. User does not know what to eat or asks for suggestions: "No sé qué comer hoy", "What should I eat today?", "Sugerencias de comida"
+                        33. Anything related to food on campus, restaurant services, or dining options
+                        34. User wants the menu or food information for a specific restaurant or place on campus
 
-                **SMART MATCHING FOR PREMISES:**
-                - Be flexible with spelling variations and abbreviations
-                - Consider context clues (e.g., "cierra" = closing time, "queda" = location)
-                - Match partial names (e.g., "plaza" = "Restaurante du Nord Plaza")
-                - Handle language mixing (English/Spanish)
-                - Recognize common misspellings (e.g., "graphit" = "du Nord Graphique")
+                        **LOCATION-BASED QUERIES (ALWAYS FUNCTION_NEEDED):**
+                        35. Questions about events in any location: "¿Qué eventos hay en...?", "What's happening in...?", "actividades en..."
+                        36. Questions about restaurants in any city: "¿Dónde comer en...?", "Best restaurants in...", "restaurantes en..."
+                        37. Questions about places to visit: "¿Qué visitar en...?", "Places to see in...", "sitios turísticos en..."
+                        38. Questions about things to do: "¿Qué hacer en...?", "What to do in...", "actividades en..."
+                        39. User wants recommendations for any location outside the university
 
-                EXAMPLES OF "FUNCTION_NEEDED":
-                **STAFF QUERIES:**
-                - "¿Dónde está la oficina del profesor García?"
-                - "Necesito contactar al Dr. Rodríguez"
-                - "Find Professor Smith's office"
-                - "Contact info for coordinator López"
+                        **EMAIL-RELATED QUERIES (ALWAYS FUNCTION_NEEDED):**
+                        40. User asks to send information via email: "Envíame esto por email", "Send me this by email"
+                        41. User wants to receive details by email: "Mándame los detalles", "Email me the information"
+                        42. Any request involving sending or receiving information through email
 
-                **PREMISES QUERIES:**
-                - "¿A qué hora cierra el graphit?" → du Nord Graphique
-                - "¿Dónde queda el plaza?" → Restaurante du Nord Plaza  
-                - "What time does the gym open?" → Gimnasio Uninorte
-                - "¿Qué venden en la librería?" → Librería y Papelería KM5
-                - "¿Dónde está bocas de ceniza?" → Restaurante Bocas de Ceniza
-                - "horarios del cafe" → Café du Nord
-                - "ubicación de la gelateria" → La Gelateria
-                - "Where is the store?" → du Nord Store
-                - "¿Cómo llego al salon?" → Le Salón
+                        **NAIA CAPABILITIES QUERIES (ALWAYS FUNCTION_NEEDED):**
+                        43. Questions about NAIA's roles: "¿Qué roles tienes?", "What roles do you have?", "cuéntame sobre tus roles"
+                        44. Questions about NAIA's capabilities: "¿Qué puedes hacer?", "What can you do?", "qué servicios ofreces"
+                        45. User wants to understand NAIA's functions: "Explícame tus funciones", "Tell me about your capabilities"
+                        46. Questions about available services: "¿Qué servicios tienes?", "What services are available?"
 
-                **MENU/FOOD QUERIES:**
-                - "¿Cuáles son los precios del menú del plaza?" → query_recepcionist_rag
-                - "¿Qué comida sirven en bocas de ceniza?" → query_recepcionist_rag
-                - "What's on the menu at du Nord Plaza?" → query_recepcionist_rag
-                - "¿Cuánto cuesta un almuerzo en...?" → query_recepcionist_rag
-                - "¿Tienen opciones veganas?" → query_recepcionist_rag
-                - "menu del restaurante 1966" → query_recepcionist_rag
-                - "precios de las bebidas" → query_recepcionist_rag
-                - Show me the menu for Bocas de Ceniza → query_recepcionist_rag
-                - "What food options are available at the cafeteria?" → query_recepcionist_rag
+                        **SMART MATCHING FOR PREMISES:**
+                        - Be flexible with spelling variations and abbreviations
+                        - Consider context clues (e.g., "cierra" = closing time, "queda" = location)
+                        - Match partial names (e.g., "plaza" = "Restaurante du Nord Plaza")
+                        - Handle language mixing (English/Spanish)
+                        - Recognize common misspellings (e.g., "graphit" = "du Nord Graphique")
 
-                EXAMPLES OF "NO_FUNCTION_NEEDED" (VERY LIMITED):
-                - "Hola, ¿cómo estás?"
-                - "¿Cuál es tu nombre?"
-                - "¿Qué puedes hacer?"
-                - "Gracias por la información"
-                - "¿Cómo funciona la universidad?"
-                - "¿Qué servicios tienes?"
-                - General conversation without specific person names or place references
+                        EXAMPLES OF "FUNCTION_NEEDED":
+                        **STAFF QUERIES:**
+                        - "¿Dónde está la oficina del profesor García?"
+                        - "Necesito contactar al Dr. Rodríguez"
+                        - "Find Professor Smith's office"
+                        - "Contact info for coordinator López"
 
-                ## CONTEXT-AWARE ROUTING ##
-                
-                PREVIOUS MESSAGES: {last_messages_text}
+                        **PREMISES QUERIES:**
+                        - "¿A qué hora cierra el graphit?" → du Nord Graphique
+                        - "¿Dónde queda el plaza?" → Restaurante du Nord Plaza  
+                        - "What time does the gym open?" → Gimnasio Uninorte
+                        - "¿Qué venden en la librería?" → Librería y Papelería KM5
+                        - "¿Dónde está bocas de ceniza?" → Restaurante Bocas de Ceniza
+                        - "horarios del cafe" → Café du Nord
+                        - "ubicación de la gelateria" → La Gelateria
+                        - "Where is the store?" → du Nord Store
+                        - "¿Cómo llego al salon?" → Le Salón
 
-                Analyze the conversation context:
-                - If the assistant previously offered to search and user responds with acceptance ("sí", "yes", "por favor", "ok"), route to FUNCTION_NEEDED
-                - If user is asking follow-up questions about finding someone or some place, route to FUNCTION_NEEDED  
-                - If user mentions any name that could be university personnel, route to FUNCTION_NEEDED
-                - If user mentions any place name (even partial/misspelled) from the premises list, route to FUNCTION_NEEDED
+                        **MENU/FOOD QUERIES:**
+                        - "¿Cuáles son los precios del menú del plaza?" → query_recepcionist_rag
+                        - "¿Qué comida sirven en bocas de ceniza?" → query_recepcionist_rag
+                        - "What's on the menu at du Nord Plaza?" → query_recepcionist_rag
+                        - "¿Cuánto cuesta un almuerzo en...?" → query_recepcionist_rag
+                        - "¿Tienen opciones veganas?" → query_recepcionist_rag
+                        - "menu del restaurante 1966" → query_recepcionist_rag
+                        - "precios de las bebidas" → query_recepcionist_rag
+                        - "Show me the menu for Bocas de Ceniza" → query_recepcionist_rag
+                        - "What food options are available at the cafeteria?" → query_recepcionist_rag
 
-                **RETRY/REPEAT DETECTION (CRITICAL):**
-                - If the conversation shows a previous function call/attempt and user says ANYTHING indicating they want to try again → ALWAYS route to FUNCTION_NEEDED
-                - Retry indicators: "inténtalo otra vez", "try again", "hazlo de nuevo", "otra vez", "again", "retry", "repeat", "do it again", "prueba otra vez", "vuelve a intentar"
-                - If there was a function error or failure in previous messages and user wants to retry → FUNCTION_NEEDED
-                - If user is asking for the same information that was previously attempted → FUNCTION_NEEDED
+                        **LOCATION-BASED QUERIES:**
+                        - "¿Qué eventos hay en Barranquilla?" → get_location_events
+                        - "Best restaurants in Cartagena" → get_restaurants
+                        - "¿Qué visitar en Santa Marta?" → get_location_places
+                        - "Things to do in Medellín" → get_location_places
+                        - "Concerts in Bogotá" → get_location_events
 
-                **CRITICAL RULES:**
-                1. If the user mentions ANY name of a person who could potentially be university staff, faculty, or employee → ALWAYS route to FUNCTION_NEEDED
-                2. If the user mentions ANY place, location, facility, restaurant, store, or service that could be on campus → ALWAYS route to FUNCTION_NEEDED
-                3. If the user asks about schedules, hours, locations, or services → ALWAYS route to FUNCTION_NEEDED
-                4. If the user asks to retry, repeat, or try again after a previous function attempt → ALWAYS route to FUNCTION_NEEDED
+                        **EMAIL QUERIES:**
+                        - "Send me this information by email" → send_email
+                        - "Envíame los detalles por correo" → send_email
+                        - "Email me the menu" → send_email
 
-                **DEFAULT BEHAVIOR**: When in doubt about ANY request that could involve finding university personnel OR campus facilities → ALWAYS choose FUNCTION_NEEDED
+                        **NAIA CAPABILITIES QUERIES:**
+                        - "¿Qué roles tienes?" → explain_naia_roles
+                        - "What can you do?" → explain_naia_roles
+                        - "Tell me about your capabilities" → explain_naia_roles
+                        - "Cuéntame sobre tus funciones" → explain_naia_roles
 
-                WHEN IN DOUBT: Choose "FUNCTION_NEEDED". It's better to route to functions unnecessarily than to miss helping users find university personnel or premises information.
+                        EXAMPLES OF "NO_FUNCTION_NEEDED" (VERY LIMITED):
+                        - "Hola, ¿cómo estás?"
+                        - "¿Cuál es tu nombre?"
+                        - "Gracias por la información"
+                        - "¿Cómo funciona la universidad?" (general question)
+                        - General conversation without specific person names, place references, or function requests
 
-                YOU MUST RESPOND WITH EXACTLY ONE OF THESE PHRASES (no additional text):
-                - "FUNCTION_NEEDED"
-                - "NO_FUNCTION_NEEDED"
-                
-                CURRENT UTC TIME: {current_utc_time}
-                Universidad del Norte is located in Barranquilla, Colombia, which is in the GMT-5 timezone. The current time in Barranquilla is {current_bogota_time.strftime('%Y-%m-%d %H:%M:%S')}.
-                User message: {{user_input}}
-                """
+                        ## CONTEXT-AWARE ROUTING ##
+                        
+                        PREVIOUS MESSAGES: {last_messages_text}
+
+                        Analyze the conversation context:
+                        - If the assistant previously offered to search and user responds with acceptance ("sí", "yes", "por favor", "ok"), route to FUNCTION_NEEDED
+                        - If user is asking follow-up questions about finding someone or some place, route to FUNCTION_NEEDED  
+                        - If user mentions any name that could be university personnel, route to FUNCTION_NEEDED
+                        - If user mentions any place name (even partial/misspelled) from the premises list, route to FUNCTION_NEEDED
+                        - If user asks about events, restaurants, or places in any location, route to FUNCTION_NEEDED
+                        - If user requests email functionality, route to FUNCTION_NEEDED
+                        - If user asks about NAIA's capabilities or roles, route to FUNCTION_NEEDED
+
+                        **RETRY/REPEAT DETECTION (CRITICAL):**
+                        - If the conversation shows a previous function call/attempt and user says ANYTHING indicating they want to try again → ALWAYS route to FUNCTION_NEEDED
+                        - Retry indicators: "inténtalo otra vez", "try again", "hazlo de nuevo", "otra vez", "again", "retry", "repeat", "do it again", "prueba otra vez", "vuelve a intentar"
+                        - If there was a function error or failure in previous messages and user wants to retry → FUNCTION_NEEDED
+                        - If user is asking for the same information that was previously attempted → FUNCTION_NEEDED
+
+                        **CRITICAL RULES:**
+                        1. If the user mentions ANY name of a person who could potentially be university staff, faculty, or employee → ALWAYS route to FUNCTION_NEEDED
+                        2. If the user mentions ANY place, location, facility, restaurant, store, or service that could be on campus → ALWAYS route to FUNCTION_NEEDED
+                        3. If the user asks about schedules, hours, locations, or services → ALWAYS route to FUNCTION_NEEDED
+                        4. If the user asks to retry, repeat, or try again after a previous function attempt → ALWAYS route to FUNCTION_NEEDED
+                        5. If the user asks about events, restaurants, or places to visit in ANY location → ALWAYS route to FUNCTION_NEEDED
+                        6. If the user requests email functionality → ALWAYS route to FUNCTION_NEEDED
+                        7. If the user asks about NAIA's roles, capabilities, or functions → ALWAYS route to FUNCTION_NEEDED
+
+                        **DEFAULT BEHAVIOR**: When in doubt about ANY request that could involve finding university personnel, campus facilities, location-based information, email functionality, or NAIA capabilities → ALWAYS choose FUNCTION_NEEDED
+
+                        WHEN IN DOUBT: Choose "FUNCTION_NEEDED". It's better to route to functions unnecessarily than to miss helping users find university personnel, premises information, location-based services, email functionality, or NAIA capability explanations.
+
+                        YOU MUST RESPOND WITH EXACTLY ONE OF THESE PHRASES (no additional text):
+                        - "FUNCTION_NEEDED"
+                        - "NO_FUNCTION_NEEDED"
+                        
+                        CURRENT UTC TIME: {current_utc_time}
+                        Universidad del Norte is located in Barranquilla, Colombia, which is in the GMT-5 timezone. The current time in Barranquilla is {current_bogota_time.strftime('%Y-%m-%d %H:%M:%S')}.
+                        User message: {{user_input}}
+                        """
         function_prompt = f"""You are operating the RECEPTION ROLE of NAIA, an advanced multi-role AI avatar created by Universidad del Norte. NAIA is a multirole assistant, and at this time you are in the RECEPTION ROLE, which provides administrative support and information services for the university community.
 
         USER ID: {user_id}
@@ -533,7 +616,19 @@ class RecepcionistService:
         - USE WHEN: User asks about places to visit, tourist sites, or activities in a city
         - EXAMPLES: "Places to visit in Santa Marta", "¿Qué hacer en Medellín?", "Tourist attractions in Cartagena"
         - RETURNS: Places overview plus interactive travel guide
-            
+
+        7. **send_email**: Send an email to the user with the provided information
+        - PURPOSE: Send an email to the user with the provided information
+        - USE WHEN: User requests to receive information via email
+        - EXAMPLES: "Send me the details via email", "Please email this information to me"
+        - RETURNS: Confirmation message that the email was sent successfully
+
+        8. explain_naia_roles:
+        - PURPOSE: Show a visual explanation of all NAIA roles and capabilities
+        - USE WHEN: User asks about NAIA's roles, capabilities, or what NAIA can do
+        - KEY INDICATOR: Questions like "what roles do you have", "what can you do", "explain your capabilities", "what services do you provide"
+        - EXAMPLES: "What roles can you perform?", "Tell me about your roles", "What can you do?", "Show me NAIA's capabilities"
+        - CRITICAL: ALWAYS use this function when the user asks about NAIA's roles or capabilities            
             
         
         ## ROLE-SPECIFIC GUIDELINES
@@ -616,6 +711,13 @@ class RecepcionistService:
 
         **REMEMBER:** Sometimes technical issues prevent image loading. When this happens, you'll receive the same prompt but WITHOUT the image. In these cases, proceed with normal conversation and make NO visual observations whatsoever.
 
+
+        PLATFORM AWARENESS:
+        - You are part of NAIA, a multi-role AI assistant platform at Universidad del Norte
+        - You can explain all available NAIA roles when users ask about capabilities
+        - When users ask "what can you do?" or "what roles do you have?", suggest them that you can explain all roles in depth
+        - Use the explain_naia_roles function to show a visual carousel of all NAIA roles
+        - NAIA has 5 specialized roles: Researcher, Skills Trainer, Personal Assistant, Uniguide and Recepcionist
 
         YOUR ABSOLUTE PRIORITY: Return ALL responses in this exact JSON array format:
         [
