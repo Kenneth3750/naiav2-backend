@@ -12,6 +12,9 @@ from apps.skills.models import TrainingReport
 from datetime import timezone, timedelta
 from serpapi import GoogleSearch
 from services.files import B2FileService
+import redis
+from apps.chat.repositories import redis_pool
+from apps.chat.repositories import ChatRepository
 load_dotenv()
 
 openai_api_key = os.getenv("open_ai")
@@ -38,6 +41,7 @@ def simulate_job_interview(job_position: str, company_type: str, user_instructio
     """
     try:
         set_status(user_id, status, 4) 
+        update_questionnaire_status(user_id)
         
         is_spanish = language.lower().startswith('es') or 'spanish' in language.lower()
         
@@ -1051,24 +1055,37 @@ def clean_json_response(content: str) -> dict:
             "search_query": "professional business attire"
         }
 
-def generate_training_report(training_type: str, training_data: str, user_id: int, status: str, use_synthetic_data: bool = False) -> Dict:
+def generate_training_report(
+    training_type: str, 
+    user_id: int, 
+    status: str, 
+    use_synthetic_data: bool = False,
+    special_instructions: str = "",
+    session_duration: str = "",
+    difficulty_level: str = "",
+    key_topics_covered: str = ""
+) -> Dict:
     """
     Generates a comprehensive training report in HTML format with visual elements,
     saves it to the database, and returns it for display/PDF conversion.
     
     Args:
         training_type (str): Type of training ("job_interview_simulation", "professional_appearance_analysis")
-        training_data (str): JSON string or text with training session data
         user_id (int): User ID
         status (str): Status message for tracking
         use_synthetic_data (bool): Whether to generate synthetic data for testing
+        special_instructions (str): Special recommendations/insights that NAIA detected during simulation
+        session_duration (str): Duration of the training session
+        difficulty_level (str): Difficulty level detected during the session
+        key_topics_covered (str): Main topics or areas covered during the training
         
     Returns:
         dict: Dictionary with the generated report and success status
     """
     try:
         set_status(user_id, status, 4)  # 4 = skills trainer role
-        
+        chat = ChatRepository()
+
         # Get current time in Bogotá timezone (UTC-5)
         bogota_tz = timezone(timedelta(hours=-5))
         current_time = datetime.now(bogota_tz)
@@ -1115,30 +1132,68 @@ CONTENT GUIDELINES:
 - Reference best practices and industry standards
 - Maintain constructive tone throughout
 - CRITICAL: Use only standard ASCII characters and CSS symbols (●, ▲, ★, ♦, →, ←, ↑, ↓) instead of Unicode emojis to avoid database encoding issues
-- CRITICAL: Use only basic ASCII characters and CSS symbols (●, ▲, ★, ♦, →, ←, ↑, ↓) - NO Unicode emojis
-
-OUTPUT: Return ONLY clean HTML code with embedded CSS styling. No explanations or additional text. IMPORTANT: Use only ASCII characters and basic symbols to ensure database compatibility. Ensure all content uses standard ASCII characters to avoid encoding issues.d objectives
-- Reference best practices and industry standards
-- Maintain constructive tone throughout
 - Include both qualitative and quantitative assessments
 
-OUTPUT: Return ONLY clean HTML code with embedded CSS styling. No explanations or additional text."""
+OUTPUT: Return ONLY clean HTML code with embedded CSS styling. No explanations or additional text. IMPORTANT: Use only ASCII characters and basic symbols to ensure database compatibility."""
 
-        # Determine if we should use synthetic data or real data
+        # Build messages array for the model
+        messages = [{"role": "system", "content": system_prompt}]
+        
+        # Handle real data vs synthetic data
         if use_synthetic_data:
-            data_instruction = "Generate realistic synthetic training data for demonstration purposes. Create a comprehensive example session with realistic responses, feedback, and performance metrics."
-        else:
-            data_instruction = f"Use the following real training session data: {training_data}"
+            # For synthetic data, don't include conversation context
+            user_prompt_content = f"""Create a comprehensive {training_type.replace('_', ' ')} report using SYNTHETIC/EXAMPLE DATA for demonstration purposes.
 
-        # Create the user prompt based on training type
-        if training_type == "job_interview_simulation":
-            user_prompt = f"""Create a comprehensive job interview simulation report with the following details:
-
-TRAINING TYPE: Job Interview Simulation
+TRAINING TYPE: {training_type}
 USER ID: {user_id}
 SESSION DATE: {current_time.strftime('%B %d, %Y at %I:%M %p')} (Bogotá time)
 
-DATA INSTRUCTION: {data_instruction}
+IMPORTANT: Generate realistic synthetic training data for this demonstration. Create a comprehensive example session with realistic responses, feedback, and performance metrics. This is NOT based on real user data.
+
+Generate example data that includes realistic:
+- Training session interactions and responses
+- Performance metrics and scores
+- Feedback and observations
+- Skills assessment results
+- Improvement recommendations"""
+            
+        else:
+            # For real data, include the full conversation context
+            current_messages = chat.get_current_conversation(user_id, 4)
+            
+            # Add conversation context first
+            context_prompt = "CONVERSATION CONTEXT:\nThe following is the complete conversation history from the training session. Use this context to analyze the user's performance, responses, and interactions to create an accurate and personalized report:\n\n"
+            
+            for msg in current_messages:
+                role = msg.get('role', 'unknown')
+                content = msg.get('content', '')
+                context_prompt += f"[{role.upper()}]: {content}\n\n"
+            
+            user_prompt_content = f"""{context_prompt}
+
+TRAINING SESSION DETAILS:
+TRAINING TYPE: {training_type}
+USER ID: {user_id}
+SESSION DATE: {current_time.strftime('%B %d, %Y at %I:%M %p')} (Bogotá time)"""
+
+            # Add optional details if provided
+            if session_duration:
+                user_prompt_content += f"\nSESSION DURATION: {session_duration}"
+            if difficulty_level:
+                user_prompt_content += f"\nDIFFICULTY LEVEL: {difficulty_level}"
+            if key_topics_covered:
+                user_prompt_content += f"\nKEY TOPICS COVERED: {key_topics_covered}"
+            if special_instructions:
+                user_prompt_content += f"\nSPECIAL NAIA RECOMMENDATIONS: {special_instructions}"
+
+            user_prompt_content += f"""
+
+INSTRUCTIONS: 
+Use the conversation context above to create a detailed and accurate training report. Analyze the user's actual responses, performance, and interactions throughout the session. Base your assessment on the real conversation data provided."""
+
+        # Add training-specific instructions
+        if training_type == "job_interview_simulation":
+            user_prompt_content += """
 
 Generate a professional HTML report that includes:
 1. Interview session overview (position, duration, questions asked)
@@ -1155,18 +1210,10 @@ Make the report visually engaging with:
 - Individual question performance charts
 - Skill competency matrix
 - Professional development roadmap
-- Color-coded feedback sections
-
-Ensure the report is comprehensive, actionable, and encouraging while maintaining professional standards."""
+- Color-coded feedback sections"""
 
         elif training_type == "professional_appearance_analysis":
-            user_prompt = f"""Create a comprehensive professional appearance analysis report with the following details:
-
-TRAINING TYPE: Professional Appearance Analysis
-USER ID: {user_id}
-SESSION DATE: {current_time.strftime('%B %d, %Y at %I:%M %p')} (Bogotá time)
-
-DATA INSTRUCTION: {data_instruction}
+            user_prompt_content += """
 
 Generate a professional HTML report that includes:
 1. Appearance assessment overview (context, occasion, analysis scope)
@@ -1183,19 +1230,11 @@ Make the report visually engaging with:
 - Category-specific performance indicators (attire, grooming, posture)
 - Before/after improvement visualization concepts
 - Professional styling guide elements
-- Color-coded recommendation priorities
-
-Ensure the report is constructive, specific, and professionally encouraging."""
+- Color-coded recommendation priorities"""
 
         else:
             # Generic training report
-            user_prompt = f"""Create a comprehensive training session report with the following details:
-
-TRAINING TYPE: {training_type}
-USER ID: {user_id}
-SESSION DATE: {current_time.strftime('%B %d, %Y at %I:%M %p')} (Bogotá time)
-
-DATA INSTRUCTION: {data_instruction}
+            user_prompt_content += """
 
 Generate a professional HTML report that includes:
 1. Training session overview and objectives
@@ -1205,17 +1244,17 @@ Generate a professional HTML report that includes:
 5. Strengths and areas for development
 6. Personalized improvement recommendations
 7. Action plan and next steps
-8. Progress tracking elements
+8. Progress tracking elements"""
 
-Make the report comprehensive, actionable, and visually professional."""
+        user_prompt_content += "\n\nEnsure the report is comprehensive, actionable, and visually professional with appropriate ASCII characters and CSS symbols only."
+
+        # Add the user prompt to messages
+        messages.append({"role": "user", "content": user_prompt_content})
 
         # Generate the report using OpenAI
         response = client.chat.completions.create(
             model="gpt-4.1",
-            messages=[
-                {"role": "system", "content": system_prompt},
-                {"role": "user", "content": user_prompt}
-            ],
+            messages=messages,
             temperature=0.7
         )
         
@@ -1274,7 +1313,6 @@ Make the report comprehensive, actionable, and visually professional."""
     except Exception as e:
         print(f"Error generating training report: {str(e)}")
         return {"error": str(e)}
-    
 
 
 def list_recent_training_reports(user_id: int, limit: int = 10, status: str = "") -> dict:
@@ -1624,3 +1662,32 @@ Crea un CV único que destaque según todos los parámetros proporcionados."""
         return {
             "error": f"Error inesperado: {str(e)}"
         }
+    
+
+
+
+
+
+
+
+def update_questionnaire_status(user_id: int) -> str:
+    try:
+        r = redis.Redis(connection_pool=redis_pool)
+        key = f"questionnaire_status_4_{user_id}"
+        status = r.set(key, 1, ex=1800)
+        return status
+    except Exception as e:
+        print(f"Error updating questionnaire status: {str(e)}")
+        return f"Error: {str(e)}"
+
+def get_current_questionnaire_status(user_id: int) -> bool:
+    try:
+        r = redis.Redis(connection_pool=redis_pool)
+        key = f"questionnaire_status_4_{user_id}"
+        status = r.get(key)
+        if status is None:
+            return False
+        return True
+    except Exception as e:
+        print(f"Error retrieving questionnaire status: {str(e)}")
+        return f"Error: {str(e)}"

@@ -772,14 +772,68 @@ def get_weather(location: str, user_id: int, status: str) -> Dict:
         return {"error": str(e)}
     
 
+def get_user_email_from_graph(user_id: int) -> dict:
+    """
+    Gets the authenticated user's email address using Microsoft Graph API.
+    
+    Args:
+        user_id (int): The ID of the user
+        
+    Returns:
+        dict: Contains either the email address or error information
+    """
+    try:
+        # Get user's Microsoft Graph token
+        user_service = UserService()
+        access_token = user_service.get_user_token(user_id)
+        
+        if not access_token:
+            return {"error": "No access token found for user. Please authenticate with Microsoft first."}
+        
+        # Microsoft Graph API endpoint for user profile
+        graph_url = "https://graph.microsoft.com/v1.0/me"
+        
+        # Set up headers with authentication
+        headers = {
+            "Authorization": f"Bearer {access_token}",
+            "Content-Type": "application/json"
+        }
+        
+        # Make the API call to get user profile
+        response = requests.get(graph_url, headers=headers, timeout=30)
+        
+        if response.status_code == 200:
+            user_data = response.json()
+            email = user_data.get('mail') or user_data.get('userPrincipalName')
+            
+            if email:
+                return {"email": email}
+            else:
+                return {"error": "No email address found in user profile"}
+                
+        elif response.status_code == 401:
+            return {"error": "Authentication failed. Please refresh your Microsoft login."}
+        elif response.status_code == 403:
+            return {"error": "Insufficient permissions to read user profile."}
+        else:
+            return {"error": f"Failed to get user email: {response.text}"}
+            
+    except requests.exceptions.Timeout:
+        return {"error": "Request timeout while getting user email"}
+    except requests.exceptions.RequestException as e:
+        return {"error": f"Network error while getting user email: {str(e)}"}
+    except Exception as e:
+        return {"error": f"Unexpected error while getting user email: {str(e)}"}
+
 def send_email_on_behalf_of_user(to_email_or_name: str, subject: str, body: str, user_id: int, status: str = "Enviando correo...") -> dict:
     """
     Sends an email on behalf of the user using Microsoft Graph API with their OAuth token.
-    Can accept either an email address or a contact name. If a name is provided and multiple
-    contacts are found, returns the options for the user to choose.
+    Can accept either an email address, a contact name, or user indicators like "mi correo".
+    If user indicators are detected, automatically uses the authenticated user's email.
+    If a name is provided and multiple contacts are found, returns the options for the user to choose.
     
     Args:
-        to_email_or_name (str): The recipient's email address or name
+        to_email_or_name (str): The recipient's email address, name, or user indicators like "mi correo"
         subject (str): The email subject
         body (str): The email body content
         user_id (int): The ID of the user sending the email
@@ -789,8 +843,8 @@ def send_email_on_behalf_of_user(to_email_or_name: str, subject: str, body: str,
         dict: A dictionary containing either success message, contact options, or error details
     """
     # Validate required fields
-    if not to_email_or_name or not subject or not body:
-        return {"error": "Recipient, subject, and body are required"}
+    if not subject or not body:
+        return {"error": "Subject and body are required"}
         
     if not user_id:
         return {"error": "User ID is required"}
@@ -800,7 +854,35 @@ def send_email_on_behalf_of_user(to_email_or_name: str, subject: str, body: str,
         if user_id:
             set_status(user_id, status, 3)  # role_id 3 for Personal Assistant
         
-        recipient_input = to_email_or_name.strip()
+        # Check if we need to get the user's email automatically
+        user_email_indicators = [
+            "mi correo", "my email", "mi email", "my mail", 
+            "mi dirección", "my address", "mío", "mine", "me", "yo", "I", "myself"
+        ]
+        
+        recipient_input = to_email_or_name.strip() if to_email_or_name else ""
+        
+        # Determine if we need to fetch user's email
+        should_get_user_email = (
+            not recipient_input or 
+            recipient_input.lower() in user_email_indicators or
+            (recipient_input and '@' not in recipient_input and '.' not in recipient_input and len(recipient_input.split()) <= 2 and any(indicator in recipient_input.lower() for indicator in user_email_indicators))
+        )
+        
+        if should_get_user_email:
+            # Get user's email from Microsoft Graph
+            email_result = get_user_email_from_graph(user_id)
+            
+            if "error" in email_result:
+                return email_result
+                
+            user_email = email_result["email"]
+            print(f"Using user's email address: {user_email}")
+            return _send_email_direct(user_email, subject, body, user_id, "yourself")
+        
+        # Validate recipient input
+        if not recipient_input:
+            return {"error": "Recipient is required"}
         
         # Check if input is already an email address
         email_pattern = r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$'

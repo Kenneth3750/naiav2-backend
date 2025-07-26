@@ -13,6 +13,8 @@ import json
 import smtplib
 import os
 from email.mime.text import MIMEText
+import requests
+from apps.users.services import UserService
 
 load_dotenv()
 
@@ -898,12 +900,66 @@ def factual_web_query(query: str, status: str = "", user_id: int = 0) -> dict:
         return {"error": str(e)}
     
 
+def get_user_email_from_graph(user_id: int) -> dict:
+    """
+    Gets the authenticated user's email address using Microsoft Graph API.
+    
+    Args:
+        user_id (int): The ID of the user
+        
+    Returns:
+        dict: Contains either the email address or error information
+    """
+    try:
+        # Get user's Microsoft Graph token
+        user_service = UserService()
+        access_token = user_service.get_user_token(user_id)
+        
+        if not access_token:
+            return {"error": "No access token found for user. Please authenticate with Microsoft first."}
+        
+        # Microsoft Graph API endpoint for user profile
+        graph_url = "https://graph.microsoft.com/v1.0/me"
+        
+        # Set up headers with authentication
+        headers = {
+            "Authorization": f"Bearer {access_token}",
+            "Content-Type": "application/json"
+        }
+        
+        # Make the API call to get user profile
+        response = requests.get(graph_url, headers=headers, timeout=30)
+        
+        if response.status_code == 200:
+            user_data = response.json()
+            email = user_data.get('mail') or user_data.get('userPrincipalName')
+            
+            if email:
+                return {"email": email}
+            else:
+                return {"error": "No email address found in user profile"}
+                
+        elif response.status_code == 401:
+            return {"error": "Authentication failed. Please refresh your Microsoft login."}
+        elif response.status_code == 403:
+            return {"error": "Insufficient permissions to read user profile."}
+        else:
+            return {"error": f"Failed to get user email: {response.text}"}
+            
+    except requests.exceptions.Timeout:
+        return {"error": "Request timeout while getting user email"}
+    except requests.exceptions.RequestException as e:
+        return {"error": f"Network error while getting user email: {str(e)}"}
+    except Exception as e:
+        return {"error": f"Unexpected error while getting user email: {str(e)}"}
+
 def send_email(to_email: str, subject: str, body: str, status: str = "", user_id: int = 0) -> dict:
     """
     Sends an email using Gmail SMTP server.
+    Can automatically detect when to use the authenticated user's email address.
     
     Args:
-        to_email (str): The recipient's email address
+        to_email (str): The recipient's email address or indicators like "mi correo", "my email"
         subject (str): The subject of the email
         body (str): The body content of the email
         status (str, optional): Status message for tracking. Defaults to "".
@@ -918,8 +974,38 @@ def send_email(to_email: str, subject: str, body: str, status: str = "", user_id
         SMTPException: For other SMTP-related errors
     """
     # Validate required fields
-    if not to_email or not subject or not body:
-        return {"error": "Email, subject, and body are required"}
+    if not subject or not body:
+        return {"error": "Subject and body are required"}
+    
+    # Check if we need to get the user's email automatically
+    user_email_indicators = [
+        "mi correo", "my email", "mi email", "my mail", 
+        "mi dirección", "my address", "mío", "mine", "me", "yo", "I", "myself"
+    ]
+    
+    # Determine if we need to fetch user's email
+    should_get_user_email = (
+        not to_email or 
+        to_email.strip().lower() in user_email_indicators or
+        (to_email and '@' not in to_email and '.' not in to_email)
+    )
+    
+    if should_get_user_email:
+        if not user_id:
+            return {"error": "User ID is required to get your email address"}
+            
+        # Get user's email from Microsoft Graph
+        email_result = get_user_email_from_graph(user_id)
+        
+        if "error" in email_result:
+            return email_result
+            
+        to_email = email_result["email"]
+        print(f"Using user's email address: {to_email}")
+    
+    # Validate final email
+    if not to_email:
+        return {"error": "Email address is required"}
         
     # Basic email format validation
     if '@' not in to_email or '.' not in to_email:
@@ -957,7 +1043,6 @@ def send_email(to_email: str, subject: str, body: str, status: str = "", user_id
     except Exception as e:
         print(f"Error al enviar el email: {str(e)}")
         return {"error": str(e)}
-    
 
 
 
