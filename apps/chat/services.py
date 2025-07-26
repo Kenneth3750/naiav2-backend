@@ -21,12 +21,14 @@ class ChatService():
 
         # 0. Verify that number of tokens has not exceeded the limit and resume if necessary
         delete_status(user_id, role_id)
-        first_token_count = num_tokens_from_messages(ChatRepository.get_current_conversation(user_id, role_id))
-        if first_token_count >= critical_number_of_tokens:
-            set_status(user_id,  "The conversation has reached the critical length limit. This response may take a while to generate. Please be patient. / La conversación ha alcanzado el límite crítico de longitud. Esta respuesta puede tardar un tiempo en generarse. Por favor, sea paciente.", role_id)
-            messages = ChatRepository.get_current_conversation(user_id, role_id)
-            messages = self.make_resume(messages)
-            ChatRepository.save_current_conversation(user_id, role_id, json.dumps(messages))
+        messages = ChatRepository.get_current_conversation(user_id, role_id)
+        if messages:
+            first_token_count = num_tokens_from_messages(messages)
+            if first_token_count >= critical_number_of_tokens:
+                set_status(user_id,  "The conversation has reached the critical length limit. This response may take a while to generate. Please be patient. / La conversación ha alcanzado el límite crítico de longitud. Esta respuesta puede tardar un tiempo en generarse. Por favor, sea paciente.", role_id)
+                messages = ChatRepository.get_current_conversation(user_id, role_id)
+                messages = self.make_resume(messages)
+                ChatRepository.save_current_conversation(user_id, role_id, json.dumps(messages))
 
         # 1. Get B2 File Service
         start_time = time.time()
