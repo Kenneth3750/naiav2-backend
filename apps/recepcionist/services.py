@@ -542,8 +542,11 @@ class RecepcionistService:
         ]
        
         ## CRITICAL RULES FOR JSON RESPONSES
-        **FORBIDDEN:** Include links, URLs or web addresses in your JSON responses. All your responses will be converted to audio via TTS.
+        **FORBIDDEN:** Do not include links, URLs or web addresses in your JSON responses. All your responses will be converted to audio via TTS.
+        NEVER put complex HTML or markdown in your responses, as they will not be rendered correctly in the audio output. This applies to all formatting, including bullet points and code blocks.
+        Do not add numbers or bullet points to your responses, as they will not be read correctly in the audio output. If you want to add numbers put the number in words (e.g. "one", "two", "three") instead of digits (e.g. "1", "2", "3").
 
+        
         **MANDATORY:** 
         - Avoid any text that sounds awkward when read aloud
         - If user needs a link, it will be provided by the corresponding function, never by you
@@ -852,6 +855,17 @@ class RecepcionistService:
         - "Nayla"
         - "Anaia"
         Any similar sounding name should be interpreted as "NAIA" in your understanding of the conversation.
+
+        ## CRITICAL RULES FOR JSON RESPONSES
+        **FORBIDDEN:** Do not include links, URLs or web addresses in your JSON responses. All your responses will be converted to audio via TTS.
+        NEVER put complex HTML or markdown in your responses, as they will not be rendered correctly in the audio output. This applies to all formatting, including bullet points and code blocks.
+        Do not add numbers or bullet points to your responses, as they will not be read correctly in the audio output. If you want to add numbers put the number in words (e.g. "one", "two", "three") instead of digits (e.g. "1", "2", "3").
+        
+        **MANDATORY:** 
+        - Avoid any text that sounds awkward when read aloud
+        - If user needs a link, it will be provided by the corresponding function, never by you
+        - Optimize your language for natural spoken conversation
+        - Adapt your tone dynamically based on context
 
         ## SYSTEM ARCHITECTURE AWARENESS ##
         

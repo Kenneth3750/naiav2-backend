@@ -3,10 +3,11 @@ import json
 from services.files import B2FileService
 from .repositories import ChatRepository
 from .functions import num_tokens_from_messages
-from apps.status.services import delete_status
+from apps.status.services import delete_status, set_status
 from apps.roles.services import RoleService
 import time
 max_tokens = 90000
+critical_number_of_tokens = 105000
 
 def read_json_transcript(json_file_path):
     with open(json_file_path, "r") as json_file:
@@ -17,7 +18,16 @@ class ChatService():
     def generate_response(self, user_input, user_id, role_id):
         total_start_time = time.time()
         timing_info = {}
-        
+
+        # 0. Verify that number of tokens has not exceeded the limit and resume if necessary
+        delete_status(user_id, role_id)
+        first_token_count = num_tokens_from_messages(ChatRepository.get_current_conversation(user_id, role_id))
+        if first_token_count >= critical_number_of_tokens:
+            set_status(user_id,  "The conversation has reached the critical length limit. This response may take a while to generate. Please be patient. / La conversación ha alcanzado el límite crítico de longitud. Esta respuesta puede tardar un tiempo en generarse. Por favor, sea paciente.", role_id)
+            messages = ChatRepository.get_current_conversation(user_id, role_id)
+            messages = self.make_resume(messages)
+            ChatRepository.save_current_conversation(user_id, role_id, json.dumps(messages))
+
         # 1. Get B2 File Service
         start_time = time.time()
         file_service = B2FileService()
@@ -26,7 +36,7 @@ class ChatService():
         # 2. Get Role and delete status
         start_time = time.time()
         role = RoleService(role_id)
-        delete_status(user_id, role_id)
+        
         timing_info["role_and_status"] = time.time() - start_time
         
         # 4. Get image URL

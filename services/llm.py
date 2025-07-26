@@ -20,8 +20,8 @@ class LLMService:
         self.tools = tools
 
         self.ROUTER_MODEL = "gpt-4.1-nano"
-        self.CHAT_MODEL = "gpt-4o-mini"
-        self.FUNCTION_MODEL = "gpt-4.1-mini"
+        self.CHAT_MODEL = "gpt-4.1-mini"
+        self.FUNCTION_MODEL = "gpt-4.1"
 
     def _init_conversation(self, messages, user_input, image_url, model_prompt):
 
