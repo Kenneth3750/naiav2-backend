@@ -530,7 +530,9 @@ class ResearcherService:
 
         1. scholar_search: 
         - PURPOSE: Find academic papers and scholarly information
-        - USE WHEN: User needs references, citations, research papers, or academic sources
+        - USE WHEN: User needs references, citations, research papers, or academic sources. If user ask for articles of a certain person, you must use this function. ONLY IF THE USER ASK FOR ACADEMIC LITERATURE OR SCHOLARLY EVIDENCE OF A PERSON OR A TOPIC, USE THIS FUNCTION. IF THE USER ASK FOR MORE GENERAL INFO OR OTHER INFO ABOUT A PERSON, USE FACTUAL_WEB_QUERY.
+        - NEVER USE FOR: General internet searches, document content queries, or information not related to academic literature
+        - ALWAYS USE WHEN: User asks for academic literature, scholarly articles, or research papers whether if a person is involved or only a topic
         - KEY INDICATOR: Any request for academic literature or scholarly evidence
         - EXAMPLES: "Find papers on climate change", "Research on cognitive psychology"
 
