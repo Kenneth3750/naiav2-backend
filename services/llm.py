@@ -22,6 +22,7 @@ class LLMService:
         self.ROUTER_MODEL = "gpt-4.1-nano"
         self.CHAT_MODEL = "gpt-4.1-mini"
         self.FUNCTION_MODEL = "gpt-4.1"
+        self.MODEL_FOR_LAST_RESPONSE = "gpt-4.1-mini"  
 
     def _init_conversation(self, messages, user_input, image_url, model_prompt):
 
@@ -111,16 +112,6 @@ class LLMService:
                 ],
             }
                 
-            print("Fallback: continuando sin imagen debido a error")
-            return {
-                "role": "user",
-                "content": [
-                    {
-                        "type": "text",
-                        "text": user_input
-                    }
-                ],
-            }
 
     
     def _eliminate_image_from_message(self, messages):
@@ -317,11 +308,7 @@ class LLMService:
                         function_results.append(tool_output)
             
             # Get the next response based on the function results
-            completions = self.client.chat.completions.create(
-                model=self.FUNCTION_MODEL,
-                messages=messages,
-                tools=self.tools,
-            )
+            completions = self._call_with_fallback(messages, self.tools)
             response = completions.choices[0].message
             print(f"Next response type: {None if response.content else response}")
         
@@ -335,7 +322,7 @@ class LLMService:
             # Force a final response without tool calls
             print("Hit maximum function chain length, forcing final response")
             completions = self.client.chat.completions.create(
-                model= self.FUNCTION_MODEL,
+                model= self.MODEL_FOR_LAST_RESPONSE,
                 messages=messages,
                 tools=None,  # Disable tools for final response
             )
@@ -360,6 +347,88 @@ class LLMService:
             "image_removed": retry_without_image  
         }
         return json_response
+    
+    def _call_with_fallback(self, messages, tools):
+        """
+        Fallback en cascada:
+        1. GPT-4.1 (inteligente)
+        2. GPT-4o-mini (más TPM disponible) 
+        3. Mensaje predeterminado (último recurso)
+        """
+        models_to_try = [
+            self.FUNCTION_MODEL,  
+            "gpt-4o",
+            "gpt-4.1-mini",
+            "gpt-4o-mini",
+        ]
+        
+        for model in models_to_try:
+            try:
+                print(f"Trying model: {model}")
+                completions = self.client.chat.completions.create(
+                    model=model,
+                    messages=messages,
+                    tools=tools,
+                )
+                return completions
+            except Exception as e:
+                if "rate_limit_exceeded" in str(e) or "429" in str(e):
+                    print(f"TPM exceeded with {model}, trying next fallback...")
+                    continue
+                else:
+                    raise e
+        
+        # Último recurso: respuesta predeterminada
+        print("All models failed due to TPM limits, using default response")
+        return self._create_default_response()
+
+    def _create_default_response(self):
+        """Crea una respuesta predeterminada cuando todos los modelos fallan"""
+        default_content = '''[
+            {
+                "text": "Estoy experimentando alta demanda en este momento.",
+                "facialExpression": "default",
+                "animation": "Talking_0",
+                "language": "es",
+                "tts_prompt": "tono calmado y comprensivo"
+            },
+            {
+                "text": "Los resultados de tu consulta se procesaron correctamente, pero necesito un momento para generar la respuesta completa.",
+                "facialExpression": "smile",
+                "animation": "put_hand_on_chin",
+                "language": "es",
+                "tts_prompt": "tono tranquilizador y servicial"
+            },
+            {
+                "text": "Por favor, intenta nuevamente en unos minutos y podremos continuar nuestra conversación.",
+                "facialExpression": "smile",
+                "animation": "standing_greeting",
+                "language": "es",
+                "tts_prompt": "tono optimista y alentador"
+            },
+            {
+                "text": "Perdón por las molestias"
+                "facialExpression": "sad",
+                "animation": "Talking_0",
+                "language": "es",
+                "tts_prompt": "tono amable y agradecido"
+            }
+        ]'''
+        
+        # Simular estructura de respuesta de OpenAI
+        class MockResponse:
+            def __init__(self, content):
+                self.content = content
+        
+        class MockChoice:
+            def __init__(self, content):
+                self.message = MockResponse(content)
+        
+        class MockCompletion:
+            def __init__(self, content):
+                self.choices = [MockChoice(content)]
+        
+        return MockCompletion(default_content)
     
     @staticmethod
     def delete_thread(thread_id):

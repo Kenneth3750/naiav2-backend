@@ -636,6 +636,7 @@ class RecepcionistService:
             * When user asks only about prices/ingredients without wanting to see menus: leave as null
             * If the user asks for a specific type of food you must include all the restaurants to know what offers that type of food, for example if the user asks for "pizza" you must include all the restaurants and with the descriptions of each one give a correct answer to the user question.
         - RETURNS: Menu information from database plus visual menu displays for selected restaurants
+        - IMPORTANT: This function has the capability to return menus of the restaurants, so if the user asks for menus, you must use this function to get the menus and then answer the user question with the information provided by the function. DO NOT SAY THAT YOU CANNOT PROVIDE MENUS, USE THIS FUNCTION TO GET THE MENUS AND THEN ANSWER THE USER QUESTION.
 
         4. **get_location_events**: Get events happening in a specific location with interactive calendar
         - PURPOSE: Find events, activities, and happenings in any city or location
