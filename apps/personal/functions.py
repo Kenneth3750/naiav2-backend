@@ -1040,8 +1040,8 @@ def _send_email_direct(email: str, subject: str, body: str, user_id: int, recipi
 
 def search_contacts_by_name(name: str, user_id: int, status: str = "Buscando contactos...") -> dict:
     """
-    Optimized contact search using Microsoft Graph API.
-    Searches for the complete name as a unit, not separate parts.
+    Simplified contact search using Microsoft Graph native search.
+    Uses Microsoft's intelligent search algorithms instead of manual filtering.
     
     Args:
         name (str): The complete name to search for
@@ -1080,10 +1080,11 @@ def search_contacts_by_name(name: str, user_id: int, status: str = "Buscando con
         if not access_token:
             return {"error": "No access token found for user. Please authenticate with Microsoft first."}
         
-        # Set up headers with authentication
+        # Set up headers with authentication and required consistency level
         headers = {
             "Authorization": f"Bearer {access_token}",
-            "Content-Type": "application/json"
+            "Content-Type": "application/json",
+            "ConsistencyLevel": "eventual"  # Required for $search queries
         }
         
         all_contacts = []
@@ -1092,16 +1093,14 @@ def search_contacts_by_name(name: str, user_id: int, status: str = "Buscando con
         # URL encode the complete search term
         encoded_name = urllib.parse.quote(search_name)
         
-        print(f"Optimized contact search for complete name: {name}")
+        print(f"Native Microsoft Graph search for: {name}")
         print(f"Encoded search term: {encoded_name}")
         
-        # 1. People Search - Use native search with proper format
+        # 1. People Search - Native Microsoft search
         try:
-            # Try multiple search strategies for People API
             people_queries = [
-                f"https://graph.microsoft.com/v1.0/me/people?$search=\"displayName:{encoded_name}\"&$top=50",
                 f"https://graph.microsoft.com/v1.0/me/people?$search=\"{encoded_name}\"&$top=50",
-                f"https://graph.microsoft.com/v1.0/me/people?$top=100"  # Get more and filter locally
+                f"https://graph.microsoft.com/v1.0/me/people?$search=\"displayName:{encoded_name}\"&$top=50"
             ]
             
             for i, people_url in enumerate(people_queries):
@@ -1115,15 +1114,9 @@ def search_contacts_by_name(name: str, user_id: int, status: str = "Buscando con
                         people_found = len(people_data.get('value', []))
                         print(f"Found {people_found} people in query {i+1}")
                         
-                        search_name_lower = search_name.lower()
                         for person in people_data.get('value', []):
                             display_name = person.get('displayName', '')
                             email_addresses = person.get('emailAddresses', [])
-                            
-                            # For the "get all" query, filter by name match
-                            if i == 2:  # Third query gets all, so we filter
-                                if not any(part.lower() in display_name.lower() for part in search_name.split()):
-                                    continue
                             
                             if email_addresses and email_addresses[0].get('address'):
                                 contact = {
@@ -1139,7 +1132,10 @@ def search_contacts_by_name(name: str, user_id: int, status: str = "Buscando con
                                 }
                                 all_contacts.append(contact)
                                 print(f"Added people contact: {display_name}")
-                        break  # Stop if we got results
+                        
+                        if people_found > 0:
+                            break  # Stop if we got results from first query
+                            
                     else:
                         print(f"People API error: {people_response.status_code} - {people_response.text}")
                         
@@ -1150,117 +1146,34 @@ def search_contacts_by_name(name: str, user_id: int, status: str = "Buscando con
         except Exception as e:
             print(f"Error in people search: {str(e)}")
         
-        # 2. Contacts Search - Get contacts and filter for complete name match
+        # 2. Directory Search - Native Microsoft Graph search
         try:
-            contacts_url = f"https://graph.microsoft.com/v1.0/me/contacts?$top=100"
-            print(f"Contacts search: {contacts_url}")
+            print("Starting native Microsoft Graph directory search...")
             
-            contacts_response = requests.get(contacts_url, headers=headers, timeout=20)
-            print(f"Contacts API response status: {contacts_response.status_code}")
-            
-            if contacts_response.status_code == 200:
-                contacts_data = contacts_response.json()
-                contacts_found = len(contacts_data.get('value', []))
-                print(f"Found {contacts_found} total contacts, filtering for name match")
-                
-                search_name_lower = search_name.lower()
-                for contact_item in contacts_data.get('value', []):
-                    display_name = contact_item.get('displayName', '')
-                    email_addresses = contact_item.get('emailAddresses', [])
-                    
-                    # Only include if the complete search name appears in the display name
-                    if search_name_lower in display_name.lower():
-                        if email_addresses and email_addresses[0].get('address'):
-                            contact = {
-                                "id": f"contact_{contact_item.get('id', '')}",
-                                "displayName": display_name,
-                                "email": email_addresses[0].get('address', ''),
-                                "jobTitle": contact_item.get('jobTitle', ''),
-                                "department": contact_item.get('department', ''),
-                                "companyName": contact_item.get('companyName', ''),
-                                "source": "contacts",
-                                "relevanceScore": 0,
-                                "graph_id": contact_item.get('id', '')
-                            }
-                            all_contacts.append(contact)
-                            print(f"Added contact: {display_name}")
-            else:
-                print(f"Contacts API error: {contacts_response.status_code} - {contacts_response.text}")
-        
-        except Exception as e:
-            print(f"Error in contacts search: {str(e)}")
-        
-        # 3. Directory Search - Use native search and broader queries
-        try:
-            print("Starting enhanced directory search...")
-            
-            directory_queries = []
-            name_parts = search_name.split()
-            
-            # Strategy 1: Use native Microsoft Graph search with proper format
-            directory_queries.extend([
-                f"https://graph.microsoft.com/v1.0/users?$search=\"displayName:{encoded_name}\"&$select=id,displayName,mail,jobTitle,department,userPrincipalName,companyName,officeLocation&$top=100",
-                f"https://graph.microsoft.com/v1.0/users?$search=\"displayName:{name_parts[0]}\"&$select=id,displayName,mail,jobTitle,department,userPrincipalName,companyName,officeLocation&$top=100" if len(name_parts) >= 1 else None,
-                f"https://graph.microsoft.com/v1.0/users?$search=\"displayName:{name_parts[-1]}\"&$select=id,displayName,mail,jobTitle,department,userPrincipalName,companyName,officeLocation&$top=100" if len(name_parts) >= 2 else None
-            ])
-            
-            # Strategy 2: Traditional filter searches (broader)
-            if len(name_parts) >= 1:
-                first_name = name_parts[0]
-                encoded_first = urllib.parse.quote(first_name)
-                directory_queries.extend([
-                    f"https://graph.microsoft.com/v1.0/users?$filter=startswith(displayName,'{encoded_first}')&$select=id,displayName,mail,jobTitle,department,userPrincipalName,companyName,officeLocation&$top=150",
-                    f"https://graph.microsoft.com/v1.0/users?$filter=startswith(givenName,'{encoded_first}')&$select=id,displayName,mail,jobTitle,department,userPrincipalName,companyName,officeLocation&$top=150"
-                ])
-            
-            if len(name_parts) >= 2:
-                last_name = name_parts[-1]  # Use last part as surname
-                encoded_last = urllib.parse.quote(last_name)
-                directory_queries.extend([
-                    f"https://graph.microsoft.com/v1.0/users?$filter=startswith(surname,'{encoded_last}')&$select=id,displayName,mail,jobTitle,department,userPrincipalName,companyName,officeLocation&$top=150"
-                ])
-            
-            # Remove None values
-            directory_queries = [q for q in directory_queries if q is not None]
+            directory_queries = [
+                # Primary search: exact name
+                f"https://graph.microsoft.com/v1.0/users?$search=\"displayName:{encoded_name}\"&$select=id,displayName,mail,jobTitle,department,userPrincipalName,companyName,officeLocation&$top=50&$count=true",
+                # Secondary search: broader search
+                f"https://graph.microsoft.com/v1.0/users?$search=\"displayName:{encoded_name}\" OR \"mail:{encoded_name}\"&$select=id,displayName,mail,jobTitle,department,userPrincipalName,companyName,officeLocation&$top=100&$count=true"
+            ]
             
             for i, users_url in enumerate(directory_queries):
                 try:
-                    print(f"Trying directory query {i+1}: {users_url}")
-                    users_response = requests.get(users_url, headers=headers, timeout=20)
+                    print(f"Directory search {i+1}: {users_url}")
+                    users_response = requests.get(users_url, headers=headers, timeout=25)
                     print(f"Directory API response status: {users_response.status_code}")
                     
                     if users_response.status_code == 200:
                         users_data = users_response.json()
                         users_found = len(users_data.get('value', []))
-                        print(f"Found {users_found} users in directory response {i+1}")
-                        
-                        search_name_lower = search_name.lower()
-                        search_parts_lower = [part.lower() for part in name_parts]
+                        total_count = users_data.get('@odata.count', users_found)
+                        print(f"Found {users_found} users (total: {total_count}) in directory search {i+1}")
                         
                         for user in users_data.get('value', []):
                             display_name = user.get('displayName', '')
                             email = user.get('mail') or user.get('userPrincipalName', '')
-                            display_name_lower = display_name.lower()
                             
-                            # More flexible matching - at least some parts should match
-                            should_include = False
-                            
-                            # Exact name match
-                            if search_name_lower in display_name_lower:
-                                should_include = True
-                            # All parts present (any order)
-                            elif all(part in display_name_lower for part in search_parts_lower):
-                                should_include = True
-                            # At least 2 parts match for multi-word names
-                            elif len(search_parts_lower) >= 2:
-                                matching_parts = sum(1 for part in search_parts_lower if part in display_name_lower)
-                                if matching_parts >= 2:
-                                    should_include = True
-                            # Single word match for single names
-                            elif len(search_parts_lower) == 1 and search_parts_lower[0] in display_name_lower:
-                                should_include = True
-                            
-                            if should_include and email and display_name:
+                            if email and display_name:
                                 contact = {
                                     "id": f"user_{user.get('id', '')}",
                                     "displayName": display_name,
@@ -1275,44 +1188,88 @@ def search_contacts_by_name(name: str, user_id: int, status: str = "Buscando con
                                 }
                                 all_contacts.append(contact)
                                 print(f"Added directory user: {display_name} ({email})")
+                        
+                        # If first query gave good results, don't run second
+                        if i == 0 and users_found > 0:
+                            break
                                 
+                    elif users_response.status_code == 400:
+                        print(f"Directory search bad request (400): {users_response.text}")
                     elif users_response.status_code == 403:
                         print(f"Directory search forbidden (403) - insufficient permissions")
-                    elif users_response.status_code == 400:
-                        print(f"Directory search bad request (400) - query format issue: {users_response.text}")
                     else:
                         print(f"Directory API error: {users_response.status_code} - {users_response.text}")
                         
                 except requests.exceptions.RequestException as e:
-                    print(f"Directory query failed: {str(e)}")
+                    print(f"Directory search {i+1} failed: {str(e)}")
                     continue
                     
-                # Small delay between requests to avoid rate limiting
-                time.sleep(0.1)
+                # Small delay between requests
+                time.sleep(0.2)
         
         except Exception as e:
             print(f"Error in directory search: {str(e)}")
         
+        # 3. Contacts Search - Simple local search
+        try:
+            print("Searching local contacts...")
+            contacts_url = f"https://graph.microsoft.com/v1.0/me/contacts?$top=100"
+            
+            contacts_response = requests.get(contacts_url, headers=headers, timeout=20)
+            print(f"Contacts API response status: {contacts_response.status_code}")
+            
+            if contacts_response.status_code == 200:
+                contacts_data = contacts_response.json()
+                contacts_found = len(contacts_data.get('value', []))
+                print(f"Found {contacts_found} total contacts, filtering for matches")
+                
+                search_name_lower = search_name.lower()
+                matches = 0
+                
+                for contact_item in contacts_data.get('value', []):
+                    display_name = contact_item.get('displayName', '')
+                    email_addresses = contact_item.get('emailAddresses', [])
+                    
+                    # Simple check: if search name appears in display name
+                    if search_name_lower in display_name.lower():
+                        if email_addresses and email_addresses[0].get('address'):
+                            contact = {
+                                "id": f"contact_{contact_item.get('id', '')}",
+                                "displayName": display_name,
+                                "email": email_addresses[0].get('address', ''),
+                                "jobTitle": contact_item.get('jobTitle', ''),
+                                "department": contact_item.get('department', ''),
+                                "companyName": contact_item.get('companyName', ''),
+                                "source": "contacts",
+                                "relevanceScore": 0,
+                                "graph_id": contact_item.get('id', '')
+                            }
+                            all_contacts.append(contact)
+                            matches += 1
+                            print(f"Added contact: {display_name}")
+                
+                print(f"Found {matches} matching contacts")
+            else:
+                print(f"Contacts API error: {contacts_response.status_code} - {contacts_response.text}")
+        
+        except Exception as e:
+            print(f"Error in contacts search: {str(e)}")
+        
         print(f"Total contacts found before deduplication: {len(all_contacts)}")
         
-        # Remove duplicates and prioritize results
-        print("Removing duplicates and prioritizing results...")
+        # Simple deduplication by email
         unique_contacts = {}
         for contact in all_contacts:
             email = contact['email'].lower()
             if email not in unique_contacts:
                 unique_contacts[email] = contact
             else:
-                # Keep the one from the most reliable source or with better data
+                # Keep the one from the most reliable source
                 existing = unique_contacts[email]
                 current = contact
                 
-                # Priority: people > contacts > directory
-                source_priority = {
-                    'people': 3,
-                    'contacts': 2, 
-                    'directory': 1
-                }
+                # Priority: people > directory > contacts (People API usually has better relevance)
+                source_priority = {'people': 3, 'directory': 2, 'contacts': 1}
                 
                 current_priority = source_priority.get(current['source'], 0)
                 existing_priority = source_priority.get(existing['source'], 0)
@@ -1322,84 +1279,37 @@ def search_contacts_by_name(name: str, user_id: int, status: str = "Buscando con
                 elif current_priority == existing_priority and current.get('relevanceScore', 0) > existing.get('relevanceScore', 0):
                     unique_contacts[email] = current
         
-        # Convert back to list
+        # Convert back to list and sort by source priority and relevance
         final_contacts = list(unique_contacts.values())
-        print(f"Unique contacts after deduplication: {len(final_contacts)}")
         
-        # Enhanced filtering for relevance - more flexible matching
-        filtered_contacts = []
-        search_parts = [part.lower().strip() for part in search_name.split() if part.strip()]
-        
-        print(f"Search parts: {search_parts}")
-        
-        for contact in final_contacts:
-            display_name = contact['displayName']
-            display_name_lower = display_name.lower()
-            
-            # Calculate match score based on how well the name matches
-            if search_name.lower() == display_name_lower:
-                contact['match_score'] = 100
-                filtered_contacts.append(contact)
-                print(f"EXACT MATCH: {display_name} (score: 100)")
-                
-            elif search_name.lower() in display_name_lower:
-                contact['match_score'] = 95  # Full search term appears as substring
-                filtered_contacts.append(contact)
-                print(f"SUBSTRING MATCH: {display_name} (score: 95)")
-                
-            elif all(part in display_name_lower for part in search_parts):
-                contact['match_score'] = 85  # All parts appear
-                filtered_contacts.append(contact)
-                print(f"ALL PARTS MATCH: {display_name} (score: 85)")
-                
-            elif len(search_parts) >= 2:
-                # For multi-word searches, also include if at least 2 parts match
-                matching_parts = sum(1 for part in search_parts if part in display_name_lower)
-                if matching_parts >= 2:
-                    contact['match_score'] = 70  # Partial match
-                    filtered_contacts.append(contact)
-                    print(f"PARTIAL MATCH ({matching_parts}/{len(search_parts)} parts): {display_name} (score: 70)")
-                    
-            elif len(search_parts) == 1:
-                # For single word searches, be more lenient
-                search_word = search_parts[0]
-                if search_word in display_name_lower and len(search_word) >= 3:
-                    contact['match_score'] = 60
-                    filtered_contacts.append(contact)
-                    print(f"SINGLE WORD MATCH: {display_name} (score: 60)")
-        
-        print(f"Final filtered contacts after flexible matching: {len(filtered_contacts)}")
-        
-        # Sort by match score (highest first), then source priority, then alphabetically
         def sort_key(contact):
-            match_score = contact.get('match_score', 0)
-            source_priority = {'people': 3, 'contacts': 2, 'directory': 1}
+            source_priority = {'people': 3, 'directory': 2, 'contacts': 1}
             source_score = source_priority.get(contact['source'], 0)
+            relevance_score = contact.get('relevanceScore', 0)
             
             return (
-                -match_score,  # Higher match scores first
                 -source_score,  # Better sources first
+                -relevance_score,  # Higher relevance first
                 contact['displayName'].lower()  # Alphabetical
             )
         
-        filtered_contacts.sort(key=sort_key)
+        final_contacts.sort(key=sort_key)
+        
+        print(f"Final unique contacts after deduplication: {len(final_contacts)}")
         
         # Get profile photos for each contact
         enhanced_contacts = []
-        for contact in filtered_contacts:
+        for contact in final_contacts:
             enhanced_contact = contact.copy()
             
             # Try to get user's profile photo
             try:
                 graph_id = contact.get('graph_id')
-                if graph_id and contact['source'] == 'directory':
-                    # For directory users, use users/{id}/photo
-                    photo_url = f"https://graph.microsoft.com/v1.0/users/{graph_id}/photo/$value"
-                elif graph_id and contact['source'] == 'people':
-                    # For people, try the same approach
+                if graph_id and contact['source'] in ['directory', 'people']:
+                    # For directory users and people, use users/{id}/photo
                     photo_url = f"https://graph.microsoft.com/v1.0/users/{graph_id}/photo/$value"
                 elif graph_id and contact['source'] == 'contacts':
-                    # For contacts, try a different approach
+                    # For contacts, try contacts approach
                     photo_url = f"https://graph.microsoft.com/v1.0/me/contacts/{graph_id}/photo/$value"
                 else:
                     photo_url = None
@@ -1424,7 +1334,7 @@ def search_contacts_by_name(name: str, user_id: int, status: str = "Buscando con
         
         print(f"Found {len(enhanced_contacts)} relevant contacts matching '{name}'")
         
-        # Generate HTML display with enhanced styling
+        # Generate HTML display
         html_display = generate_contacts_html_enhanced(enhanced_contacts, search_name)
         
         return {
@@ -1447,7 +1357,6 @@ def search_contacts_by_name(name: str, user_id: int, status: str = "Buscando con
         error_msg = f"Unexpected error while searching contacts: {str(e)}"
         print(f"Unexpected error: {error_msg}")
         return {"error": error_msg}
-
 
 def generate_contacts_html_enhanced(contacts, search_term):
     """Generate enhanced HTML display for contact search results with photos and beautiful styling"""
