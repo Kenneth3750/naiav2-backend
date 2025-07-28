@@ -900,15 +900,15 @@ def factual_web_query(query: str, status: str = "", user_id: int = 0) -> dict:
         return {"error": str(e)}
     
 
-def get_user_email_from_graph(user_id: int) -> dict:
+def get_user_info_from_graph(user_id: int) -> dict:
     """
-    Gets the authenticated user's email address using Microsoft Graph API.
+    Gets the authenticated user's information (email and name) using Microsoft Graph API.
     
     Args:
         user_id (int): The ID of the user
         
     Returns:
-        dict: Contains either the email address or error information
+        dict: Contains either the user information or error information
     """
     try:
         # Get user's Microsoft Graph token
@@ -933,9 +933,13 @@ def get_user_email_from_graph(user_id: int) -> dict:
         if response.status_code == 200:
             user_data = response.json()
             email = user_data.get('mail') or user_data.get('userPrincipalName')
+            name = user_data.get('displayName') or user_data.get('givenName', '') + ' ' + user_data.get('surname', '')
             
             if email:
-                return {"email": email}
+                return {
+                    "email": email,
+                    "name": name.strip() if name.strip() else "Usuario"
+                }
             else:
                 return {"error": "No email address found in user profile"}
                 
@@ -944,19 +948,20 @@ def get_user_email_from_graph(user_id: int) -> dict:
         elif response.status_code == 403:
             return {"error": "Insufficient permissions to read user profile."}
         else:
-            return {"error": f"Failed to get user email: {response.text}"}
+            return {"error": f"Failed to get user info: {response.text}"}
             
     except requests.exceptions.Timeout:
-        return {"error": "Request timeout while getting user email"}
+        return {"error": "Request timeout while getting user info"}
     except requests.exceptions.RequestException as e:
-        return {"error": f"Network error while getting user email: {str(e)}"}
+        return {"error": f"Network error while getting user info: {str(e)}"}
     except Exception as e:
-        return {"error": f"Unexpected error while getting user email: {str(e)}"}
+        return {"error": f"Unexpected error while getting user info: {str(e)}"}
 
 def send_email(to_email: str, subject: str, body: str, status: str = "", user_id: int = 0) -> dict:
     """
     Sends an email using Gmail SMTP server.
     Can automatically detect when to use the authenticated user's email address.
+    Includes a footer with the sender's information for traceability.
     
     Args:
         to_email (str): The recipient's email address or indicators like "mi correo", "my email"
@@ -990,18 +995,23 @@ def send_email(to_email: str, subject: str, body: str, status: str = "", user_id
         (to_email and '@' not in to_email and '.' not in to_email)
     )
     
-    if should_get_user_email:
-        if not user_id:
-            return {"error": "User ID is required to get your email address"}
-            
-        # Get user's email from Microsoft Graph
-        email_result = get_user_email_from_graph(user_id)
+    # Get user information for footer (always when user_id is provided)
+    user_info = None
+    if user_id:
+        user_info_result = get_user_info_from_graph(user_id)
+        if "error" not in user_info_result:
+            user_info = user_info_result
         
-        if "error" in email_result:
-            return email_result
-            
-        to_email = email_result["email"]
-        print(f"Using user's email address: {to_email}")
+        # If we need to get user's email for the recipient
+        if should_get_user_email:
+            if "error" in user_info_result:
+                return user_info_result
+            to_email = user_info["email"]
+            print(f"Using user's email address: {to_email}")
+    
+    # If we still need to get user email but don't have user_id
+    if should_get_user_email and not user_id:
+        return {"error": "User ID is required to get your email address"}
     
     # Validate final email
     if not to_email:
@@ -1011,6 +1021,18 @@ def send_email(to_email: str, subject: str, body: str, status: str = "", user_id
     if '@' not in to_email or '.' not in to_email:
         return {"error": "Invalid email format"}
     
+    # Add footer with user information for traceability
+    footer = "\n\n" + "─" * 50 + "\n"
+    if user_info:
+        footer += f"Este email fue enviado por: {user_info['name']} ({user_info['email']})\n"
+    else:
+        footer += "Este email fue enviado a través de la plataforma NAIA\n"
+    footer += "Universidad del Norte - NAIA Assistant\n"
+    footer += "Para soporte técnico, contacta: naia@uninorte.edu.co"
+    
+    # Add footer to the body
+    final_body = body + footer
+    
     try:
         if user_id:
             set_status(user_id, status or "Sending email...", 2)
@@ -1018,7 +1040,7 @@ def send_email(to_email: str, subject: str, body: str, status: str = "", user_id
         if not all([DEFAULT_FROM_EMAIL, EMAIL_HOST_PASSWORD]):
             raise ValueError("DEFAULT_FROM_EMAIL and EMAIL_HOST_PASSWORD must be set in the environment variables")
         
-        msg = MIMEText(body)
+        msg = MIMEText(final_body)
         msg["Subject"] = subject
         msg["From"] = f"NAIA Uninorte <{DEFAULT_FROM_EMAIL}>"
         msg["To"] = to_email
@@ -1030,6 +1052,8 @@ def send_email(to_email: str, subject: str, body: str, status: str = "", user_id
             print("Login exitoso")
             server.send_message(msg)
             print(f"Email enviado a {to_email}")
+            if user_info:
+                print(f"Email ejecutado por: {user_info['name']} ({user_info['email']})")
         return {"success": 'Email enviado correctamente'}
     
     except smtplib.SMTPAuthenticationError as e:
@@ -1043,7 +1067,6 @@ def send_email(to_email: str, subject: str, body: str, status: str = "", user_id
     except Exception as e:
         print(f"Error al enviar el email: {str(e)}")
         return {"error": str(e)}
-
 
 
 def deep_content_analysis_for_specific_information(query: str, url: str = None, user_id: int = 0, status: str = ""):
