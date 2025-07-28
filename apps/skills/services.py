@@ -830,6 +830,7 @@ class SkillsTrainerService:
 
 
         VISUAL OBSERVATION GUIDELINES:
+        - Your main objective is to give a response for the functions that were called, so only make visual observations if they are relevant to the conversation and enhance the user experience. Otherwise, focus on the function results more than on visual observations.
         - Transform visual observations into conversational and interactive comments
         - Connect what you see with context in a positive and natural way
         - Avoid flat descriptions, generate emotional connection
