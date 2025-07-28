@@ -215,7 +215,7 @@ class LLMService:
                 model_prompt = self.prompts["function"]
                 model = self.FUNCTION_MODEL
                 messages = self._init_conversation(messages, user_input, image_url, model_prompt)
-                completions = self.client.chat.completions.create(
+                completions = self._call_openai_with_fallback(
                     model=model,
                     messages=messages,
                     tools=self.tools,
@@ -239,7 +239,7 @@ class LLMService:
                     model_prompt = self.prompts["function"]
                     model = self.FUNCTION_MODEL
                     messages = self._init_conversation(messages, user_input, None, model_prompt)
-                    completions = self.client.chat.completions.create(
+                    completions = self._call_openai_with_fallback(
                         model=model,
                         messages=messages,
                         tools=self.tools,
@@ -347,6 +347,35 @@ class LLMService:
             "image_removed": retry_without_image  
         }
         return json_response
+    
+
+    def _call_openai_with_fallback(self, model, messages, tools=None, tool_choice=None):
+        """Fallback universal para todas las llamadas a OpenAI"""
+        models_to_try = [
+            model,           
+            "gpt-4o",
+            "gpt-4.1-mini",
+            "gpt-4o-mini",
+        ]
+        
+        for try_model in models_to_try:
+            try:
+                print(f"Trying model: {try_model}")
+                return self.client.chat.completions.create(
+                    model=try_model,
+                    messages=messages,
+                    tools=tools,
+                    tool_choice=tool_choice
+                )
+            except Exception as e:
+                if "rate_limit_exceeded" in str(e) or "429" in str(e):
+                    print(f"TPM exceeded with {try_model}, trying next...")
+                    continue
+                else:
+                    raise e
+        
+        # Si todo falla, respuesta predeterminada
+        return self._create_default_response()
     
     def _call_with_fallback(self, messages, tools):
         """
