@@ -762,10 +762,21 @@ class SkillsTrainerService:
         - OUTPUT: Returns professional HTML report with performance analysis, saved to database, ready for PDF conversion
 
         4. **list_recent_training_reports**: Lists user's recent training reports
+        - PURPOSE: Display user's training history and previous reports
         - Use when: User wants to see their training history, previous reports, or training session records
+        - KEY INDICATOR: Mentions of "training history", "previous reports", "list my training sessions"
+        - EXAMPLES: "Show me my training history", "List my previous training reports", "What are my past training sessions?"
+        - CRITICAL: Always use when user wants to review their training history or access past reports
+        - OUTPUT: Returns list of recent training reports with titles, dates, and IDs for easy access
+
 
         5. **get_training_report_html**: Retrieves specific training report for download
+        - PURPOSE: Get specific training report content for download or viewing
         - Use when: User wants to download, view, or access a specific training report by ID
+        - KEY INDICATOR: Mentions of "download report", "view training report", "get my report"
+        - EXAMPLES: "Download my training report", "View report number 123", "Get the HTML of my training session"
+        - CRITICAL: Always use when user wants to access a specific training report by its ID
+        - OUTPUT: Returns HTML content of the specified training report, ready for download or viewing
 
         6. **cv_builder**: Builds personalized CVs/resumes in markdown format with high variability
         - PURPOSE: Create customized CVs/resumes based on user specifications
