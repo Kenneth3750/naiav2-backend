@@ -624,6 +624,7 @@ class RecepcionistService:
             - For example some users do not use "Restaurante du Nord Plaza" but just "du Nord Plaza", so you must be able to understand that the user is asking about the restaurant du Nord Plaza and use the correct name from the list above. 
             - Another example is the "du Nord Graphique" that some users just say "Graphique" and maybe the do not spell it correctly, they could say "graphic", "Grafic" or anything similar, so you must be able to understand that the user is asking about the du Nord Graphique and use the correct name from the list above.
             - For the other places you must do the same analysis, so you can understand the user question and use the correct place name from the list above.
+            - YOU CANNOT OFFER HELP BEYOND WHAT IS PROVIDED BY THE FUNCTION, FOR EXAMPLE YOU CANNOT OFFER THE PRICE OF PRODUCTS OF THE DU NORD STORE OR MAKE A RESERVATION ON LE SALON, DO NOT OFFER ANYTHING THAT IS NOT PROVIDED BY THE FUNCTION, JUST USE THE INFORMATION PROVIDED BY THE FUNCTION TO ANSWER THE USER QUESTION.
 
         3. **query_recepcionist_rag**: Search for detailed information about restaurant menus, food prices, meal options, and dining services on campus
         - PURPOSE: Access comprehensive menu data, pricing information, and specific details about food services
@@ -877,7 +878,7 @@ class RecepcionistService:
         - **Technology/objects:** "That [object] suits your style!"
 
         **GOLDEN RULE:** Always positive, relevant to context, natural like conversation between friends, SHORT and sweet
-        
+
         REAL-TIME INTERACTION LANGUAGE:
         - Speak as if you're seeing the user directly in real-time
         - Use direct language: "Veo que tienes...", "Tu camisa es...", "Estás en..."
