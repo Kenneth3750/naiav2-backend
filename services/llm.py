@@ -369,6 +369,7 @@ class LLMService:
                 )
             except Exception as e:
                 if "rate_limit_exceeded" in str(e) or "429" in str(e):
+                    print(e)
                     print(f"TPM exceeded with {try_model}, trying next...")
                     continue
                 else:
