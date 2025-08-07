@@ -22,10 +22,10 @@ import json
 from serpapi import GoogleSearch
 from typing import Dict
 from apps.researcher.functions import generate_image_carousel_html
-import uuid
-import tempfile
-import shutil
-import traceback
+from apps.researcher.functions import get_user_info_from_graph
+import smtplib
+from email.mime.text import MIMEText
+import requests # no qa
 load_dotenv()
 
 DEFAULT_FROM_EMAIL=os.getenv("DEFAULT_FROM_EMAIL")
@@ -2140,3 +2140,115 @@ def generate_calendar_html(all_events, year):
     
     html += "</div>"
     return html
+
+
+def send_email(to_email: str, subject: str, body: str, status: str = "", user_id: int = 0) -> dict:
+    """
+    Sends an email using Gmail SMTP server.
+    Can automatically detect when to use the authenticated user's email address.
+    Includes a footer with the sender's information for traceability.
+    
+    Args:
+        to_email (str): The recipient's email address or indicators like "mi correo", "my email"
+        subject (str): The subject of the email
+        body (str): The body content of the email
+        status (str, optional): Status message for tracking. Defaults to "".
+        user_id (int, optional): User ID for status updates. Defaults to 0.
+        
+    Returns:
+        dict: A dictionary containing either success message or error details
+        
+    Raises:
+        ValueError: If email credentials are not set or if required fields are empty
+        SMTPAuthenticationError: If email authentication fails
+        SMTPException: For other SMTP-related errors
+    """
+    # Validate required fields
+    if not subject or not body:
+        return {"error": "Subject and body are required"}
+    
+    # Check if we need to get the user's email automatically
+    user_email_indicators = [
+        "mi correo", "my email", "mi email", "my mail", 
+        "mi dirección", "my address", "mío", "mine", "me", "yo", "I", "myself"
+    ]
+    
+    # Determine if we need to fetch user's email
+    should_get_user_email = (
+        not to_email or 
+        to_email.strip().lower() in user_email_indicators or
+        (to_email and '@' not in to_email and '.' not in to_email)
+    )
+    
+    # Get user information for footer (always when user_id is provided)
+    user_info = None
+    if user_id:
+        user_info_result = get_user_info_from_graph(user_id)
+        if "error" not in user_info_result:
+            user_info = user_info_result
+        
+        # If we need to get user's email for the recipient
+        if should_get_user_email:
+            if "error" in user_info_result:
+                return user_info_result
+            to_email = user_info["email"]
+            print(f"Using user's email address: {to_email}")
+    
+    # If we still need to get user email but don't have user_id
+    if should_get_user_email and not user_id:
+        return {"error": "User ID is required to get your email address"}
+    
+    # Validate final email
+    if not to_email:
+        return {"error": "Email address is required"}
+        
+    # Basic email format validation
+    if '@' not in to_email or '.' not in to_email:
+        return {"error": "Invalid email format"}
+    
+    # Add footer with user information for traceability
+    footer = "\n\n" + "─" * 50 + "\n"
+    if user_info:
+        footer += f"Este email fue enviado por: {user_info['name']} ({user_info['email']})\n"
+    else:
+        footer += "Este email fue enviado a través de la plataforma NAIA\n"
+    footer += "Universidad del Norte - NAIA Assistant\n"
+    footer += "Para soporte técnico, contacta: naia@uninorte.edu.co"
+    
+    # Add footer to the body
+    final_body = body + footer
+    
+    try:
+        if user_id:
+            set_status(user_id, status or "Sending email...", 2)
+
+        if not all([DEFAULT_FROM_EMAIL, EMAIL_HOST_PASSWORD]):
+            raise ValueError("DEFAULT_FROM_EMAIL and EMAIL_HOST_PASSWORD must be set in the environment variables")
+        
+        msg = MIMEText(final_body)
+        msg["Subject"] = subject
+        msg["From"] = f"NAIA Uninorte <{DEFAULT_FROM_EMAIL}>"
+        msg["To"] = to_email
+        msg["Reply-To"] = "naia@uninorte.edu.co"
+
+        with smtplib.SMTP_SSL('smtp.gmail.com', 465) as server:
+            print("Iniciando conexión con el servidor de correo")
+            server.login(DEFAULT_FROM_EMAIL, EMAIL_HOST_PASSWORD)
+            print("Login exitoso")
+            server.send_message(msg)
+            print(f"Email enviado a {to_email}")
+            if user_info:
+                print(f"Email ejecutado por: {user_info['name']} ({user_info['email']})")
+        return {"success": 'Email enviado correctamente'}
+    
+    except smtplib.SMTPAuthenticationError as e:
+        error_msg = "Error de autenticación del correo"
+        print(f"{error_msg}: {str(e)}")
+        return {"error": error_msg}
+    except smtplib.SMTPException as e:
+        error_msg = "Error en el servidor de correo"
+        print(f"{error_msg}: {str(e)}")
+        return {"error": error_msg}
+    except Exception as e:
+        print(f"Error al enviar el email: {str(e)}")
+        return {"error": str(e)}

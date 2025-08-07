@@ -1,9 +1,9 @@
-from apps.uniguide.functions import query_university_rag, get_university_calendar_multi_month, get_virtual_campus_tour, search_internet_for_uni_answers
+from apps.uniguide.functions import query_university_rag, get_university_calendar_multi_month, get_virtual_campus_tour, search_internet_for_uni_answers, send_email
 from apps.personal.functions import create_calendar_event, search_contacts_by_name
 import datetime
 from datetime import timedelta, timezone
 from apps.chat.functions import get_last_four_messages
-from apps.researcher.functions import explain_naia_roles, send_email
+from apps.researcher.functions import explain_naia_roles 
 class UniGuideService:
     def retrieve_tools(self, user_id, messages):
 

@@ -1,7 +1,7 @@
 from datetime import timedelta, timezone
 from apps.chat.functions import get_last_four_messages
-from apps.recepcionist.functions import answer_question_of_uni_premises, query_recepcionist_rag, get_location_events, get_restaurants, get_location_places
-from apps.researcher.functions import send_email, explain_naia_roles
+from apps.recepcionist.functions import answer_question_of_uni_premises, query_recepcionist_rag, get_location_events, get_restaurants, get_location_places, send_email
+from apps.researcher.functions import explain_naia_roles
 from apps.personal.functions import search_contacts_by_name
 import datetime
 from datetime import timedelta, timezone

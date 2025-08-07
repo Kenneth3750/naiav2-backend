@@ -2,8 +2,8 @@ import datetime
 from datetime import timedelta, timezone
 from apps.chat.functions import get_last_four_messages
 from apps.skills.repositories import SkillsTrainerRepository
-from apps.skills.functions import simulate_job_interview, analyze_professional_appearance, generate_training_report, list_recent_training_reports, get_training_report_html, cv_builder, get_current_questionnaire_status
-from apps.researcher.functions import send_email, explain_naia_roles
+from apps.skills.functions import simulate_job_interview, analyze_professional_appearance, generate_training_report, list_recent_training_reports, get_training_report_html, cv_builder, get_current_questionnaire_status, send_email
+from apps.researcher.functions import explain_naia_roles
 class SkillsTrainerService:
     def retrieve_tools(self, user_id, messages):
 
@@ -1278,5 +1278,9 @@ class SkillsTrainerDBService():
         :return: The training report object if found, otherwise raises an exception.
         """
         return self.repository.get_training_report_by_id(report_id)
+    
+
+
+
 
     
