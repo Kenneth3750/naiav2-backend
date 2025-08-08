@@ -388,9 +388,6 @@ class LLMService:
     def _call_with_fallback(self, messages, tools):
         """
         Fallback en cascada:
-        1. GPT-4.1 (inteligente)
-        2. GPT-4o-mini (más TPM disponible) 
-        3. Mensaje predeterminado (último recurso)
         """
         models_to_try = [
             self.FUNCTION_MODEL,
