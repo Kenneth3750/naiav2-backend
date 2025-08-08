@@ -15,7 +15,7 @@ import os
 from email.mime.text import MIMEText
 import requests
 from apps.users.services import UserService
-
+from typing import Dict
 load_dotenv()
 
 DEFAULT_FROM_EMAIL=os.getenv("DEFAULT_FROM_EMAIL")
@@ -1035,7 +1035,7 @@ def send_email(to_email: str, subject: str, body: str, status: str = "", user_id
     
     try:
         if user_id:
-            set_status(user_id, status or "Sending email...", 2)
+            set_status(user_id, status or "Sending email...", 1)
 
         if not all([DEFAULT_FROM_EMAIL, EMAIL_HOST_PASSWORD]):
             raise ValueError("DEFAULT_FROM_EMAIL and EMAIL_HOST_PASSWORD must be set in the environment variables")
@@ -2084,3 +2084,396 @@ def explain_naia_roles(user_id, status, auto_slide_interval=3000):
         "roles_info": roles_details,
         "context": "NAIA (Nimble Artificial Intelligence Assistant) is a comprehensive multimodal, multi-role AI assistant designed specifically for Universidad del Norte. NAIA integrates advanced AI technologies including large language models, computer vision, speech recognition, and text-to-speech conversion to provide personalized, intelligent assistance across five specialized roles. Each role addresses different aspects of university life - from academic research and skill development to administrative support and campus guidance - helping reduce cognitive load and enhance productivity within the university community."
     }
+
+
+
+
+def get_current_news(location: str, user_id: int, status: str, query: str, language: str) -> Dict:
+    """
+    Obtiene las últimas noticias de una ubicación específica con visualización moderna y responsive.
+    
+    Args:
+        location (str): La ubicación para obtener noticias
+        user_id (int): ID del usuario
+        status (str): Mensaje de estado
+        
+    Returns:
+        dict: Diccionario con HTML visual de noticias responsive
+    """
+    try:
+        set_status(user_id, status, 1) 
+        
+        params = {
+            "engine": "google_news",
+            "q": f"{query} {location}",
+            "hl": language, 
+            "api_key": os.getenv("SERPAPI_KEY")
+        }
+        
+        search = GoogleSearch(params)
+        results = search.get_dict()
+        news_results = results.get("news_results", [])
+        
+        if not news_results:
+            return {"error": "No se encontraron noticias para esta ubicación"}
+        
+        html_content = f"""
+<div class="news-container">
+    <div class="header">
+        <h1>📰 Últimas Noticias</h1>
+        <p>Mantente informado sobre {escape(location)}</p>
+    </div>
+    
+    <div class="stats-bar">
+        <div class="stat-item">
+            <div class="stat-number">{len(news_results)}</div>
+            <div class="stat-label">Noticias Encontradas</div>
+        </div>
+        <div class="stat-item">
+            <div class="stat-number">🔥</div>
+            <div class="stat-label">Actualizadas</div>
+        </div>
+        <div class="stat-item">
+            <div class="stat-number">📍</div>
+            <div class="stat-label">{escape(location)}</div>
+        </div>
+    </div>
+    
+    <div class="news-grid">
+        """
+        
+        for i, article in enumerate(news_results[:12]):  # Limitar a 12 noticias
+            title = escape(article.get("title", "Sin título"))
+            snippet = escape(article.get("snippet", "Sin descripción disponible"))
+            link = article.get("link", "#")
+            source = escape(article.get("source", {}).get("name", "Fuente desconocida"))
+            date = escape(article.get("date", "Fecha no disponible"))
+            thumbnail = article.get("thumbnail")
+
+            is_breaking = i < 3
+            
+            if thumbnail:
+                img_html = f'<img src="{thumbnail}" alt="{title}" onerror="this.style.display=\'none\'; this.nextElementSibling.style.display=\'flex\'">'
+                placeholder_style = "display: none"
+            else:
+                img_html = ""
+                placeholder_style = "display: flex"
+            
+            breaking_badge = '<div class="breaking-badge">🔥 DESTACADA</div>' if is_breaking else ''
+            
+            html_content += f"""
+        <div class="news-card">
+            <div class="news-image">
+                {img_html}
+                <div class="placeholder" style="{placeholder_style}">
+                    📰
+                </div>
+                {breaking_badge}
+            </div>
+            <div class="news-content">
+                <h3 class="news-title">{title}</h3>
+                <div class="news-meta">
+                    <span class="news-source">{source}</span>
+                    <span class="news-date">
+                        🕐 {date}
+                    </span>
+                </div>
+                <p class="news-snippet">{snippet}</p>
+                <a href="{link}" target="_blank" class="news-link">
+                    Leer más
+                    <span>→</span>
+                </a>
+            </div>
+        </div>
+            """
+        
+        html_content += """
+    </div>
+</div>
+<style>
+    .news-container {
+        max-width: 100%;
+        width: 100%;
+        display: flex;
+        flex-direction: column;
+        gap: 20px;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        border-radius: 16px;
+        padding: 16px;
+        box-sizing: border-box;
+        color: #1e293b;
+        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', sans-serif;
+    }
+    
+    .header {
+        text-align: center;
+        color: white;
+        margin-bottom: 16px;
+    }
+    
+    .header h1 {
+        font-size: 1.8rem;
+        font-weight: 700;
+        margin-bottom: 8px;
+        text-shadow: 0 2px 4px rgba(0,0,0,0.3);
+    }
+    
+    .header p {
+        font-size: 1rem;
+        opacity: 0.9;
+    }
+    
+    .stats-bar {
+        background: rgba(255, 255, 255, 0.95);
+        border-radius: 12px;
+        padding: 16px;
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+        text-align: center;
+        backdrop-filter: blur(10px);
+        box-shadow: 0 4px 20px rgba(0,0,0,0.1);
+    }
+    
+    .stat-item {
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
+    }
+    
+    .stat-number {
+        font-size: 1.5rem;
+        font-weight: 700;
+        background: linear-gradient(45deg, #667eea, #764ba2);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+    }
+    
+    .stat-label {
+        color: #718096;
+        font-size: 0.85rem;
+        font-weight: 500;
+    }
+    
+    .news-grid {
+        display: flex;
+        flex-direction: column;
+        gap: 16px;
+    }
+    
+    .news-card {
+        background: rgba(255, 255, 255, 0.95);
+        border-radius: 16px;
+        overflow: hidden;
+        box-shadow: 0 8px 32px rgba(0,0,0,0.1);
+        transition: all 0.3s ease;
+        backdrop-filter: blur(10px);
+        border: 1px solid rgba(255,255,255,0.2);
+    }
+    
+    .news-card:hover {
+        transform: translateY(-4px);
+        box-shadow: 0 12px 40px rgba(0,0,0,0.15);
+    }
+    
+    .news-image {
+        width: 100%;
+        height: 160px;
+        background: linear-gradient(45deg, #f093fb 0%, #f5576c 100%);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        position: relative;
+        overflow: hidden;
+    }
+    
+    .news-image img {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+    }
+    
+    .news-image .placeholder {
+        font-size: 2.5rem;
+        color: white;
+        text-shadow: 0 2px 4px rgba(0,0,0,0.3);
+    }
+    
+    .news-content {
+        padding: 20px;
+    }
+    
+    .news-title {
+        font-size: 1.1rem;
+        font-weight: 700;
+        color: #2d3748;
+        margin-bottom: 12px;
+        line-height: 1.4;
+        display: -webkit-box;
+        -webkit-line-clamp: 2;
+        -webkit-box-orient: vertical;
+        overflow: hidden;
+    }
+    
+    .news-meta {
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+        margin-bottom: 12px;
+        font-size: 0.85rem;
+        color: #718096;
+    }
+    
+    .news-source {
+        background: linear-gradient(45deg, #667eea, #764ba2);
+        color: white;
+        padding: 4px 10px;
+        border-radius: 12px;
+        font-weight: 600;
+        font-size: 0.75rem;
+        align-self: flex-start;
+    }
+    
+    .news-date {
+        display: flex;
+        align-items: center;
+        gap: 5px;
+    }
+    
+    .news-snippet {
+        color: #4a5568;
+        line-height: 1.5;
+        margin-bottom: 16px;
+        display: -webkit-box;
+        -webkit-line-clamp: 3;
+        -webkit-box-orient: vertical;
+        overflow: hidden;
+        font-size: 0.9rem;
+    }
+    
+    .news-link {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        color: #667eea;
+        text-decoration: none;
+        font-weight: 600;
+        transition: all 0.3s ease;
+        padding: 8px 16px;
+        background: rgba(102, 126, 234, 0.1);
+        border-radius: 20px;
+        border: 2px solid transparent;
+        font-size: 0.9rem;
+    }
+    
+    .news-link:hover {
+        background: #667eea;
+        color: white;
+        transform: translateX(3px);
+    }
+    
+    .breaking-badge {
+        position: absolute;
+        top: 12px;
+        right: 12px;
+        background: linear-gradient(45deg, #ff6b6b, #ee5a24);
+        color: white;
+        padding: 4px 10px;
+        border-radius: 12px;
+        font-size: 0.7rem;
+        font-weight: 700;
+        animation: pulse 2s infinite;
+    }
+    
+    @keyframes pulse {
+        0%, 100% { opacity: 1; }
+        50% { opacity: 0.7; }
+    }
+    
+    /* Media Queries para pantallas más grandes */
+    @media (min-width: 768px) {
+        .news-container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        
+        .header h1 {
+            font-size: 2.2rem;
+        }
+        
+        .header p {
+            font-size: 1.2rem;
+        }
+        
+        .stats-bar {
+            flex-direction: row;
+            justify-content: space-around;
+        }
+        
+        .stat-number {
+            font-size: 2rem;
+        }
+        
+        .news-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+            gap: 20px;
+        }
+        
+        .news-image {
+            height: 200px;
+        }
+        
+        .news-title {
+            font-size: 1.2rem;
+        }
+        
+        .news-meta {
+            flex-direction: row;
+            align-items: center;
+            gap: 12px;
+        }
+    }
+    
+    @media (min-width: 1024px) {
+        .news-grid {
+            grid-template-columns: repeat(auto-fit, minmax(380px, 1fr));
+            gap: 25px;
+        }
+    }
+    
+    /* Optimización para landscape en móviles */
+    @media (orientation: landscape) and (max-height: 600px) {
+        .header h1 {
+            font-size: 1.5rem;
+            margin-bottom: 4px;
+        }
+        
+        .header p {
+            font-size: 0.9rem;
+        }
+        
+        .stats-bar {
+            padding: 12px;
+            flex-direction: row;
+            justify-content: space-around;
+        }
+        
+        .news-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 16px;
+        }
+        
+        .news-image {
+            height: 120px;
+        }
+    }
+</style>
+        """
+        
+        return {"display": html_content}
+        
+    except Exception as e:
+        print(f"Error obteniendo noticias: {str(e)}")
+        return {"error": str(e)}

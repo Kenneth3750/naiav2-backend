@@ -26,6 +26,8 @@ from apps.researcher.functions import get_user_info_from_graph
 import smtplib
 from email.mime.text import MIMEText
 import requests # no qa
+from apps.personal.functions import generate_contacts_html_enhanced
+from apps.users.services import UserService
 load_dotenv()
 
 DEFAULT_FROM_EMAIL=os.getenv("DEFAULT_FROM_EMAIL")
@@ -2252,3 +2254,488 @@ def send_email(to_email: str, subject: str, body: str, status: str = "", user_id
     except Exception as e:
         print(f"Error al enviar el email: {str(e)}")
         return {"error": str(e)}
+    
+
+
+def search_contacts_by_name(name: str, user_id: int, status: str = "Buscando contactos...") -> dict:
+    """
+    Simplified contact search using Microsoft Graph native search.
+    Uses Microsoft's intelligent search algorithms instead of manual filtering.
+    
+    Args:
+        name (str): The complete name to search for
+        user_id (int): The ID of the user making the search
+        status (str): Status message for tracking. Defaults to "Buscando contactos..."
+        
+    Returns:
+        dict: A dictionary containing contact results, count, and HTML display
+        Format: {
+            "contacts": [list of contacts],
+            "count": number_of_results,
+            "display": "HTML formatted results"
+        }
+    """
+    # Validate required fields
+    if not name or not name.strip():
+        return {"error": "Name is required for contact search"}
+        
+    if not user_id:
+        return {"error": "User ID is required"}
+    
+    try:
+        # Import required modules
+        import urllib.parse
+        import time
+        import base64
+        
+        # Set status for tracking
+        if user_id:
+            set_status(user_id, status, 2) 
+
+        # Get user's Microsoft Graph token
+        user_service = UserService()
+        access_token = user_service.get_user_token(user_id)
+        
+        if not access_token:
+            return {"error": "No access token found for user. Please authenticate with Microsoft first."}
+        
+        # Set up headers with authentication and required consistency level
+        headers = {
+            "Authorization": f"Bearer {access_token}",
+            "Content-Type": "application/json",
+            "ConsistencyLevel": "eventual"  # Required for $search queries
+        }
+        
+        all_contacts = []
+        search_name = name.strip()
+        
+        # URL encode the complete search term
+        encoded_name = urllib.parse.quote(search_name)
+        
+        print(f"Native Microsoft Graph search for: {name}")
+        print(f"Encoded search term: {encoded_name}")
+        
+        # 1. People Search - Native Microsoft search
+        try:
+            people_queries = [
+                f"https://graph.microsoft.com/v1.0/me/people?$search=\"{encoded_name}\"&$top=50",
+                f"https://graph.microsoft.com/v1.0/me/people?$search=\"displayName:{encoded_name}\"&$top=50"
+            ]
+            
+            for i, people_url in enumerate(people_queries):
+                try:
+                    print(f"People search {i+1}: {people_url}")
+                    people_response = requests.get(people_url, headers=headers, timeout=20)
+                    print(f"People API response status: {people_response.status_code}")
+                    
+                    if people_response.status_code == 200:
+                        people_data = people_response.json()
+                        people_found = len(people_data.get('value', []))
+                        print(f"Found {people_found} people in query {i+1}")
+                        
+                        for person in people_data.get('value', []):
+                            display_name = person.get('displayName', '')
+                            email_addresses = person.get('emailAddresses', [])
+                            
+                            if email_addresses and email_addresses[0].get('address'):
+                                contact = {
+                                    "id": f"people_{person.get('id', '')}",
+                                    "displayName": display_name,
+                                    "email": email_addresses[0].get('address', ''),
+                                    "jobTitle": person.get('jobTitle', ''),
+                                    "department": person.get('department', ''),
+                                    "companyName": person.get('companyName', ''),
+                                    "source": "people",
+                                    "relevanceScore": person.get('relevanceScore', 0),
+                                    "graph_id": person.get('id', '')
+                                }
+                                all_contacts.append(contact)
+                                print(f"Added people contact: {display_name}")
+                        
+                        if people_found > 0:
+                            break  # Stop if we got results from first query
+                            
+                    else:
+                        print(f"People API error: {people_response.status_code} - {people_response.text}")
+                        
+                except requests.exceptions.RequestException as e:
+                    print(f"People query {i+1} failed: {str(e)}")
+                    continue
+        
+        except Exception as e:
+            print(f"Error in people search: {str(e)}")
+        
+        # 2. Directory Search - Native Microsoft Graph search
+        try:
+            print("Starting native Microsoft Graph directory search...")
+            
+            directory_queries = [
+                # Primary search: exact name
+                f"https://graph.microsoft.com/v1.0/users?$search=\"displayName:{encoded_name}\"&$select=id,displayName,mail,jobTitle,department,userPrincipalName,companyName,officeLocation&$top=50&$count=true",
+                # Secondary search: broader search
+                f"https://graph.microsoft.com/v1.0/users?$search=\"displayName:{encoded_name}\" OR \"mail:{encoded_name}\"&$select=id,displayName,mail,jobTitle,department,userPrincipalName,companyName,officeLocation&$top=100&$count=true"
+            ]
+            
+            for i, users_url in enumerate(directory_queries):
+                try:
+                    print(f"Directory search {i+1}: {users_url}")
+                    users_response = requests.get(users_url, headers=headers, timeout=25)
+                    print(f"Directory API response status: {users_response.status_code}")
+                    
+                    if users_response.status_code == 200:
+                        users_data = users_response.json()
+                        users_found = len(users_data.get('value', []))
+                        total_count = users_data.get('@odata.count', users_found)
+                        print(f"Found {users_found} users (total: {total_count}) in directory search {i+1}")
+                        
+                        for user in users_data.get('value', []):
+                            display_name = user.get('displayName', '')
+                            email = user.get('mail') or user.get('userPrincipalName', '')
+                            
+                            if email and display_name:
+                                contact = {
+                                    "id": f"user_{user.get('id', '')}",
+                                    "displayName": display_name,
+                                    "email": email,
+                                    "jobTitle": user.get('jobTitle', ''),
+                                    "department": user.get('department', ''),
+                                    "companyName": user.get('companyName', ''),
+                                    "officeLocation": user.get('officeLocation', ''),
+                                    "source": "directory",
+                                    "relevanceScore": 0,
+                                    "graph_id": user.get('id', '')
+                                }
+                                all_contacts.append(contact)
+                                print(f"Added directory user: {display_name} ({email})")
+                        
+                        # If first query gave good results, don't run second
+                        if i == 0 and users_found > 0:
+                            break
+                                
+                    elif users_response.status_code == 400:
+                        print(f"Directory search bad request (400): {users_response.text}")
+                    elif users_response.status_code == 403:
+                        print(f"Directory search forbidden (403) - insufficient permissions")
+                    else:
+                        print(f"Directory API error: {users_response.status_code} - {users_response.text}")
+                        
+                except requests.exceptions.RequestException as e:
+                    print(f"Directory search {i+1} failed: {str(e)}")
+                    continue
+                    
+                # Small delay between requests
+                time.sleep(0.2)
+        
+        except Exception as e:
+            print(f"Error in directory search: {str(e)}")
+        
+        # 3. Contacts Search - Simple local search
+        try:
+            print("Searching local contacts...")
+            contacts_url = f"https://graph.microsoft.com/v1.0/me/contacts?$top=100"
+            
+            contacts_response = requests.get(contacts_url, headers=headers, timeout=20)
+            print(f"Contacts API response status: {contacts_response.status_code}")
+            
+            if contacts_response.status_code == 200:
+                contacts_data = contacts_response.json()
+                contacts_found = len(contacts_data.get('value', []))
+                print(f"Found {contacts_found} total contacts, filtering for matches")
+                
+                search_name_lower = search_name.lower()
+                matches = 0
+                
+                for contact_item in contacts_data.get('value', []):
+                    display_name = contact_item.get('displayName', '')
+                    email_addresses = contact_item.get('emailAddresses', [])
+                    
+                    # Simple check: if search name appears in display name
+                    if search_name_lower in display_name.lower():
+                        if email_addresses and email_addresses[0].get('address'):
+                            contact = {
+                                "id": f"contact_{contact_item.get('id', '')}",
+                                "displayName": display_name,
+                                "email": email_addresses[0].get('address', ''),
+                                "jobTitle": contact_item.get('jobTitle', ''),
+                                "department": contact_item.get('department', ''),
+                                "companyName": contact_item.get('companyName', ''),
+                                "source": "contacts",
+                                "relevanceScore": 0,
+                                "graph_id": contact_item.get('id', '')
+                            }
+                            all_contacts.append(contact)
+                            matches += 1
+                            print(f"Added contact: {display_name}")
+                
+                print(f"Found {matches} matching contacts")
+            else:
+                print(f"Contacts API error: {contacts_response.status_code} - {contacts_response.text}")
+        
+        except Exception as e:
+            print(f"Error in contacts search: {str(e)}")
+        
+        print(f"Total contacts found before deduplication: {len(all_contacts)}")
+        
+        # Simple deduplication by email
+        unique_contacts = {}
+        for contact in all_contacts:
+            email = contact['email'].lower()
+            if email not in unique_contacts:
+                unique_contacts[email] = contact
+            else:
+                # Keep the one from the most reliable source
+                existing = unique_contacts[email]
+                current = contact
+                
+                # Priority: people > directory > contacts (People API usually has better relevance)
+                source_priority = {'people': 3, 'directory': 2, 'contacts': 1}
+                
+                current_priority = source_priority.get(current['source'], 0)
+                existing_priority = source_priority.get(existing['source'], 0)
+                
+                if current_priority > existing_priority:
+                    unique_contacts[email] = current
+                elif current_priority == existing_priority and current.get('relevanceScore', 0) > existing.get('relevanceScore', 0):
+                    unique_contacts[email] = current
+        
+        # Convert back to list and sort by source priority and relevance
+        final_contacts = list(unique_contacts.values())
+        
+        def sort_key(contact):
+            source_priority = {'people': 3, 'directory': 2, 'contacts': 1}
+            source_score = source_priority.get(contact['source'], 0)
+            relevance_score = contact.get('relevanceScore', 0)
+            
+            return (
+                -source_score,  # Better sources first
+                -relevance_score,  # Higher relevance first
+                contact['displayName'].lower()  # Alphabetical
+            )
+        
+        final_contacts.sort(key=sort_key)
+        
+        print(f"Final unique contacts after deduplication: {len(final_contacts)}")
+        
+        # Get profile photos for each contact
+        enhanced_contacts = []
+        for contact in final_contacts:
+            enhanced_contact = contact.copy()
+            
+            # Try to get user's profile photo
+            try:
+                graph_id = contact.get('graph_id')
+                if graph_id and contact['source'] in ['directory', 'people']:
+                    # For directory users and people, use users/{id}/photo
+                    photo_url = f"https://graph.microsoft.com/v1.0/users/{graph_id}/photo/$value"
+                elif graph_id and contact['source'] == 'contacts':
+                    # For contacts, try contacts approach
+                    photo_url = f"https://graph.microsoft.com/v1.0/me/contacts/{graph_id}/photo/$value"
+                else:
+                    photo_url = None
+                
+                if photo_url:
+                    photo_response = requests.get(photo_url, headers=headers, timeout=10)
+                    if photo_response.status_code == 200:
+                        photo_base64 = base64.b64encode(photo_response.content).decode('utf-8')
+                        enhanced_contact['photo_base64'] = f"data:image/jpeg;base64,{photo_base64}"
+                        print(f"✅ Photo found for {contact.get('displayName', 'Unknown')}")
+                    else:
+                        enhanced_contact['photo_base64'] = None
+                        print(f"❌ No photo for {contact.get('displayName', 'Unknown')} - Status: {photo_response.status_code}")
+                else:
+                    enhanced_contact['photo_base64'] = None
+                    
+            except Exception as e:
+                print(f"❌ Error getting photo for {contact.get('displayName', 'Unknown')}: {str(e)}")
+                enhanced_contact['photo_base64'] = None
+            
+            enhanced_contacts.append(enhanced_contact)
+        
+        print(f"Found {len(enhanced_contacts)} relevant contacts matching '{name}'")
+        
+        # Generate HTML display
+        html_display = generate_contacts_html_enhanced(enhanced_contacts, search_name)
+        
+        return {
+            "contacts": enhanced_contacts,
+            "count": len(enhanced_contacts),
+            "display": html_display
+        }
+    
+    except requests.exceptions.Timeout:
+        error_msg = "Request timeout while searching contacts"
+        print(f"Timeout error: {error_msg}")
+        return {"error": error_msg}
+    
+    except requests.exceptions.RequestException as e:
+        error_msg = "Network error while searching contacts"
+        print(f"Request error: {str(e)}")
+        return {"error": error_msg}
+    
+    except Exception as e:
+        error_msg = f"Unexpected error while searching contacts: {str(e)}"
+        print(f"Unexpected error: {error_msg}")
+        return {"error": error_msg}
+    
+
+
+
+def create_calendar_event(title: str, start_datetime: str, end_datetime: str, user_id: int, description: str = "", status: str = "Creando recordatorio...") -> dict:
+    """
+    Creates a calendar event/reminder using Microsoft Graph API.
+    
+    Args:
+        title (str): Title of the event/reminder
+        start_datetime (str): Start date and time in YYYY-MM-DDTHH:MM format (Colombia time)
+        end_datetime (str): End date and time in YYYY-MM-DDTHH:MM format (Colombia time)
+        user_id (int): The ID of the user creating the event
+        description (str): Optional description for the event. Defaults to ""
+        status (str): Status message for tracking. Defaults to "Creando recordatorio..."
+        
+    Returns:
+        dict: A dictionary containing either success message or error details
+    """
+    # Validate required fields
+    if not title or not start_datetime or not end_datetime:
+        return {"error": "Title, start datetime, and end datetime are required"}
+        
+    if not user_id:
+        return {"error": "User ID is required"}
+    
+    try:
+        # Set status for tracking
+        if user_id:
+            set_status(user_id, status, 2)
+        
+        # Get user's Microsoft Graph token
+        user_service = UserService()
+        access_token = user_service.get_user_token(user_id)
+        
+        if not access_token:
+            return {"error": "No access token found for user. Please authenticate with Microsoft first."}
+        
+        # Validate datetime format
+        try:
+            from datetime import datetime
+            start_dt = datetime.fromisoformat(start_datetime)
+            end_dt = datetime.fromisoformat(end_datetime)
+            
+            # Ensure end time is after start time
+            if end_dt <= start_dt:
+                return {"error": "End time must be after start time"}
+        except:
+            return {"error": "Invalid datetime format. Use YYYY-MM-DDTHH:MM format"}
+        
+        # Prepare the event payload for Microsoft Graph API
+        event_payload = {
+            "subject": title,
+            "start": {
+                "dateTime": start_datetime,
+                "timeZone": "America/Bogota"
+            },
+            "end": {
+                "dateTime": end_datetime,
+                "timeZone": "America/Bogota"
+            },
+            "body": {
+                "contentType": "text",
+                "content": description if description else ""
+            },
+            "isReminderOn": True,
+            "reminderMinutesBeforeStart": 15
+        }
+        
+        # Set up headers with authentication
+        headers = {
+            "Authorization": f"Bearer {access_token}",
+            "Content-Type": "application/json"
+        }
+        
+        # Microsoft Graph API endpoint for creating events
+        events_url = "https://graph.microsoft.com/v1.0/me/events"
+        
+        print(f"Creating calendar event: {title} from {start_datetime} to {end_datetime}")
+        
+        # Make the API call to Microsoft Graph
+        response = requests.post(
+            events_url,
+            headers=headers,
+            data=json.dumps(event_payload),
+            timeout=30
+        )
+        
+        # Check response status
+        if response.status_code == 201:
+            # 201 Created - Event created successfully
+            event_data = response.json()
+            event_id = event_data.get('id', '')
+            web_link = event_data.get('webLink', '')
+            
+            print(f"Event created successfully with ID: {event_id}")
+            
+            # Format success message
+            start_formatted = start_dt.strftime('%d de %B a las %H:%M')
+            success_message = f"Recordatorio '{title}' creado exitosamente para el {start_formatted}"
+            
+            return {
+                "success": success_message,
+                "event_id": event_id,
+                "title": title,
+                "start_datetime": start_datetime,
+                "end_datetime": end_datetime,
+                "web_link": web_link,
+                "message": "Event created successfully"
+            }
+        
+        elif response.status_code == 401:
+            # Unauthorized - Token might be expired or invalid
+            error_msg = "Authentication failed. Please refresh your Microsoft login."
+            print(f"Authentication error: {response.text}")
+            return {"error": error_msg}
+        
+        elif response.status_code == 403:
+            # Forbidden - Insufficient permissions
+            error_msg = "Insufficient permissions to create calendar events. Please check your Microsoft account permissions."
+            print(f"Permission error: {response.text}")
+            return {"error": error_msg}
+        
+        elif response.status_code == 400:
+            # Bad Request - Invalid data
+            try:
+                error_response = response.json()
+                error_detail = error_response.get('error', {}).get('message', 'Invalid event data')
+            except:
+                error_detail = "Invalid event data"
+            
+            error_msg = f"Cannot create event: {error_detail}"
+            print(f"Bad request error: {response.text}")
+            return {"error": error_msg}
+        
+        else:
+            # Other errors
+            error_detail = ""
+            try:
+                error_response = response.json()
+                error_detail = error_response.get('error', {}).get('message', response.text)
+            except:
+                error_detail = response.text
+            
+            error_msg = f"Failed to create event: {error_detail}"
+            print(f"Microsoft Graph API error: {response.status_code} - {error_detail}")
+            return {"error": error_msg}
+    
+    except requests.exceptions.Timeout:
+        error_msg = "Request timeout while creating event"
+        print(f"Timeout error: {error_msg}")
+        return {"error": error_msg}
+    
+    except requests.exceptions.RequestException as e:
+        error_msg = "Network error while creating event"
+        print(f"Request error: {str(e)}")
+        return {"error": error_msg}
+    
+    except Exception as e:
+        error_msg = f"Unexpected error while creating event: {str(e)}"
+        print(f"Unexpected error: {error_msg}")
+        return {"error": error_msg}
+    

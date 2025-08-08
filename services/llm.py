@@ -21,8 +21,8 @@ class LLMService:
 
         self.ROUTER_MODEL = "gpt-4.1-nano"
         self.CHAT_MODEL = "gpt-4.1-mini"
-        self.FUNCTION_MODEL = "gpt-4.1"
-        self.MODEL_FOR_LAST_RESPONSE = "gpt-4.1-mini"  
+        self.FUNCTION_MODEL = "gpt-5"
+        self.MODEL_FOR_LAST_RESPONSE = "gpt-4.1-mini"
 
     def _init_conversation(self, messages, user_input, image_url, model_prompt):
 
@@ -166,7 +166,7 @@ class LLMService:
         response = self.client.chat.completions.create(
             model=self.ROUTER_MODEL,
             messages=router_messages,
-            max_tokens=20  
+            service_tier="priority"
         )
         
         routing_decision = response.choices[0].message.content.strip()
@@ -252,7 +252,8 @@ class LLMService:
                     completions = self.client.chat.completions.create(
                         model=model,
                         messages=messages,
-                        tools=None  # No tools for chat model
+                        tools=None,
+                        service_tier="priority"
                     )
             else:
                 raise e
@@ -325,6 +326,7 @@ class LLMService:
                 model= self.MODEL_FOR_LAST_RESPONSE,
                 messages=messages,
                 tools=None,  # Disable tools for final response
+                service_tier="priority"
             )
             final_content = completions.choices[0].message.content
             messages.append({"role": "assistant", "content": final_content})
@@ -352,12 +354,17 @@ class LLMService:
     def _call_openai_with_fallback(self, model, messages, tools=None, tool_choice=None):
         """Fallback universal para todas las llamadas a OpenAI"""
         models_to_try = [
-            model,           
-            "gpt-4o",
+            "gpt-5",
+            "gpt-4.1",
+            "gpt-5-mini",           
             "gpt-4.1-mini",
+            "gpt-4o",
             "gpt-4o-mini",
         ]
-        
+
+        if model not in models_to_try:
+            models_to_try.insert(0, model)
+
         for try_model in models_to_try:
             try:
                 print(f"Trying model: {try_model}")
@@ -386,7 +393,8 @@ class LLMService:
         3. Mensaje predeterminado (último recurso)
         """
         models_to_try = [
-            self.FUNCTION_MODEL,  
+            self.FUNCTION_MODEL,
+            "gpt-4.1", 
             "gpt-4o",
             "gpt-4.1-mini",
             "gpt-4o-mini",

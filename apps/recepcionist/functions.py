@@ -2039,7 +2039,7 @@ def send_email(to_email: str, subject: str, body: str, status: str = "", user_id
     
     try:
         if user_id:
-            set_status(user_id, status or "Sending email...", 2)
+            set_status(user_id, status or "Sending email...", 5)
 
         if not all([DEFAULT_FROM_EMAIL, EMAIL_HOST_PASSWORD]):
             raise ValueError("DEFAULT_FROM_EMAIL and EMAIL_HOST_PASSWORD must be set in the environment variables")

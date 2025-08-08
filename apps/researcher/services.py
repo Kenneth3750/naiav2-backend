@@ -51,47 +51,37 @@ class ResearcherService:
                         "name": "scholar_search",
                         "description": "EXCLUSIVELY for finding academic articles and research papers. Never use for general internet searches. Call this function any time the user wants academic references, citations, or scholarly information.",
                         "parameters": {
-                        "type": "object",
-                        "properties": {
-                            "query": {
-                            "type": "string",
-                            "description": "The search query in the langugae of the user"
-                            },
-                            "query_2":{
-                            "type": "string",
-                            "description": """The search query in the language of the user, but in English. This is used to search in Google Scholar. If the user is asking on english put a different query here, if the user is talking in another language, put the same query here but in English. 
-                            For example, if the user is asking in Spanish, put the same query here but in English. If the user is asking in English, put a different query here"""
-                            },
-                            "num_results": {
-                            "type": "integer",
-                            "description": "The number of results to return"
-                            },
-                            "status": {
-                            "type": "string",
-                            "description": "A concise description of the search task being performed, using conjugated verbs (e.g., 'Buscando artículos sobre...', 'Searching for papers about...') in the same language as the user's question"
-                            },
-                            "user_id": {
-                            "type": "string",
-                            "description": "The ID of the user who is performing the search. Look at the first developer prompt to get the user_id"
-                            },
-                            "language1": {
-                            "type": "string",
-                            "description": "The language of the search query. For example, 'es' for Spanish or 'en' for English"
-                            },
-                            "language2": {
-                            "type": "string",
-                            "description": "The language of the search query in English. For example, 'es' for Spanish or 'en' for English. This default value is 'en' "
-                            },
-                        },
-                        "required": [
-                            "query",
-                            "num_results",
-                            "status",
-                            "user_id",
-                            "language1",
-                            "language2",
-                            "query_2"
-                        ]
+                            "type": "object",
+                            "properties": {
+                                "query": {
+                                    "type": "string",
+                                    "description": "Simple and clean search query optimized for Google Scholar. RULES: 1) For author searches: Use ONLY 'Author Full Name University Name' (keep university names in their original form, never translate them). 2) For topic searches: Use only the main keywords/topics. 3) NEVER include language specifications like 'artículos en inglés', 'English articles', 'papers in', etc. 4) NEVER include words like 'artículos', 'papers', 'research', 'estudios'. 5) Keep it simple as if typing directly in Google Scholar search box. Example: 'Cristian Quintero Monroy Universidad del Norte' NOT 'artículos de Cristian Quintero Monroy Universidad del Norte en inglés'"
+                                },
+                                "query_2": {
+                                    "type": "string", 
+                                    "description": "Alternative search query in English following the same rules as 'query'. RULES: 1) For author searches: Use ONLY 'Author Full Name University Name' (keep university names exactly as provided by user, never translate). 2) For topic searches: Translate only the topic keywords to English. 3) NEVER include 'English articles', 'papers in English', etc. 4) If original query was already in English, make this slightly different by reordering terms or using synonyms. Example: 'Cristian Quintero Monroy Universidad del Norte' or for topics 'wastewater treatment neural networks' NOT 'English articles about wastewater treatment'"
+                                },
+                                "num_results": {
+                                    "type": "integer",
+                                    "description": "The number of results to return"
+                                },
+                                "status": {
+                                    "type": "string",
+                                    "description": "A concise description of the search task being performed, using conjugated verbs (e.g., 'Buscando artículos sobre...', 'Searching for papers about...') in the same language as the user's question"
+                                },
+                                "user_id": {
+                                    "type": "string",
+                                    "description": "The ID of the user who is performing the search. Look at the first developer prompt to get the user_id"
+                                },
+                                "language1": {
+                                    "type": "string",
+                                    "description": "The language of the search query. For example, 'es' for Spanish or 'en' for English"
+                                },
+                                "language2": {
+                                    "type": "string",
+                                    "description": "The language of the search query in English. For example, 'es' for Spanish or 'en' for English. This default value is 'en'"
+                                }
+                            }
                         }
                     }
                 },
@@ -530,12 +520,30 @@ class ResearcherService:
 
         1. scholar_search: 
         - PURPOSE: Find academic papers and scholarly information
-        - USE WHEN: User needs references, citations, research papers, or academic sources. If user ask for articles of a certain person, you must use this function. ONLY IF THE USER ASK FOR ACADEMIC LITERATURE OR SCHOLARLY EVIDENCE OF A PERSON OR A TOPIC, USE THIS FUNCTION. IF THE USER ASK FOR MORE GENERAL INFO OR OTHER INFO ABOUT A PERSON, USE FACTUAL_WEB_QUERY.
+        - USE WHEN: User needs references, citations, research papers, or academic sources. If user asks for articles of a certain person, you must use this function. ONLY IF THE USER ASKS FOR ACADEMIC LITERATURE OR SCHOLARLY EVIDENCE OF A PERSON OR A TOPIC, USE THIS FUNCTION. IF THE USER ASKS FOR MORE GENERAL INFO OR OTHER INFO ABOUT A PERSON, USE FACTUAL_WEB_QUERY.
         - NEVER USE FOR: General internet searches, document content queries, or information not related to academic literature
-        - ALWAYS USE WHEN: User asks for academic literature, scholarly articles, or research papers whether if a person is involved or only a topic
+        - ALWAYS USE WHEN: User asks for academic literature, scholarly articles, or research papers whether a person is involved or only a topic
         - KEY INDICATOR: Any request for academic literature or scholarly evidence
-        - EXAMPLES: "Find papers on climate change", "Research on cognitive psychology"
-
+        - EXAMPLES: "Find papers on climate change", "Research on cognitive psychology", "Articles by Professor Smith"
+        
+        - CRUCIAL QUERY FORMATION RULES:
+          * Use ONLY keywords and proper names, never full sentences
+          * For author searches: Use format "Author Full Name University Name" (keep university names exactly as provided, never translate)
+          * For topic searches: Use only main keywords separated by spaces
+          * NEVER include words like: "articles", "papers", "research", "find", "about", "from", "studies", "publications"
+          * NEVER include language specifications like: "in English", "en inglés", "English articles"
+          * Think like typing directly into Google Scholar search box - keep it simple and clean
+          
+        - QUERY EXAMPLES:
+          CORRECT: "John Doe Universidad del Norte"
+          CORRECT: "climate change environmental impact"
+          CORRECT: "Cristian Quintero Monroy Universidad del Norte wastewater forecasting"
+          WRONG: "Articles from John Doe Universidad del Norte"
+          WRONG: "Find papers by John Doe about climate change"
+          WRONG: "Research articles in English from Universidad del Norte"
+          WRONG: "Artículos de John Doe Universidad del Norte sobre cambio climático"
+          
+        - REMEMBER: The language filtering is handled by language1/language2 parameters, NOT by adding language terms to the query
         2. write_document:
         - PURPOSE: Create completely NEW comprehensive documents (essays, reports, etc.)
         - USE WHEN, AND ONLY WHEN: User EXPLICITLY asks for document creation with phrases like:
