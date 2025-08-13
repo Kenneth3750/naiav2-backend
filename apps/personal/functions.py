@@ -2071,7 +2071,7 @@ def create_calendar_event(title: str, start_datetime: str, end_datetime: str, us
         return {"error": error_msg}
     
 
-def read_user_emails(user_id: int, max_emails: int = 10, unread_only: bool = False, search_query: str = None, status: str = "Consultando emails...") -> dict:
+def read_user_emails(user_id: int, max_emails: int = 10, unread_only: bool = False, search_query: str = None, read_full_content: bool = False, specific_subject: str = None, status: str = "Consultando emails...") -> dict:
     """
     Reads user emails using Microsoft Graph API without marking them as read.
     
@@ -2080,6 +2080,8 @@ def read_user_emails(user_id: int, max_emails: int = 10, unread_only: bool = Fal
         max_emails (int): Maximum number of emails to retrieve (default: 10, max: 50)
         unread_only (bool): If True, only returns unread emails (default: False)
         search_query (str): Search query for subject, sender, or content (optional)
+        read_full_content (bool): If True, retrieves full email body content for detailed analysis (default: False)
+        specific_subject (str): When provided, searches for emails with this specific subject and automatically enables full content reading (optional)
         status (str): Status message for tracking. Defaults to "Consultando emails..."
         
     Returns:
@@ -2088,6 +2090,13 @@ def read_user_emails(user_id: int, max_emails: int = 10, unread_only: bool = Fal
     # Validate required fields
     if not user_id:
         return {"error": "User ID is required"}
+    
+    # When specific_subject is provided, optimize for single email reading
+    if specific_subject and specific_subject.strip():
+        max_emails = 3  # Limit to 3 results for specific subject search
+        read_full_content = True  # Always read full content for specific subjects
+        search_query = specific_subject.strip()  # Use subject as search query
+        print(f"Optimized search for specific subject: {specific_subject}")
     
     # Limit max_emails to prevent performance issues
     if max_emails > 50:
@@ -2110,10 +2119,15 @@ def read_user_emails(user_id: int, max_emails: int = 10, unread_only: bool = Fal
         # Build Microsoft Graph API URL for emails
         graph_url = "https://graph.microsoft.com/v1.0/me/messages"
         
-        # Build query parameters
+        # Build query parameters - dynamic select based on read_full_content
+        if read_full_content:
+            select_fields = "id,subject,from,receivedDateTime,body,bodyPreview,isRead,hasAttachments,importance,webLink"
+        else:
+            select_fields = "id,subject,from,receivedDateTime,bodyPreview,isRead,hasAttachments,importance,webLink"
+        
         params = {
             "$top": max_emails,
-            "$select": "id,subject,from,receivedDateTime,bodyPreview,isRead,hasAttachments,importance,webLink"
+            "$select": select_fields
         }
         
         # Add unread filter if requested
@@ -2121,8 +2135,15 @@ def read_user_emails(user_id: int, max_emails: int = 10, unread_only: bool = Fal
         if unread_only:
             filters.append("isRead eq false")
         
-        # Add search query if provided
-        if search_query and search_query.strip():
+        # Handle specific subject search (more precise than general search)
+        if specific_subject and specific_subject.strip():
+            # For specific subject, use subject filter instead of general search
+            subject_filter = f"contains(subject,'{specific_subject.strip()}')"
+            filters.append(subject_filter)
+            params["$orderby"] = "receivedDateTime desc"  # Most recent first
+            if filters:
+                params["$filter"] = " and ".join(filters)
+        elif search_query and search_query.strip():
             params["$search"] = f'"{search_query.strip()}"'
             # NOTE: Microsoft Graph API doesn't allow $filter or $orderBy with $search
             # So we'll filter unread emails locally and results won't be sorted by date
@@ -2143,6 +2164,10 @@ def read_user_emails(user_id: int, max_emails: int = 10, unread_only: bool = Fal
             print("Filtering for unread emails only")
         if search_query:
             print(f"Searching for: {search_query}")
+        if specific_subject:
+            print(f"Targeted search for specific subject: {specific_subject}")
+        if read_full_content:
+            print("Full email content will be retrieved for detailed analysis")
         
         # Make the API call to Microsoft Graph
         response = requests.get(
@@ -2157,10 +2182,14 @@ def read_user_emails(user_id: int, max_emails: int = 10, unread_only: bool = Fal
             # Success - process emails
             emails_data = response.json()
             emails = emails_data.get('value', [])
-            if search_query and unread_only:
+            if search_query and unread_only and not specific_subject:
                 emails = [email for email in emails if not email.get('isRead', True)]
             
             print(f"Retrieved {len(emails)} emails")
+            if read_full_content:
+                print("Full email content retrieved for detailed analysis")
+            if specific_subject:
+                print(f"Specific subject search completed - found {len(emails)} matching emails")
             
             if not emails:
                 # No emails found
@@ -2169,21 +2198,27 @@ def read_user_emails(user_id: int, max_emails: int = 10, unread_only: bool = Fal
                     message += " no leídos"
                 if search_query:
                     message += f" que coincidan con '{search_query}'"
+                if specific_subject:
+                    message += f" con el asunto '{specific_subject}'"
                 message += " en este momento."
                 
                 return {
                     "emails": [],
                     "count": 0,
-                    "display": f'<div style="padding: 20px; text-align: center; color: #666;"><p>{message}</p></div>'
+                    "display": f'<div style="padding: 20px; text-align: center; color: #666;"><p>{message}</p></div>',
+                    "full_content_available": read_full_content,
+                    "specific_subject_search": bool(specific_subject)
                 }
             
-            # Generate HTML display
+            # Generate HTML display (always uses bodyPreview for display)
             html_display = _generate_emails_html(emails, unread_only, search_query, max_emails)
             
             return {
                 "emails": emails,
                 "count": len(emails),
-                "display": html_display
+                "display": html_display,
+                "full_content_available": read_full_content,
+                "specific_subject_search": bool(specific_subject)
             }
         
         elif response.status_code == 401:

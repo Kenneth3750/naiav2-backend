@@ -72,7 +72,7 @@ class ChatService():
         
         # 8. Generate LLM response (this is expected to be the longest step)
         start_time = time.time()
-        response = llm_service.generate_response(user_input, image_url, messages)
+        response = llm_service.generate_response(user_input, image_url, messages, user_id)
         timing_info["llm_response_generation"] = time.time() - start_time
         
         # 9. Save conversation

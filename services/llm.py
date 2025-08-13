@@ -21,7 +21,7 @@ class LLMService:
 
         self.ROUTER_MODEL = "gpt-4.1-nano"
         self.CHAT_MODEL = "gpt-4.1-mini"
-        self.FUNCTION_MODEL = "gpt-5"
+        self.FUNCTION_MODEL = "gpt-4.1"
         self.MODEL_FOR_LAST_RESPONSE = "gpt-4.1-mini"
 
     def _init_conversation(self, messages, user_input, image_url, model_prompt):
@@ -156,17 +156,15 @@ class LLMService:
             router_messages = []
 
         router_messages.append(
-            {"role": "system", "content": "You are a specialized router for the NAIA assistant. Use the context of the conversation to determine if the user needs a function or not."}
-        )
-        router_messages.append(
-            {"role": "user", "content": router_prompt}
+            {"role": "developer", "content": router_prompt}
         )
         
 
         response = self.client.chat.completions.create(
             model=self.ROUTER_MODEL,
             messages=router_messages,
-            service_tier="priority"
+            service_tier="priority",
+            
         )
         
         routing_decision = response.choices[0].message.content.strip()
@@ -202,12 +200,15 @@ class LLMService:
         
         return re.sub(pattern, replacement, text, flags=re.IGNORECASE)
     
-    def generate_response(self, user_input, image_url, messages):
+    def generate_response(self, user_input, image_url, messages, user_id):
+        """
+        Generate a response from the model based on user input and context.
+        """
         start_time = time.time()
         user_input = self.fix_naia_misspelling(user_input)
         print(f"User input after fixing spelling: {user_input}")
         is_function = self.route_query(user_input, messages)
-        
+        user_id = user_id
         retry_without_image = False
         
         try:
@@ -354,6 +355,7 @@ class LLMService:
     def _call_openai_with_fallback(self, model, messages, tools=None, tool_choice=None):
         """Fallback universal para todas las llamadas a OpenAI"""
         models_to_try = [
+            model,
             "gpt-5",
             "gpt-4.1",
             "gpt-5-mini",           
@@ -362,8 +364,7 @@ class LLMService:
             "gpt-4o-mini",
         ]
 
-        if model not in models_to_try:
-            models_to_try.insert(0, model)
+
 
         for try_model in models_to_try:
             try:
@@ -372,7 +373,7 @@ class LLMService:
                     model=try_model,
                     messages=messages,
                     tools=tools,
-                    tool_choice=tool_choice
+                    tool_choice=tool_choice,
                 )
             except Exception as e:
                 if "rate_limit_exceeded" in str(e) or "429" in str(e):

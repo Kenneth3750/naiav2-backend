@@ -505,6 +505,7 @@ def get_university_calendar_multi_month(user_id: int, months_to_search: list, st
 def get_virtual_campus_tour(area_filter: str = None, place_name: str = None, language: str = "Spanish", user_id: int = 0, status: str = "") -> dict:
     """
     Generates an interactive virtual campus tour with intelligent place matching.
+    Optimized to download only necessary images based on the specific request.
     
     Args:
         area_filter (str): Filter by category ("academic", "recreational", "services") or None for all
@@ -519,16 +520,18 @@ def get_virtual_campus_tour(area_filter: str = None, place_name: str = None, lan
     try:
         set_status(user_id, status, 2)  # 2 = uniguide role
         
-        # Get tour data from B2
+        # Step 1: Get only tour JSON data from B2 (fast)
         b2_service = B2FileService()
-        tour_data = b2_service.download_virtual_tour_data()
+        tour_info = b2_service.download_virtual_tour_json_only()
         
-        if not tour_data or not tour_data.get('tour_info'):
+        if not tour_info:
             return {"error": "No se pudo cargar la información del tour virtual"}
         
-        tour_info = tour_data['tour_info']
-        available_images = tour_data.get('images', {})
         is_spanish = language.lower().startswith('es') or 'spanish' in language.lower()
+        
+        # Step 2: Determine what places we need to show
+        places_to_show = []
+        match_result = None
         
         # Use intelligent matching if place_name is provided
         if place_name:
@@ -546,92 +549,153 @@ def get_virtual_campus_tour(area_filter: str = None, place_name: str = None, lan
                         place_data = category_data['places'][matched_place_key]
                         place_data['category'] = category_data.get('name', category_key)
                         place_data['place_key'] = matched_place_key
-                        
-                        # Generate single place view
-                        display_content, graph_content = generate_single_place_html_split(
-                            place_data, available_images, b2_service, is_spanish
-                        )
-                        
-                        return {
-                            "display": display_content,
-                            "graph": graph_content,
-                            "match_info": {
-                                "found": True,
-                                "place": matched_place_key,
-                                "confidence": best_match.get("confidence", 0),
-                                "interpretation": match_result.get("interpretation", "")
-                            }
-                        }
+                        places_to_show.append(place_data)
+                        break
             
             elif match_result.get("suggested_category"):
                 # Redirect to category view
                 area_filter = match_result["suggested_category"]
                 place_name = None  # Clear place_name to show category
-            
-            else:
-                # No matches found, show general tour with search info
-                area_filter = None
-                place_name = None
         
-        # Filter data based on area_filter or show all categories
-        categories_to_show = []
-        
-        if area_filter:
-            # Filter by specific category
-            if area_filter in tour_info.get('categories', {}):
-                category_data = tour_info['categories'][area_filter]
-                categories_to_show.append({
-                    'key': area_filter,
-                    'name': category_data.get('name', area_filter),
-                    'description': category_data.get('description', ''),
-                    'places': category_data.get('places', {})
-                })
+        # If no specific place found or showing categories
+        if not places_to_show:
+            # Filter data based on area_filter or show all categories
+            if area_filter:
+                # Filter by specific category
+                if area_filter in tour_info.get('categories', {}):
+                    category_data = tour_info['categories'][area_filter]
+                    for place_key, place_data in category_data.get('places', {}).items():
+                        place_data['category'] = category_data.get('name', area_filter)
+                        place_data['place_key'] = place_key
+                        places_to_show.append(place_data)
+                else:
+                    # Invalid category, show all
+                    for category_key, category_data in tour_info.get('categories', {}).items():
+                        for place_key, place_data in category_data.get('places', {}).items():
+                            place_data['category'] = category_data.get('name', category_key)
+                            place_data['place_key'] = place_key
+                            places_to_show.append(place_data)
             else:
-                # Invalid category, show all
+                # Show all categories
                 for category_key, category_data in tour_info.get('categories', {}).items():
-                    categories_to_show.append({
-                        'key': category_key,
-                        'name': category_data.get('name', category_key),
-                        'description': category_data.get('description', ''),
-                        'places': category_data.get('places', {})
-                    })
-        else:
-            # Show all categories
-            for category_key, category_data in tour_info.get('categories', {}).items():
-                categories_to_show.append({
-                    'key': category_key,
-                    'name': category_data.get('name', category_key),
-                    'description': category_data.get('description', ''),
-                    'places': category_data.get('places', {})
-                })
+                    for place_key, place_data in category_data.get('places', {}).items():
+                        place_data['category'] = category_data.get('name', category_key)
+                        place_data['place_key'] = place_key
+                        places_to_show.append(place_data)
         
-        # Generate overview/category view
-        display_content, graph_content = generate_tour_overview_html_split(
-            categories_to_show, available_images, b2_service, is_spanish
-        )
+        # Step 3: Extract image names only from places we need to show
+        required_images = set()
+        for place in places_to_show:
+            images = place.get('images', [])
+            if images:
+                required_images.update(images)
         
-        result = {
-            "display": display_content,
-            "graph": graph_content
-        }
+        print(f"Required images: {len(required_images)} out of potentially many more")
         
-        # Add search info if there was a search attempt
-        if place_name:
-            result["match_info"] = {
-                "found": False,
-                "search_term": place_name,
-                "interpretation": match_result.get("interpretation", "") if 'match_result' in locals() else "",
-                "fallback": "overview"
+        # Step 4: Get only the required images info
+        available_images = b2_service.get_virtual_tour_images_info(list(required_images))
+        
+        # Step 5: Generate the appropriate view
+        if place_name and match_result and match_result.get("matches") and len(places_to_show) == 1:
+            # Single place view
+            place_data = places_to_show[0]
+            display_content, graph_content = generate_single_place_html_split(
+                place_data, available_images, b2_service, is_spanish
+            )
+            
+            return {
+                "display": display_content,
+                "graph": graph_content,
+                "match_info": {
+                    "found": True,
+                    "place": place_data['place_key'],
+                    "confidence": match_result["matches"][0].get("confidence", 0),
+                    "interpretation": match_result.get("interpretation", "")
+                }
             }
-        
-        return result
+        else:
+            # Overview/category view - need to organize places back into categories
+            categories_to_show = []
+            
+            if area_filter:
+                # Single category view
+                if area_filter in tour_info.get('categories', {}):
+                    category_data = tour_info['categories'][area_filter]
+                    category_places = {}
+                    for place in places_to_show:
+                        if place.get('category') == category_data.get('name', area_filter):
+                            category_places[place['place_key']] = place
+                    
+                    categories_to_show.append({
+                        'key': area_filter,
+                        'name': category_data.get('name', area_filter),
+                        'description': category_data.get('description', ''),
+                        'places': category_places
+                    })
+                else:
+                    # Invalid category, organize all places by their categories
+                    category_map = {}
+                    for place in places_to_show:
+                        cat_name = place.get('category', 'unknown')
+                        if cat_name not in category_map:
+                            category_map[cat_name] = {'places': {}}
+                        category_map[cat_name]['places'][place['place_key']] = place
+                    
+                    for cat_key, cat_data in tour_info.get('categories', {}).items():
+                        cat_display_name = cat_data.get('name', cat_key)
+                        if cat_display_name in category_map:
+                            categories_to_show.append({
+                                'key': cat_key,
+                                'name': cat_display_name,
+                                'description': cat_data.get('description', ''),
+                                'places': category_map[cat_display_name]['places']
+                            })
+            else:
+                # All categories view
+                category_map = {}
+                for place in places_to_show:
+                    cat_name = place.get('category', 'unknown')
+                    if cat_name not in category_map:
+                        category_map[cat_name] = {'places': {}}
+                    category_map[cat_name]['places'][place['place_key']] = place
+                
+                for cat_key, cat_data in tour_info.get('categories', {}).items():
+                    cat_display_name = cat_data.get('name', cat_key)
+                    if cat_display_name in category_map:
+                        categories_to_show.append({
+                            'key': cat_key,
+                            'name': cat_display_name,
+                            'description': cat_data.get('description', ''),
+                            'places': category_map[cat_display_name]['places']
+                        })
+            
+            # Generate overview/category view
+            display_content, graph_content = generate_tour_overview_html_split(
+                categories_to_show, available_images, b2_service, is_spanish
+            )
+            
+            result = {
+                "display": display_content,
+                "graph": graph_content
+            }
+            
+            # Add search info if there was a search attempt
+            if place_name:
+                result["match_info"] = {
+                    "found": False,
+                    "search_term": place_name,
+                    "interpretation": match_result.get("interpretation", "") if match_result else "",
+                    "fallback": "overview"
+                }
+            
+            return result
         
     except Exception as e:
         print(f"Error generating virtual campus tour: {str(e)}")
         import traceback
         traceback.print_exc()
         return {"error": str(e)}
-
+    
 def generate_single_place_html_split(place_data: dict, available_images: dict, b2_service: B2FileService, is_spanish: bool = True) -> tuple:
     """Generate split HTML for a single place: (info_content, image_carousel)"""
     
@@ -739,7 +803,7 @@ def generate_single_place_html_split(place_data: dict, available_images: dict, b
     {get_info_styles()}
     """
     
-    # Generate image carousel (graph)
+    # Generate image carousel (graph) - CORREGIDO
     image_carousel = ""
     if images:
         carousel_title = f"Galería - {place_name}" if is_spanish else f"Gallery - {place_name}"
@@ -753,7 +817,8 @@ def generate_single_place_html_split(place_data: dict, available_images: dict, b
         
         for i, img_name in enumerate(images):
             if img_name in available_images:
-                img_url = b2_service.get_virtual_tour_image_url(img_name)
+                # CORREGIDO: Usar directamente la URL del diccionario
+                img_url = available_images[img_name].get('url')
                 if img_url:
                     active_class = "active" if i == 0 else ""
                     image_carousel += f'''
@@ -868,10 +933,10 @@ def generate_tour_overview_html_split(categories: list, available_images: dict, 
     {get_info_styles()}
     """
     
-    # NUEVA IMPLEMENTACIÓN: Carrusel optimizado con todas las imágenes del campus
+    # CORREGIDO: Carrusel optimizado con imágenes disponibles
     carousel_title = "Galería del Campus" if is_spanish else "Campus Gallery"
     
-    # Recopilar TODAS las imágenes de todos los lugares
+    # Recopilar imágenes usando el diccionario optimizado
     all_images = []
     for category in categories:
         places = category.get('places', {})
@@ -879,10 +944,10 @@ def generate_tour_overview_html_split(categories: list, available_images: dict, 
             place_name = place_data.get('name', place_key)
             images = place_data.get('images', [])
             
-            # Agregar todas las imágenes de este lugar
+            # CORREGIDO: Usar directamente available_images que ya tiene las URLs
             for img_name in images:
                 if img_name in available_images:
-                    img_url = b2_service.get_virtual_tour_image_url(img_name)
+                    img_url = available_images[img_name].get('url')
                     if img_url:
                         all_images.append({
                             'url': img_url,
@@ -891,7 +956,7 @@ def generate_tour_overview_html_split(categories: list, available_images: dict, 
                             'alt': f"{place_name} - {img_name}"
                         })
     
-    # Generar carrusel con las mismas dimensiones que el que funciona bien
+    # Generar carrusel
     campus_carousel = ""
     if all_images:
         campus_carousel = f"""
@@ -1116,7 +1181,7 @@ def generate_tour_overview_html_split(categories: list, available_images: dict, 
                 <div class="carousel-indicators" id="indicators">
         """
         
-        # Generar indicadores (limitados si hay muchas imágenes)
+        # Generar indicadores
         for i in range(len(all_images)):
             active = "active" if i == 0 else ""
             campus_carousel += f'<div class="carousel-indicator {active}" data-slide="{i}"></div>'
@@ -1175,7 +1240,7 @@ def generate_tour_overview_html_split(categories: list, available_images: dict, 
                         }});
                     }});
                     
-                    // Auto-advance carousel every 4 seconds (más rápido porque hay más imágenes)
+                    // Auto-advance carousel every 4 seconds
                     let autoplayInterval = setInterval(() => {{
                         showSlide(currentSlide + 1);
                     }}, 4000);
@@ -1217,6 +1282,7 @@ def generate_tour_overview_html_split(categories: list, available_images: dict, 
         """
     
     return display_content, campus_carousel
+
 
 def get_info_styles() -> str:
     """Return CSS styles for information content"""
@@ -1900,11 +1966,15 @@ MATCHING RULES:
 EXAMPLES:
 User: "biblioteca" → match "biblioteca" place_key
 User: "library" → match "biblioteca" place_key  
-User: "gimnasio" → match "polideportivo" place_key
+User: "gimnasio" → match "gimnasio" place_key
 User: "lugares académicos" → category "academic"
 User: "tour completo" → query_type "general_tour"
 User: "karl parrish" → match "biblioteca" place_key
-User: "donde estudiar" → match "biblioteca" place_key based on services"""
+User: "donde estudiar" → match "biblioteca" place_key based on services
+
+Specific situation:
+- Never select the Centro deportivo roble amarillo as the gym location, it does not matter if there is a gym inside.
+- The main gym of the university is the one clearly named Gimnasio Uninorte. You must always select this as the gym location."""
 
         user_prompt = f"""User query: "{user_query}"
 Language: {language}

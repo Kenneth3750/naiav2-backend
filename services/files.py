@@ -287,12 +287,12 @@ class B2FileService:
         return documents
     
 
-    def download_virtual_tour_data(self):
+    def download_virtual_tour_json_only(self):
         """
-        Downloads virtual tour data including tour_info.json and processes images
+        Downloads only the tour_info.json file for virtual tour (optimized for speed)
         
         Returns:
-            dict: Dictionary containing tour information and available images
+            dict: Dictionary containing only tour information
         """
         import tempfile
         import os
@@ -303,63 +303,119 @@ class B2FileService:
         prefix = self.uni_places_prefix
         files = bucket.ls(folder_to_list=prefix, recursive=False)
         
-        tour_data = {}
-        images_info = {}
-        
         for file_info, file_metadata in files:
-            try:
-                with tempfile.NamedTemporaryFile(delete=False) as temp_file:
-                    temp_path = temp_file.name
-                
-                downloaded_file = b2_api.download_file_by_id(file_info.id_)
-                downloaded_file.save_to(temp_path)
-                
-                file_name = file_info.file_name.split('/')[-1]  # Get just the filename
-                
-                if file_name == 'tour_info.json':
+            file_name = file_info.file_name.split('/')[-1]  # Get just the filename
+            
+            if file_name == 'tour_info.json':
+                try:
+                    with tempfile.NamedTemporaryFile(delete=False) as temp_file:
+                        temp_path = temp_file.name
+                    
+                    downloaded_file = b2_api.download_file_by_id(file_info.id_)
+                    downloaded_file.save_to(temp_path)
+                    
                     # Process JSON file
                     with open(temp_path, 'r', encoding='utf-8') as f:
                         tour_data = json.load(f)
-                    print(f"Tour info JSON loaded: {file_name}")
                     
-                elif file_name.lower().endswith(('.jpg', '.jpeg', '.png')):
-                    # Store image info for URL generation
-                    images_info[file_name] = {
-                        'file_id': file_info.id_,
-                        'file_name': file_info.file_name,
-                        'size': file_info.size
-                    }
-                    print(f"Image info stored: {file_name}")
-                
-                # Clean up temp file
-                os.unlink(temp_path)
-                
-            except Exception as e:
-                print(f"Error processing file {file_info.file_name}: {str(e)}")
+                    # Clean up temp file
+                    os.unlink(temp_path)
+                    
+                    print(f"Tour info JSON loaded: {file_name}")
+                    return tour_data
+                    
+                except Exception as e:
+                    print(f"Error processing JSON file {file_info.file_name}: {str(e)}")
+                    return None
         
-        return {
-            'tour_info': tour_data,
-            'images': images_info
-        }
+        print("tour_info.json not found in bucket")
+        return None
 
-    def get_virtual_tour_image_url(self, image_filename):
+
+    def download_virtual_tour_json_only(self):
         """
-        Generates authenticated URL for virtual tour images with access token
+        Downloads only the tour_info.json file for virtual tour (optimized for speed)
+        
+        Returns:
+            dict: Dictionary containing only tour information
+        """
+        import tempfile
+        import os
+        import json
+        
+        b2_api = self._get_b2_api()
+        bucket = b2.Bucket(b2_api, self.bucket_id, name=self.bucket_name)
+        prefix = self.uni_places_prefix
+        files = bucket.ls(folder_to_list=prefix, recursive=False)
+        
+        for file_info, file_metadata in files:
+            file_name = file_info.file_name.split('/')[-1]  # Get just the filename
+            
+            if file_name == 'tour_info.json':
+                try:
+                    with tempfile.NamedTemporaryFile(delete=False) as temp_file:
+                        temp_path = temp_file.name
+                    
+                    downloaded_file = b2_api.download_file_by_id(file_info.id_)
+                    downloaded_file.save_to(temp_path)
+                    
+                    # Process JSON file
+                    with open(temp_path, 'r', encoding='utf-8') as f:
+                        tour_data = json.load(f)
+                    
+                    # Clean up temp file
+                    os.unlink(temp_path)
+                    
+                    print(f"Tour info JSON loaded: {file_name}")
+                    return tour_data
+                    
+                except Exception as e:
+                    print(f"Error processing JSON file {file_info.file_name}: {str(e)}")
+                    return None
+        
+        print("tour_info.json not found in bucket")
+        return None
+
+
+    def get_virtual_tour_images_info(self, image_list):
+        """
+        Generates image info with URLs for a specific list of virtual tour images
+        Compatible with existing HTML generation functions
         
         Args:
-            image_filename (str): Name of the image file
+            image_list (list): List of image filenames to generate info for
             
         Returns:
-            str: Authenticated URL for the image or None if error
+            dict: Dictionary mapping image filenames to their info (compatible with original format)
         """
+        if not image_list:
+            return {}
+        
         try:
-            filename = f"{self.uni_places_prefix}{image_filename}"
-            
+            # Ensure we have the API and download URL
             self._get_b2_api()
             
+            # Get the token for places
             token = self._get_download_token("places")
-            return f"{B2FileService._download_url}/file/{self.bucket_name}/{filename}?Authorization={token}"
-                
+            
+            # Generate info for each image in the list (compatible format)
+            images_info = {}
+            for image_filename in image_list:
+                if image_filename:  # Skip empty/None filenames
+                    full_filename = f"{self.uni_places_prefix}{image_filename}"
+                    url = f"{B2FileService._download_url}/file/{self.bucket_name}/{full_filename}?Authorization={token}"
+                    
+                    # Create compatible format with original structure
+                    images_info[image_filename] = {
+                        'file_id': None,  # Not needed for URL generation
+                        'file_name': full_filename,
+                        'size': None,  # Not needed for URL generation
+                        'url': url  # Add direct URL for convenience
+                    }
+            
+            print(f"Generated image info for {len(images_info)} images")
+            return images_info
+                    
         except Exception as e:
-            print(f"Error generating virtual tour image URL: {str(e)}")
-            return None
+            print(f"Error generating virtual tour images info: {str(e)}")
+            return {}

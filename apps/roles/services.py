@@ -4,6 +4,7 @@ from apps.mental.services import MentalHealthService
 from apps.personal.services import PersonalAssistantService
 from apps.skills.services import SkillsTrainerService
 from apps.recepcionist.services import RecepcionistService
+from apps.gobernacion.services import GobernacionService
 
 
 class RoleService:
@@ -26,6 +27,9 @@ class RoleService:
         elif role_id == 6:
             self.role = MentalHealthService()
             print("RoleService MentalHealth")
+        elif role_id == 7:
+            self.role = GobernacionService()
+            print("RoleService Gobernacion")
         else:
             raise Exception(f"Role {role_id} not found")
 
