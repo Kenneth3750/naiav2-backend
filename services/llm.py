@@ -155,16 +155,12 @@ class LLMService:
         else:
             router_messages = []
 
-        router_messages.append(
-            {"role": "developer", "content": router_prompt}
-        )
-        
+        router_messages.insert(0, {"role": "developer", "content": router_prompt})
 
         response = self.client.chat.completions.create(
             model=self.ROUTER_MODEL,
             messages=router_messages,
-            service_tier="priority",
-            
+            service_tier="priority"
         )
         
         routing_decision = response.choices[0].message.content.strip()
