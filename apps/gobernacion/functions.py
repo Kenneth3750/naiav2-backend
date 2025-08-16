@@ -857,3 +857,545 @@ def search_traffic_fines(documento_placa: int, user_id: int, status: str) -> Dic
             "documento_placa": documento_placa
         }
   
+def explain_passport_process(user_id: int, status: str, auto_slide_interval: int = 4000) -> Dict:
+    """
+    Explica el proceso completo para sacar pasaporte en la Gobernación del Atlántico
+    con display informativo y carrusel visual de los pasos
+    
+    Args:
+        user_id (int): ID del usuario
+        status (str): Estado de la operación
+        auto_slide_interval (int): Intervalo de auto-avance del carrusel en ms
+        
+    Returns:
+        dict: JSON con display HTML y carrusel de pasos
+    """
+    try:
+        # Establecer estado
+        set_status(user_id, status, 7)
+        
+        # Información del proceso de pasaporte
+        passport_info = {
+            "primer_pago": {
+                "ordinario": 139068,
+                "ejecutivo": 139068,
+                "metodo": "PSE (Place to Pay)"
+            },
+            "segundo_pago": {
+                "ordinario": 111000,
+                "ejecutivo": 244000,
+                "tiempo_limite": "24 horas desde entrega de número de solicitud"
+            },
+            "entrega": {
+                "tiempo": "48 horas hábiles después del segundo pago",
+                "horario": "Lunes a Jueves: 9 a.m - 4 p.m, Viernes: 9 a.m - 3 p.m"
+            }
+        }
+        
+        # Pasos del proceso
+        process_steps = [
+            {
+                "numero": 1,
+                "titulo": "Verificar Requisitos",
+                "descripcion": "Revisar todos los documentos necesarios para la expedición del pasaporte",
+                "url": "https://pasaportesatlantico.gov.co/publicaciones/2/requisitos-para-expedicion-de-pasaporte/",
+                "imagen": "http://127.0.0.1:8000/api/v1/gov_images/step1_requisitos.png",
+                "detalles": "Confirme que cuenta con todos los documentos en buen estado y perfectamente legibles"
+            },
+            {
+                "numero": 2,
+                "titulo": "Realizar Primer Pago",
+                "descripcion": "Efectuar el primer pago correspondiente al tipo de pasaporte solicitado",
+                "url": "https://pasaportesatlantico.gov.co/pasaporte/",
+                "imagen": "http://127.0.0.1:8000/api/v1/gov_images/step2_primer_pago.png",
+                "detalles": f"Pasaporte Ordinario: ${passport_info['primer_pago']['ordinario']:,} | Pasaporte Ejecutivo: ${passport_info['primer_pago']['ejecutivo']:,}"
+            },
+            {
+                "numero": 3,
+                "titulo": "Agendar Cita",
+                "descripcion": "Solicitar cita únicamente después de que el primer pago haya sido aceptado",
+                "url": "https://pasaportesatlantico.gov.co/pasaporte/cita/datos-usuario/",
+                "imagen": "http://127.0.0.1:8000/api/v1/gov_images/step3_agendar_cita.png",
+                "detalles": "Para casos especiales, se recomienda agendar en jornada de mañana"
+            },
+            {
+                "numero": 4,
+                "titulo": "Realizar Segundo Pago",
+                "descripcion": "Efectuar el segundo pago después de la formalización en la oficina",
+                "url": "https://tramites.cancilleria.gov.co/ApostillaLegalizacion/pago/inicioPagoTC.aspx",
+                "imagen": "http://127.0.0.1:8000/api/v1/gov_images/step4_segundo_pago.png",
+                "detalles": f"Pasaporte Ordinario: ${passport_info['segundo_pago']['ordinario']:,} | Pasaporte Ejecutivo: ${passport_info['segundo_pago']['ejecutivo']:,}"
+            }
+        ]
+        
+        # Generar HTML del display informativo
+        display_html = f"""
+        <div class="passport-process-container" style="font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; max-width: 800px; margin: 0 auto; padding: 20px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); border-radius: 15px; box-shadow: 0 20px 40px rgba(0,0,0,0.1);">
+            <div style="background: white; border-radius: 12px; padding: 30px; box-shadow: 0 10px 30px rgba(0,0,0,0.1);">
+                <div style="text-align: center; margin-bottom: 30px;">
+                    <h1 style="color: #2d3748; margin: 0; font-size: 28px; font-weight: 700;">
+                        🛂 Proceso de Expedición de Pasaporte
+                    </h1>
+                    <p style="color: #718096; margin: 10px 0 0 0; font-size: 16px;">
+                        Gobernación del Atlántico - Guía Completa
+                    </p>
+                </div>
+                
+                <div style="display: grid; gap: 20px; margin-bottom: 30px;">
+                    <div style="background: #f7fafc; border-left: 4px solid #4299e1; padding: 20px; border-radius: 8px;">
+                        <h3 style="color: #2d3748; margin: 0 0 15px 0; font-size: 18px; display: flex; align-items: center;">
+                            💳 <span style="margin-left: 10px;">Costos del Trámite</span>
+                        </h3>
+                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
+                            <div style="background: white; padding: 15px; border-radius: 8px; border: 1px solid #e2e8f0;">
+                                <h4 style="color: #4299e1; margin: 0 0 10px 0; font-size: 16px;">Primer Pago</h4>
+                                <p style="margin: 5px 0; color: #2d3748;"><strong>Ambos tipos:</strong> ${passport_info['primer_pago']['ordinario']:,}</p>
+                                <p style="margin: 5px 0; color: #718096; font-size: 14px;">Via PSE (Place to Pay)</p>
+                            </div>
+                            <div style="background: white; padding: 15px; border-radius: 8px; border: 1px solid #e2e8f0;">
+                                <h4 style="color: #48bb78; margin: 0 0 10px 0; font-size: 16px;">Segundo Pago</h4>
+                                <p style="margin: 5px 0; color: #2d3748;"><strong>Ordinario:</strong> ${passport_info['segundo_pago']['ordinario']:,}</p>
+                                <p style="margin: 5px 0; color: #2d3748;"><strong>Ejecutivo:</strong> ${passport_info['segundo_pago']['ejecutivo']:,}</p>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div style="background: #fff5f5; border-left: 4px solid #f56565; padding: 20px; border-radius: 8px;">
+                        <h3 style="color: #2d3748; margin: 0 0 15px 0; font-size: 18px; display: flex; align-items: center;">
+                            ⚠️ <span style="margin-left: 10px;">Información Importante</span>
+                        </h3>
+                        <ul style="margin: 0; padding-left: 20px; color: #2d3748; line-height: 1.6;">
+                            <li style="margin-bottom: 8px;">Los datos del formulario de pago deben ser del titular del pasaporte</li>
+                            <li style="margin-bottom: 8px;">El segundo pago está habilitado por <strong>24 horas</strong> después de la cita</li>
+                            <li style="margin-bottom: 8px;">Si no realiza el trámite en 2025, debe solicitar devolución del dinero</li>
+                            <li style="margin-bottom: 8px;">Entrega en <strong>48 horas hábiles</strong> después del segundo pago</li>
+                        </ul>
+                    </div>
+                    
+                    <div style="background: #f0fff4; border-left: 4px solid #48bb78; padding: 20px; border-radius: 8px;">
+                        <h3 style="color: #2d3748; margin: 0 0 15px 0; font-size: 18px; display: flex; align-items: center;">
+                            🕒 <span style="margin-left: 10px;">Horarios de Entrega</span>
+                        </h3>
+                        <div style="color: #2d3748; line-height: 1.6;">
+                            <p style="margin: 5px 0;"><strong>Lunes a Jueves:</strong> 9:00 a.m - 4:00 p.m</p>
+                            <p style="margin: 5px 0;"><strong>Viernes:</strong> 9:00 a.m - 3:00 p.m</p>
+                            <p style="margin: 10px 0 5px 0; font-size: 14px; color: #718096;">Ubicación: Entrada principal de la Gobernación</p>
+                        </div>
+                    </div>
+                </div>
+                
+                <div style="text-align: center; margin-top: 25px;">
+                    <div style="display: inline-flex; align-items: center; background: #edf2f7; padding: 15px 25px; border-radius: 25px; color: #2d3748;">
+                        <span style="font-size: 16px; font-weight: 600;">📋 Consulta el proceso completo en:</span>
+                        <a href="https://pasaportesatlantico.gov.co/#" target="_blank" 
+                           style="margin-left: 10px; color: #4299e1; text-decoration: none; font-weight: 600; 
+                                  transition: color 0.3s ease;">
+                            pasaportesatlantico.gov.co
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+        """
+        
+        # Generar HTML del carrusel
+        carousel_html = f"""
+        <!DOCTYPE html>
+        <html lang="es">
+        <head>
+            <meta charset="UTF-8">
+            <meta name="viewport" content="width=device-width, initial-scale=1.0">
+            <title>Proceso de Pasaporte - Pasos Visuales</title>
+            <style>
+                body {{
+                    margin: 0;
+                    padding: 20px;
+                    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+                    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+                    min-height: 100vh;
+                    display: flex;
+                    justify-content: center;
+                    align-items: center;
+                }}
+                
+                .passport-carousel-container {{
+                    width: 90%;
+                    max-width: 900px;
+                    background: white;
+                    border-radius: 20px;
+                    box-shadow: 0 25px 50px rgba(0,0,0,0.15);
+                    overflow: hidden;
+                    position: relative;
+                }}
+                
+                .carousel-header {{
+                    background: linear-gradient(135deg, #4299e1 0%, #3182ce 100%);
+                    color: white;
+                    padding: 25px;
+                    text-align: center;
+                }}
+                
+                .carousel-header h2 {{
+                    margin: 0;
+                    font-size: 24px;
+                    font-weight: 600;
+                }}
+                
+                .carousel-header p {{
+                    margin: 10px 0 0 0;
+                    opacity: 0.9;
+                    font-size: 16px;
+                }}
+                
+                .carousel-wrapper {{
+                    position: relative;
+                    overflow: hidden;
+                    height: 500px;
+                }}
+                
+                .carousel-inner {{
+                    display: flex;
+                    transition: transform 0.5s ease-in-out;
+                    height: 100%;
+                }}
+                
+                .carousel-slide {{
+                    min-width: 100%;
+                    display: flex;
+                    position: relative;
+                    background: #f8fafc;
+                }}
+                
+                .slide-image {{
+                    flex: 1;
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                    padding: 20px;
+                    background: #ffffff;
+                }}
+                
+                .slide-image img {{
+                    max-width: 100%;
+                    max-height: 100%;
+                    border-radius: 10px;
+                    box-shadow: 0 10px 25px rgba(0,0,0,0.1);
+                    object-fit: contain;
+                }}
+                
+                .slide-content {{
+                    flex: 1;
+                    padding: 30px;
+                    display: flex;
+                    flex-direction: column;
+                    justify-content: center;
+                    background: white;
+                }}
+                
+                .step-number {{
+                    display: inline-flex;
+                    align-items: center;
+                    justify-content: center;
+                    width: 40px;
+                    height: 40px;
+                    background: linear-gradient(135deg, #4299e1, #3182ce);
+                    color: white;
+                    border-radius: 50%;
+                    font-weight: bold;
+                    font-size: 18px;
+                    margin-bottom: 15px;
+                }}
+                
+                .slide-title {{
+                    color: #2d3748;
+                    font-size: 22px;
+                    font-weight: 600;
+                    margin: 0 0 15px 0;
+                    line-height: 1.3;
+                }}
+                
+                .slide-description {{
+                    color: #4a5568;
+                    font-size: 16px;
+                    line-height: 1.5;
+                    margin-bottom: 20px;
+                }}
+                
+                .slide-details {{
+                    background: #edf2f7;
+                    padding: 15px;
+                    border-radius: 8px;
+                    color: #2d3748;
+                    font-size: 14px;
+                    margin-bottom: 20px;
+                    line-height: 1.4;
+                }}
+                
+                .slide-link {{
+                    display: inline-flex;
+                    align-items: center;
+                    background: linear-gradient(135deg, #48bb78, #38a169);
+                    color: white;
+                    text-decoration: none;
+                    padding: 12px 20px;
+                    border-radius: 25px;
+                    font-weight: 600;
+                    transition: transform 0.3s ease, box-shadow 0.3s ease;
+                    align-self: flex-start;
+                }}
+                
+                .slide-link:hover {{
+                    transform: translateY(-2px);
+                    box-shadow: 0 8px 20px rgba(72, 187, 120, 0.3);
+                }}
+                
+                .carousel-controls {{
+                    position: absolute;
+                    top: 50%;
+                    transform: translateY(-50%);
+                    background: rgba(255,255,255,0.9);
+                    border: none;
+                    width: 50px;
+                    height: 50px;
+                    border-radius: 50%;
+                    cursor: pointer;
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                    transition: all 0.3s ease;
+                    box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+                }}
+                
+                .carousel-controls:hover {{
+                    background: white;
+                    transform: translateY(-50%) scale(1.1);
+                }}
+                
+                .carousel-control-prev {{
+                    left: 20px;
+                }}
+                
+                .carousel-control-next {{
+                    right: 20px;
+                }}
+                
+                .carousel-indicators {{
+                    display: flex;
+                    justify-content: center;
+                    padding: 25px;
+                    background: #f8fafc;
+                    gap: 12px;
+                }}
+                
+                .carousel-indicator {{
+                    width: 12px;
+                    height: 12px;
+                    border-radius: 50%;
+                    background: #cbd5e1;
+                    cursor: pointer;
+                    transition: all 0.3s ease;
+                }}
+                
+                .carousel-indicator.active {{
+                    background: #4299e1;
+                    transform: scale(1.3);
+                }}
+                
+                .carousel-indicator:hover {{
+                    background: #94a3b8;
+                    transform: scale(1.2);
+                }}
+                
+                .carousel-footer {{
+                    text-align: center;
+                    padding: 20px;
+                    background: #f8fafc;
+                    border-top: 1px solid #e2e8f0;
+                }}
+                
+                .carousel-footer p {{
+                    margin: 0;
+                    color: #718096;
+                    font-size: 14px;
+                }}
+                
+                @media (max-width: 768px) {{
+                    .carousel-slide {{
+                        flex-direction: column;
+                    }}
+                    
+                    .slide-image, .slide-content {{
+                        flex: none;
+                    }}
+                    
+                    .slide-image {{
+                        height: 200px;
+                    }}
+                    
+                    .carousel-wrapper {{
+                        height: auto;
+                        min-height: 600px;
+                    }}
+                }}
+            </style>
+        </head>
+        <body>
+            <div class="passport-carousel-container">
+                <div class="carousel-header">
+                    <h2>🛂 Proceso de Expedición de Pasaporte</h2>
+                    <p>Siga estos pasos para obtener su pasaporte en la Gobernación del Atlántico</p>
+                </div>
+                
+                <div class="carousel-wrapper">
+                    <div class="carousel-inner" id="carouselInner">
+        """
+        
+        # Agregar slides para cada paso
+        for i, step in enumerate(process_steps):
+            carousel_html += f"""
+                        <div class="carousel-slide">
+                            <div class="slide-image">
+                                <img src="{step['imagen']}" alt="Paso {step['numero']}: {step['titulo']}" />
+                            </div>
+                            <div class="slide-content">
+                                <div class="step-number">{step['numero']}</div>
+                                <h3 class="slide-title">{step['titulo']}</h3>
+                                <p class="slide-description">{step['descripcion']}</p>
+                                <div class="slide-details">{step['detalles']}</div>
+                                <a href="{step['url']}" target="_blank" class="slide-link">
+                                    🔗 Ir al paso {step['numero']}
+                                </a>
+                            </div>
+                        </div>
+            """
+        
+        # Completar el HTML del carrusel
+        carousel_html += f"""
+                    </div>
+                    
+                    <button class="carousel-controls carousel-control-prev" id="prevBtn">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <polyline points="15 18 9 12 15 6"></polyline>
+                        </svg>
+                    </button>
+                    
+                    <button class="carousel-controls carousel-control-next" id="nextBtn">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <polyline points="9 18 15 12 9 6"></polyline>
+                        </svg>
+                    </button>
+                </div>
+                
+                <div class="carousel-indicators" id="indicators">
+        """
+        
+        # Agregar indicadores
+        for i in range(len(process_steps)):
+            active_class = "active" if i == 0 else ""
+            carousel_html += f'<div class="carousel-indicator {active_class}" data-slide="{i}"></div>'
+        
+        # JavaScript del carrusel
+        carousel_html += f"""
+                </div>
+                
+                <div class="carousel-footer">
+                    <p>💡 Use las flechas o haga clic en los indicadores para navegar entre los pasos</p>
+                </div>
+            </div>
+            
+            <script>
+                document.addEventListener('DOMContentLoaded', function() {{
+                    const carousel = document.querySelector('.carousel-inner');
+                    const slides = document.querySelectorAll('.carousel-slide');
+                    const indicators = document.querySelectorAll('.carousel-indicator');
+                    const prevBtn = document.getElementById('prevBtn');
+                    const nextBtn = document.getElementById('nextBtn');
+                    
+                    let currentSlide = 0;
+                    const totalSlides = slides.length;
+                    
+                    function updateCarousel() {{
+                        const translateX = -currentSlide * 100;
+                        carousel.style.transform = `translateX(${{translateX}}%)`;
+                        
+                        // Actualizar indicadores
+                        indicators.forEach((indicator, index) => {{
+                            indicator.classList.toggle('active', index === currentSlide);
+                        }});
+                    }}
+                    
+                    function nextSlide() {{
+                        currentSlide = (currentSlide + 1) % totalSlides;
+                        updateCarousel();
+                    }}
+                    
+                    function prevSlide() {{
+                        currentSlide = (currentSlide - 1 + totalSlides) % totalSlides;
+                        updateCarousel();
+                    }}
+                    
+                    function goToSlide(index) {{
+                        currentSlide = index;
+                        updateCarousel();
+                    }}
+                    
+                    // Event listeners
+                    nextBtn.addEventListener('click', nextSlide);
+                    prevBtn.addEventListener('click', prevSlide);
+                    
+                    indicators.forEach((indicator, index) => {{
+                        indicator.addEventListener('click', () => goToSlide(index));
+                    }});
+                    
+                    // Auto-advance carousel
+                    let autoplayInterval = setInterval(nextSlide, {auto_slide_interval});
+                    
+                    // Pause autoplay on hover
+                    const container = document.querySelector('.passport-carousel-container');
+                    container.addEventListener('mouseenter', () => {{
+                        clearInterval(autoplayInterval);
+                    }});
+                    
+                    container.addEventListener('mouseleave', () => {{
+                        autoplayInterval = setInterval(nextSlide, {auto_slide_interval});
+                    }});
+                    
+                    // Keyboard navigation
+                    document.addEventListener('keydown', (e) => {{
+                        if (e.key === 'ArrowLeft') prevSlide();
+                        if (e.key === 'ArrowRight') nextSlide();
+                    }});
+                    
+                    // Initialize
+                    updateCarousel();
+                }});
+            </script>
+        </body>
+        </html>
+        """
+        
+        return {
+            "display": display_html,
+            "graph": carousel_html,
+            "status": "success",
+            "proceso": "pasaporte",
+            "pasos_totales": len(process_steps),
+            "costos": passport_info
+        }
+        
+    except Exception as e:
+        error_html = f"""
+        <div class="alert alert-danger" style="border-radius: 10px; padding: 20px; background: #fee; border: 1px solid #fcc;">
+            <h5 style="color: #c53030; margin: 0 0 10px 0;">❌ Error al cargar información del pasaporte</h5>
+            <p style="color: #742a2a; margin: 0;">No fue posible cargar la información del proceso de pasaporte</p>
+            <small style="color: #a0aec0;">Error: {str(e)}</small>
+        </div>
+        """
+        
+        return {
+            "display": error_html,
+            "graph": "",
+            "status": "error",
+            "proceso": "pasaporte",
+            "error": str(e)
+        }
