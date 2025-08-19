@@ -143,6 +143,11 @@ class RecepcionistService:
                                 "description": "The location to search for events (city, neighborhood, or area). Examples: 'Barranquilla', 'Bogotá', 'New York'",
                                 "default": "Barranquilla"
                             },
+                            "event_query": {
+                                "type": "string",
+                                "description": "Specific event or type of events to search for. Examples: 'concerts', 'art exhibitions', 'food festivals'",
+                                "default": "concerts"
+                            },
                             "user_id": {
                                 "type": "integer",
                                 "description": "The ID of the user making the request, used for logging and tracking purposes. This id is provided in the prompt, so you must use it directly without asking the user for it."
@@ -152,7 +157,7 @@ class RecepcionistService:
                                 "description": "A concise description of the search task, using conjugated verbs (e.g., 'Buscando eventos en [ubicación]') in the same language as the user's question"
                             }
                         },
-                        "required": ["user_id", "status"]
+                        "required": ["user_id", "status", "location", "event_query"]
                     }
                 }
             },
@@ -183,7 +188,7 @@ class RecepcionistService:
                                 "description": "A concise description of the search task, using conjugated verbs (e.g., 'Buscando restaurantes de [tipo] en [ubicación]') in the same language as the user's question"
                             }
                         },
-                        "required": ["user_id", "status"]
+                        "required": ["user_id", "status", "location", "food_query"]
                     }
                 }
             },
@@ -214,7 +219,7 @@ class RecepcionistService:
                                 "default": ""
                             }
                         },
-                        "required": ["user_id", "status"]
+                        "required": ["user_id", "status", "location", "event_query"]
                     }
                 }
             },
@@ -462,6 +467,9 @@ class RecepcionistService:
         - "¿Qué visitar en Santa Marta?" → get_location_places
         - "Things to do in Medellín" → get_location_places
         - "Concerts in Bogotá" → get_location_events
+        - "Quiero comer pastas en Barranquilla" → get_restaurants
+        - "Lugares turísticos en Cartagena" → get_location_places
+        - "Que parques puedo visitar en Medellín?" → get_location_places
 
         **EMAIL QUERIES:**
         - "Send me this information by email" → send_email
@@ -668,20 +676,23 @@ class RecepcionistService:
         4. **get_location_events**: Get events happening in a specific location with interactive calendar
         - PURPOSE: Find events, activities, and happenings in any city or location
         - USE WHEN: User asks about events, activities, or things happening in a specific place
-        - EXAMPLES: "What events are in Barranquilla?", "¿Qué pasa este fin de semana en Cartagena?", "Events near me"
+        - EXAMPLES: "What events are in Barranquilla?", "¿Qué pasa este fin de semana en Cartagena?", "Events near me", "Quiero saber de conciertos en Barranquilla"
         - RETURNS: Elegant display of events plus interactive calendar view
+        - CRITICAL: The search query is formed by combining the event_query followed by the location in this way: "event_query" in "location" so do not add the location in the event_query
 
         5. **get_restaurants**: Find restaurants and dining options in a specific location with interactive map
         - PURPOSE: Discover restaurants, cafes, and dining options outside campus in any city
         - USE WHEN: User asks about restaurants, food, or dining in a specific location
-        - EXAMPLES: "Best restaurants in Bogotá", "¿Dónde comer pizza en Barranquilla?", "Seafood in Cartagena"
+        - EXAMPLES: "Best restaurants in Bogotá", "¿Dónde comer pizza en Barranquilla?", "Seafood in Cartagena", "Quiero saber de restaurantes vegetarianos en Medellín"
         - RETURNS: Restaurant cards with ratings plus interactive map view
+        - CRITICAL: The search query is formed by combining the food_query followed by the location in this way: "food_query" in "location" so do not add the location in the food_query
 
         6. **get_location_places**: Discover places to visit and tourist attractions with interactive guide
         - PURPOSE: Find tourist attractions, places to visit, and things to do in any location
         - USE WHEN: User asks about places to visit, tourist sites, or activities in a city
-        - EXAMPLES: "Places to visit in Santa Marta", "¿Qué hacer en Medellín?", "Tourist attractions in Cartagena"
+        - EXAMPLES: "Places to visit in Santa Marta", "¿Qué hacer en Medellín?", "Tourist attractions in Cartagena", "Quiero saber de museos en Barranquilla"
         - RETURNS: Places overview plus interactive travel guide
+        - CRITICAL: The search query is formed by combining the location_query followed by the location in this way: "location_query" in "location" so do not add the location in the location_query
 
         7. **send_email**: Send an email to the user with the provided information
         - PURPOSE: Send an email to the user with the provided information

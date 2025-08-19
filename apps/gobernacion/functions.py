@@ -14,6 +14,9 @@ from selenium.common.exceptions import TimeoutException, NoSuchElementException
 from bs4 import BeautifulSoup
 import time
 import os
+import re
+from apps.recepcionist.functions import generate_functional_carousel, generate_events_display, generate_places_display
+from serpapi import GoogleSearch
 load_dotenv()
 
 
@@ -448,401 +451,540 @@ https://www.atlantico.gov.co/index.php/preguntas-frecuentes/785-secretaria-de-ti
 
     return {"content_for_answers": answer_divs, "display": pretty_links}
 
-def extraer_informacion_multas(soup):
+def extraer_informacion_multas_simit(soup):
     """
-    Extrae la información específica del div de resultados de multas
-    
-    Returns:
-        dict: Información estructurada sobre las multas
+    Extrae información de multas del HTML de SIMIT
     """
     resultado = {
         "tiene_multas": False,
         "mensaje_principal": "",
+        "resumen": {
+            "comparendos": 0,
+            "multas": 0,
+            "acuerdos_pago": 0,
+            "total_valor": "$0"
+        },
+        "multas_detalle": [],
         "servicios_disponibles": [],
-        "div_resultado": ""
+        "sin_multas_mensaje": ""
     }
     
-    # Buscar el div específico de resultados
-    div_resultado = soup.find("div", class_="input_search_header")
+    # Verificar si NO tiene multas
+    sin_multas_div = soup.find("h3", string=re.compile(r"No tienes comparendos ni multas registradas", re.IGNORECASE))
+    if sin_multas_div:
+        resultado["tiene_multas"] = False
+        resultado["sin_multas_mensaje"] = sin_multas_div.get_text(strip=True)
+        siguiente_p = sin_multas_div.find_next("p")
+        if siguiente_p:
+            resultado["mensaje_principal"] = siguiente_p.get_text(strip=True)
+        return resultado
     
-    if div_resultado:
-        # Guardar el div completo
-        resultado["div_resultado"] = str(div_resultado)
+    # Verificar si SÍ tiene multas - buscar resumen
+    resumen_div = soup.find("div", {"id": "resumenEstadoCuenta"})
+    if resumen_div:
+        resultado["tiene_multas"] = True
         
-        # Extraer mensaje principal
-        mensaje_bold = div_resultado.find("p", class_="font-weight-bold")
-        if mensaje_bold:
-            resultado["mensaje_principal"] = mensaje_bold.get_text(strip=True)
+        # Extraer resumen de cantidades
+        try:
+            comparendos_span = resumen_div.find("label", string="Comparendos: ")
+            if comparendos_span:
+                next_span = comparendos_span.find_next("span")
+                if next_span and next_span.find("strong"):
+                    resultado["resumen"]["comparendos"] = int(next_span.find("strong").text.strip())
+        except:
+            pass
             
-            # Determinar si tiene multas
-            if "no presenta ninguna multa" in resultado["mensaje_principal"].lower():
-                resultado["tiene_multas"] = False
-            else:
-                resultado["tiene_multas"] = True
+        try:
+            multas_span = resumen_div.find("label", string="Multas: ")
+            if multas_span:
+                next_span = multas_span.find_next("span")
+                if next_span and next_span.find("strong"):
+                    resultado["resumen"]["multas"] = int(next_span.find("strong").text.strip())
+        except:
+            pass
+            
+        try:
+            acuerdos_span = resumen_div.find("label", string="Acuerdos de pago: ")
+            if acuerdos_span:
+                next_span = acuerdos_span.find_next("span")
+                if next_span and next_span.find("strong"):
+                    resultado["resumen"]["acuerdos_pago"] = int(next_span.find("strong").text.strip())
+        except:
+            pass
+            
+        try:
+            total_span = resumen_div.find("label", string="Total: ")
+            if total_span:
+                next_span = total_span.find_next("span")
+                if next_span and next_span.find("strong"):
+                    resultado["resumen"]["total_valor"] = next_span.find("strong").text.strip()
+        except:
+            pass
         
-        # Extraer lista de servicios
-        lista_servicios = div_resultado.find("ul")
-        if lista_servicios:
-            for li in lista_servicios.find_all("li"):
-                servicio = li.get_text(strip=True)
-                if servicio:
-                    resultado["servicios_disponibles"].append(servicio)
+        # Extraer detalles de la tabla de multas
+        tabla_multas = soup.find("table", {"id": "multaTable"})
+        if tabla_multas:
+            tbody = tabla_multas.find("tbody")
+            if tbody:
+                filas = tbody.find_all("tr", class_="page-row")
+                for fila in filas:
+                    multa_detalle = {}
+                    
+                    # Extraer tipo y número
+                    tipo_td = fila.find("td", {"data-label": "Tipo"})
+                    if tipo_td:
+                        numero_link = tipo_td.find("a")
+                        if numero_link:
+                            multa_detalle["numero"] = numero_link.text.strip()
+                        
+                        tipo_p = tipo_td.find("p", class_="text-muted")
+                        if tipo_p:
+                            multa_detalle["tipo"] = tipo_p.text.strip()
+                        
+                        fecha_span = tipo_td.find("span", string=re.compile(r"Fecha"))
+                        if fecha_span:
+                            multa_detalle["fecha"] = fecha_span.text.strip()
+                    
+                    # Extraer placa
+                    placa_td = fila.find("td", {"data-label": "Placa"})
+                    if placa_td:
+                        multa_detalle["placa"] = placa_td.text.strip()
+                    
+                    # Extraer secretaría
+                    secretaria_td = fila.find("td", {"data-label": "Secretaría"})
+                    if secretaria_td:
+                        multa_detalle["secretaria"] = secretaria_td.text.strip()
+                    
+                    # Extraer estado
+                    estado_td = fila.find("td", {"data-label": "Estado"})
+                    if estado_td:
+                        estado_text = estado_td.get_text(separator=" ", strip=True)
+                        multa_detalle["estado"] = estado_text
+                    
+                    # Extraer valor
+                    valor_td = fila.find("td", {"data-label": "Valor"})
+                    if valor_td:
+                        valor_text = valor_td.get_text(separator=" ", strip=True)
+                        multa_detalle["valor"] = valor_text
+                    
+                    # Extraer valor a pagar
+                    valor_pagar_td = fila.find("td", {"data-label": "Valor a pagar"})
+                    if valor_pagar_td:
+                        valor_pagar_text = valor_pagar_td.get_text(separator=" ", strip=True)
+                        multa_detalle["valor_a_pagar"] = valor_pagar_text
+                    
+                    if multa_detalle:
+                        resultado["multas_detalle"].append(multa_detalle)
+        
+        # Mensaje principal para casos con multas
+        total_items = resultado["resumen"]["comparendos"] + resultado["resumen"]["multas"]
+        if total_items > 0:
+            resultado["mensaje_principal"] = f"Se encontraron {total_items} registro(s): {resultado['resumen']['comparendos']} comparendo(s) y {resultado['resumen']['multas']} multa(s) por un total de {resultado['resumen']['total_valor']}"
     
     return resultado
 
-def consultar_multas_transito_atlantico(documento_placa):
+def consultar_multas_simit(documento_placa):
     """
-    Consulta multas en el portal de Tránsito del Atlántico
-    
-    Args:
-        documento_placa (str): Número de identificación o placa del vehículo
-        
-    Returns:
-        dict: Resultado de la consulta con información estructurada
+    Consulta multas en el portal SIMIT
     """
-    
-    # Configuración del navegador optimizada
     options = Options()
     options.add_argument('--headless')
     options.add_argument('--no-sandbox')
     options.add_argument('--disable-dev-shm-usage')
     options.add_argument('--disable-gpu')
     options.add_argument('--disable-extensions')
-    options.add_argument('--disable-logging')
-    options.add_argument('--disable-web-security')
-    options.add_argument('--user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36')
+    options.add_argument('--disable-images')
+    options.add_argument('--disable-plugins')
+    options.add_argument('--user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36')
     
     driver = None
     
     try:
-        # Inicializar driver
         driver = webdriver.Chrome(options=options)
-        driver.set_page_load_timeout(30)
+        driver.set_page_load_timeout(20)
+        driver.implicitly_wait(2)
         
-        url = "https://digital.transitodelatlantico.gov.co/portal-servicios/#/public"
-        print(f"Navegando a: {url}")
+        url = "https://www.fcm.org.co/simit/#/home-public"
+        print(f"🌐 Navegando a SIMIT: {url}")
         driver.get(url)
         
-        # Esperar a que cargue la página completamente
-        print("Esperando a que cargue la página...")
-        wait = WebDriverWait(driver, 20)
+        wait = WebDriverWait(driver, 15)
+        wait.until(lambda driver: driver.execute_script("return document.readyState") == "complete")
+        print("✅ Página SIMIT cargada")
         
-        # Esperar más tiempo para Angular
-        time.sleep(5)
-        print("Esperando a que Angular termine de cargar...")
+        time.sleep(4)  # Esperar JavaScript/Angular
         
-        # Cerrar cualquier modal o overlay que pueda interferir
+        # Esperar formulario
+        form_element = wait.until(
+            EC.presence_of_element_located((By.ID, "formGetEstadoCuenta"))
+        )
+        print("✅ Formulario SIMIT encontrado")
+        
+        time.sleep(2)
+        
+        # Cerrar overlays
         try:
-            close_buttons = driver.find_elements(By.CSS_SELECTOR, ".close, .modal-close, .btn-close")
-            for btn in close_buttons:
-                if btn.is_displayed():
-                    btn.click()
-                    time.sleep(1)
-                    print("Modal/overlay cerrado")
+            overlays = driver.find_elements(By.CSS_SELECTOR, ".modal, .overlay, .popup")
+            for overlay in overlays:
+                if overlay.is_displayed():
+                    driver.execute_script("arguments[0].style.display = 'none';", overlay)
         except:
             pass
         
-        # Buscar el campo de input por ID y esperar que sea interactuable
+        # Buscar campo de input
         input_field = wait.until(
-            EC.element_to_be_clickable((By.ID, "busqueda"))
+            EC.element_to_be_clickable((By.ID, "txtBusqueda"))
         )
-        print("Campo de búsqueda encontrado y listo para interactuar")
+        print("✅ Campo de búsqueda SIMIT encontrado")
         
-        # Limpiar el campo y escribir el documento/placa
+        # Escribir en el campo
+        driver.execute_script("arguments[0].scrollIntoView({behavior: 'smooth', block: 'center'});", input_field)
+        time.sleep(1)
+        driver.execute_script("arguments[0].focus();", input_field)
+        time.sleep(0.5)
+        
         try:
-            driver.execute_script("arguments[0].scrollIntoView(true);", input_field)
-            time.sleep(1)
-            
             input_field.clear()
-            time.sleep(1)
             input_field.send_keys(documento_placa)
-            print(f"Documento/placa ingresado: {documento_placa}")
-        except Exception as e:
-            print(f"Error al escribir en el campo: {e}")
-            raise
-        
-        # Buscar y hacer clic en el botón de búsqueda
-        try:
-            search_button = wait.until(
-                EC.element_to_be_clickable((By.ID, "btnBuscar"))
-            )
-            print("Botón de búsqueda encontrado y clickeable")
-            
-            driver.execute_script("arguments[0].scrollIntoView(true);", search_button)
-            time.sleep(1)
-            
-            try:
-                search_button.click()
-                print("Botón clickeado con método normal")
-            except Exception as click_error:
-                print(f"Clic normal falló: {click_error}")
-                print("Intentando clic con JavaScript...")
-                driver.execute_script("arguments[0].click();", search_button)
-                print("Botón clickeado con JavaScript")
-                
-        except Exception as e:
-            print(f"Error al hacer clic en el botón: {e}")
-            raise
-        
-        # Esperar a que se procese la búsqueda
-        print("Esperando resultados...")
-        time.sleep(10)
-        
-        # Esperar a que aparezca algún contenido de resultados
-        try:
-            wait.until(lambda driver: driver.execute_script("return document.readyState") == "complete")
-            print("Página completamente cargada después de la búsqueda")
+            print(f"✅ Documento/placa ingresado en SIMIT: {documento_placa}")
         except:
-            print("Timeout esperando cambios, continuando...")
+            driver.execute_script("arguments[0].value = '';", input_field)
+            driver.execute_script("arguments[0].value = arguments[1];", input_field, documento_placa)
+            driver.execute_script("arguments[0].dispatchEvent(new Event('input', {bubbles: true}));", input_field)
+            print(f"✅ Documento/placa ingresado con JS: {documento_placa}")
         
-        # Capturar el HTML resultante
+        # Buscar y hacer clic en botón
+        search_button = wait.until(
+            EC.element_to_be_clickable((By.ID, "consultar"))
+        )
+        print("✅ Botón de búsqueda SIMIT encontrado")
+        
+        driver.execute_script("arguments[0].scrollIntoView({behavior: 'smooth', block: 'center'});", search_button)
+        time.sleep(1)
+        
         try:
-            page_source = driver.page_source
-            print("HTML capturado exitosamente")
-        except Exception as e:
-            print(f"Error al capturar HTML: {e}")
-            raise
+            search_button.click()
+            print("✅ Botón SIMIT clickeado")
+        except:
+            driver.execute_script("arguments[0].click();", search_button)
+            print("✅ Botón SIMIT clickeado con JS")
         
-        # Parsear con BeautifulSoup para extraer información relevante
-        try:
-            soup = BeautifulSoup(page_source, 'html.parser')
-            print("BeautifulSoup parseado exitosamente")
-        except Exception as e:
-            print(f"Error al parsear con BeautifulSoup: {e}")
-            raise
+        # Esperar resultados
+        print("⏳ Esperando resultados SIMIT...")
+        time.sleep(5)
         
-        # Extraer información específica de multas
-        info_multas = extraer_informacion_multas(soup)
-        print(f"Información extraída - Tiene multas: {info_multas['tiene_multas']}")
+        max_wait = 8
+        waited = 0
+        while waited < max_wait:
+            page_source_check = driver.page_source
+            if ("No tienes comparendos ni multas" in page_source_check or 
+                "resumenEstadoCuenta" in page_source_check or
+                "multaTable" in page_source_check):
+                print(f"✅ Resultados SIMIT detectados después de {waited + 5} segundos")
+                break
+            time.sleep(1)
+            waited += 1
+        
+        time.sleep(2)  # Espera final
+        
+        page_source = driver.page_source
+        soup = BeautifulSoup(page_source, 'html.parser')
+        info_multas = extraer_informacion_multas_simit(soup)
+        
+        print(f"✅ Información SIMIT extraída - Tiene multas: {info_multas['tiene_multas']}")
         
         return {
             "status": "success",
             "documento_placa": documento_placa,
             "tiene_multas": info_multas["tiene_multas"],
             "mensaje_principal": info_multas["mensaje_principal"],
+            "resumen": info_multas["resumen"],
+            "multas_detalle": info_multas["multas_detalle"],
             "servicios_disponibles": info_multas["servicios_disponibles"],
-            "div_resultado": info_multas["div_resultado"],
-            "mensaje": "Consulta realizada exitosamente"
-        }
-        
-    except TimeoutException as e:
-        return {
-            "status": "error",
-            "documento_placa": documento_placa,
-            "tiene_multas": False,
-            "mensaje_principal": "",
-            "servicios_disponibles": [],
-            "div_resultado": "",
-            "error": f"Timeout: La página tardó demasiado en cargar - {str(e)}",
-            "mensaje": "Error de tiempo de espera"
-        }
-        
-    except NoSuchElementException as e:
-        return {
-            "status": "error",
-            "documento_placa": documento_placa,
-            "tiene_multas": False,
-            "mensaje_principal": "",
-            "servicios_disponibles": [],
-            "div_resultado": "",
-            "error": f"Elemento no encontrado: {str(e)}",
-            "mensaje": "Error en la estructura de la página"
+            "sin_multas_mensaje": info_multas["sin_multas_mensaje"],
+            "mensaje": "Consulta SIMIT realizada exitosamente"
         }
         
     except Exception as e:
+        error_detail = f"Error SIMIT: {str(e)}"
+        if "element not interactable" in str(e).lower():
+            error_detail += " - Elemento no interactuable (overlay/animación)"
+        print(f"❌ {error_detail}")
+        
         return {
             "status": "error",
             "documento_placa": documento_placa,
             "tiene_multas": False,
             "mensaje_principal": "",
+            "resumen": {"comparendos": 0, "multas": 0, "acuerdos_pago": 0, "total_valor": "$0"},
+            "multas_detalle": [],
             "servicios_disponibles": [],
-            "div_resultado": "",
-            "error": f"Error inesperado: {str(e)}",
-            "mensaje": "Error general en la consulta"
+            "sin_multas_mensaje": "",
+            "error": error_detail,
+            "mensaje": "Error en consulta SIMIT"
         }
         
     finally:
         if driver:
             driver.quit()
-            print("Navegador cerrado")
 
-def generar_html_respuesta(resultado):
+def generar_html_respuesta_simit(resultado):
     """
-    Genera HTML bonito para mostrar el resultado de la consulta de multas
-    
-    Returns:
-        str: HTML formateado y responsivo
+    Genera HTML compacto para SIMIT que se ajusta al contenedor del frontend
     """
     if resultado['status'] != 'success':
         return f"""
-        <div class="alert alert-danger border-danger" style="border-radius: 10px; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">
+        <div class="alert alert-danger" style="border-radius: 8px; margin: 10px; padding: 15px; font-size: 14px;">
             <div class="d-flex align-items-center">
-                <i class="fas fa-exclamation-triangle text-danger me-3" style="font-size: 24px;"></i>
+                <i class="fas fa-exclamation-triangle text-danger me-2" style="font-size: 20px;"></i>
                 <div>
-                    <h5 class="mb-1 text-danger">❌ Error en la consulta</h5>
-                    <p class="mb-0">No fue posible consultar las multas para <strong>{resultado['documento_placa']}</strong></p>
+                    <h6 class="mb-1 text-danger">Error en consulta SIMIT</h6>
+                    <p class="mb-0 small">No fue posible consultar: <strong>{resultado['documento_placa']}</strong></p>
                     <small class="text-muted">{resultado.get('error', 'Error desconocido')}</small>
                 </div>
             </div>
         </div>
         """
     
-    # Determinar el estilo según si tiene multas o no
     if resultado['tiene_multas']:
-        alert_class = "alert-warning border-warning"
+        alert_class = "alert-warning"
         icon = "🚨"
-        icon_class = "fas fa-exclamation-triangle text-warning"
-        title = "Multas pendientes encontradas"
+        title = "Multas encontradas"
         status_text = "SÍ tiene multas pendientes"
         bg_color = "#fff3cd"
     else:
-        alert_class = "alert-success border-success"
+        alert_class = "alert-success"
         icon = "✅"
-        icon_class = "fas fa-check-circle text-success"
-        title = "Sin multas pendientes"
+        title = "Sin multas"
         status_text = "NO tiene multas pendientes"
         bg_color = "#d1edff"
     
-    # Construir HTML
     html = f"""
-    <div class="card border-0" style="border-radius: 15px; box-shadow: 0 8px 25px rgba(0,0,0,0.1); overflow: hidden;">
-        <!-- Header -->
-        <div class="card-header text-center" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; border: none; padding: 20px;">
-            <h4 class="mb-2" style="font-weight: 600;">
-                <i class="fas fa-car me-2"></i>
-                Consulta de Multas - Tránsito Atlántico
-            </h4>
-            <p class="mb-0 opacity-75">Documento/Placa: <strong>{resultado['documento_placa']}</strong></p>
+    <div class="simit-container" style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;">
+        
+        <!-- Header compacto -->
+        <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 15px; border-radius: 8px 8px 0 0; text-align: center;">
+            <h5 style="margin: 0; font-size: 16px; font-weight: 600;">
+                <i class="fas fa-search" style="margin-right: 8px;"></i>
+                Consulta SIMIT
+            </h5>
+            <p style="margin: 5px 0 0 0; font-size: 13px; opacity: 0.9;">
+                {resultado['documento_placa']}
+            </p>
         </div>
         
-        <!-- Resultado principal -->
-        <div class="card-body p-0">
-            <div class="alert {alert_class} m-3" style="border-radius: 10px; background-color: {bg_color}; border-width: 2px;">
-                <div class="d-flex align-items-center">
-                    <i class="{icon_class} me-3" style="font-size: 28px;"></i>
-                    <div class="flex-grow-1">
-                        <h5 class="mb-1" style="font-weight: 600;">{icon} {title}</h5>
-                        <p class="mb-1">El vehículo/conductor <strong>{status_text}</strong></p>
-                        {f'<p class="mb-0 text-muted" style="font-size: 14px;">{resultado["mensaje_principal"]}</p>' if resultado["mensaje_principal"] else ''}
+        <!-- Resultado principal compacto -->
+        <div style="padding: 15px;">
+            <div class="{alert_class}" style="border-radius: 6px; margin: 0 0 15px 0; padding: 12px; background-color: {bg_color}; border: 1px solid #dee2e6;">
+                <div style="display: flex; align-items: center;">
+                    <span style="font-size: 20px; margin-right: 10px;">{icon}</span>
+                    <div>
+                        <h6 style="margin: 0 0 3px 0; font-size: 14px; font-weight: 600;">{title}</h6>
+                        <p style="margin: 0; font-size: 13px; font-weight: 500;">{status_text}</p>
                     </div>
                 </div>
             </div>
     """
     
-    # Agregar servicios disponibles si existen
-    if resultado['servicios_disponibles']:
+    if not resultado['tiene_multas']:
+        # Caso sin multas - versión compacta
         html += f"""
-            <div class="mx-3 mb-3">
-                <div class="card border-light" style="border-radius: 10px; background-color: #f8f9fa;">
-                    <div class="card-body p-3">
-                        <h6 class="mb-3" style="color: #495057; font-weight: 600;">
-                            <i class="fas fa-tools text-primary me-2"></i>
-                            Servicios disponibles en el portal:
-                        </h6>
-                        <div class="row">
+            <div style="background: #f8f9fa; border-radius: 6px; padding: 15px; text-align: center; border-left: 4px solid #28a745;">
+                <h6 style="color: #28a745; margin: 0 0 8px 0; font-size: 14px;">
+                    <i class="fas fa-thumbs-up" style="margin-right: 6px;"></i>
+                    ¡Excelente!
+                </h6>
+                <p style="margin: 0; font-size: 13px; color: #6c757d;">
+                    {resultado.get('sin_multas_mensaje', 'No se encontraron multas en SIMIT')}
+                </p>
+                {f'<p style="margin: 8px 0 0 0; font-size: 12px; color: #6c757d;">{resultado["mensaje_principal"]}</p>' if resultado.get('mensaje_principal') else ''}
+            </div>
         """
-        
-        # Mostrar servicios en columnas
-        for i, servicio in enumerate(resultado['servicios_disponibles'][:6]):  # Máximo 6 servicios
-            html += f"""
-                            <div class="col-md-6 mb-2">
-                                <small class="d-flex align-items-start">
-                                    <i class="fas fa-check-circle text-success me-2 mt-1" style="font-size: 12px;"></i>
-                                    {servicio}
-                                </small>
-                            </div>
-            """
-        
-        if len(resultado['servicios_disponibles']) > 6:
-            html += f"""
-                            <div class="col-12">
-                                <small class="text-muted">
-                                    <i class="fas fa-plus-circle me-1"></i>
-                                    Y {len(resultado['servicios_disponibles']) - 6} servicios más disponibles...
-                                </small>
-                            </div>
-            """
-        
-        html += """
-                        </div>
+    else:
+        # Caso con multas - resumen compacto
+        resumen = resultado['resumen']
+        html += f"""
+            <div style="background: #f8f9fa; border-radius: 6px; padding: 12px; margin-bottom: 15px;">
+                <h6 style="margin: 0 0 10px 0; font-size: 14px; color: #495057; font-weight: 600;">
+                    <i class="fas fa-chart-bar" style="margin-right: 6px;"></i>
+                    Resumen
+                </h6>
+                <div class="simit-grid" style="font-size: 12px;">
+                    <div style="background: #17a2b8; color: white; padding: 8px; border-radius: 4px; text-align: center;">
+                        <div style="font-weight: bold; font-size: 16px;">{resumen['comparendos']}</div>
+                        <div>Comparendos</div>
+                    </div>
+                    <div style="background: #ffc107; color: #212529; padding: 8px; border-radius: 4px; text-align: center;">
+                        <div style="font-weight: bold; font-size: 16px;">{resumen['multas']}</div>
+                        <div>Multas</div>
+                    </div>
+                    <div style="background: #6c757d; color: white; padding: 8px; border-radius: 4px; text-align: center;">
+                        <div style="font-weight: bold; font-size: 16px;">{resumen['acuerdos_pago']}</div>
+                        <div>Acuerdos</div>
+                    </div>
+                    <div style="background: #dc3545; color: white; padding: 8px; border-radius: 4px; text-align: center;">
+                        <div style="font-weight: bold; font-size: 14px;">{resumen['total_valor']}</div>
+                        <div>Total</div>
                     </div>
                 </div>
             </div>
         """
+        
+        # Mostrar detalles compactos de multas
+        if resultado['multas_detalle']:
+            html += """
+                <div style="background: white; border: 1px solid #dee2e6; border-radius: 6px; overflow: hidden;">
+                    <div style="background: #343a40; color: white; padding: 10px;">
+                        <h6 style="margin: 0; font-size: 13px; font-weight: 600;">
+                            <i class="fas fa-list" style="margin-right: 6px;"></i>
+                            Detalle de Multas
+                        </h6>
+                    </div>
+                    <div style="max-height: 300px; overflow-y: auto;">
+            """
+            
+            for i, multa in enumerate(resultado['multas_detalle']):
+                tipo_color = "#17a2b8" if multa.get('tipo') == "Comparendo" else "#ffc107"
+                tipo_text_color = "white" if multa.get('tipo') == "Comparendo" else "#212529"
+                
+                html += f"""
+                    <div style="padding: 12px; border-bottom: 1px solid #e9ecef; {'' if i < len(resultado['multas_detalle'])-1 else 'border-bottom: none;'}">
+                        <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 6px;">
+                            <div style="flex: 1; min-width: 0;">
+                                <div style="font-weight: bold; font-size: 12px; color: #495057; margin-bottom: 2px;" class="simit-text-ellipsis">
+                                    {multa.get('numero', 'N/A')}
+                                </div>
+                                <div style="font-size: 11px; color: #6c757d;" class="simit-text-ellipsis">
+                                    {multa.get('fecha', '')}
+                                </div>
+                            </div>
+                            <span style="background: {tipo_color}; color: {tipo_text_color}; padding: 2px 6px; border-radius: 3px; font-size: 10px; font-weight: 500; margin-left: 8px; white-space: nowrap;">
+                                {multa.get('tipo', 'N/A')}
+                            </span>
+                        </div>
+                        
+                        <div style="display: flex; justify-content: space-between; gap: 8px; font-size: 11px; color: #6c757d; flex-wrap: wrap;">
+                            <div style="flex: 1; min-width: 120px;">
+                                <strong>Placa:</strong> {multa.get('placa', 'N/A')}
+                            </div>
+                            <div style="flex: 1; min-width: 120px;" class="simit-text-ellipsis">
+                                <strong>Secretaría:</strong> {multa.get('secretaria', 'N/A')}
+                            </div>
+                        </div>
+                        
+                        <div style="margin-top: 6px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px;">
+                            <div style="font-size: 11px; color: #6c757d; flex: 1; min-width: 100px;" class="simit-text-ellipsis">
+                                <strong>Estado:</strong> {multa.get('estado', 'N/A')}
+                            </div>
+                            <div style="font-weight: bold; color: #dc3545; font-size: 12px; white-space: nowrap;">
+                                {multa.get('valor_a_pagar', 'N/A')}
+                            </div>
+                        </div>
+                    </div>
+                """
+            
+            html += """
+                    </div>
+                </div>
+            """
     
-    # Footer con enlace al portal
+    # Footer compacto
     html += f"""
         </div>
         
-        <!-- Footer -->
-        <div class="card-footer text-center border-0" style="background-color: #f8f9fa; padding: 15px;">
-            <a href="https://digital.transitodelatlantico.gov.co/portal-servicios/#/public" 
+        <!-- Footer compacto -->
+        <div style="background: #f8f9fa; padding: 12px; text-align: center; border-top: 1px solid #dee2e6; border-radius: 0 0 8px 8px;">
+            <a href="https://www.fcm.org.co/simit/#/home-public" 
                target="_blank" 
-               class="btn btn-primary btn-sm"
-               style="border-radius: 20px; padding: 8px 20px; font-weight: 500; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); border: none;">
-                <i class="fas fa-external-link-alt me-2"></i>
-                Visitar Portal Oficial
+               style="display: inline-block; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 6px 12px; border-radius: 15px; text-decoration: none; font-size: 12px; font-weight: 500;">
+                <i class="fas fa-external-link-alt" style="margin-right: 4px;"></i>
+                Portal SIMIT
             </a>
-            <div class="mt-2">
-                <small class="text-muted">
-                    <i class="fas fa-info-circle me-1"></i>
-                    Consulta realizada el {time.strftime('%d/%m/%Y a las %H:%M', time.localtime())}
+            <div style="margin-top: 6px;">
+                <small style="color: #6c757d; font-size: 10px;">
+                    <i class="fas fa-info-circle" style="margin-right: 3px;"></i>
+                    Consulta: {time.strftime('%d/%m/%Y %H:%M', time.localtime())}
                 </small>
             </div>
         </div>
     </div>
+    """
     
+    # CSS separado como string normal (sin f-string)
+    css_styles = """
     <style>
-        @media (max-width: 768px) {{
-            .card {{
-                margin: 0 5px;
-            }}
-            .alert {{
-                margin: 15px !important;
-            }}
-            .card-header h4 {{
-                font-size: 18px;
-            }}
-        }}
+        /* Estilos específicos para el contenedor SIMIT */
+        .simit-container {
+            max-width: 100%;
+            overflow-x: hidden;
+            box-sizing: border-box;
+        }
+        
+        .simit-container * {
+            box-sizing: border-box;
+        }
+        
+        /* Grid responsive para resumen */
+        .simit-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 8px;
+        }
+        
+        @media (max-width: 480px) {
+            .simit-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+        
+        /* Prevenir texto largo */
+        .simit-text-ellipsis {
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
     </style>
     """
     
-    return html
+    return html + css_styles
 
-def search_traffic_fines(documento_placa: int, user_id: int, status: str) -> Dict:
+
+def search_traffic_fines(documento_placa: str, user_id: int, status: str) -> Dict:
     """
-    Función principal para NAIA que retorna JSON con HTML display
-    
-    Args:
-        documento_placa (str): Número de identificación o placa del vehículo
-        
-    Returns:
-        dict: JSON con llave "display" conteniendo HTML bonito
+    Función principal para NAIA - ACTUALIZADA PARA SIMIT
     """
     try:
-        # Realizar la consulta
         set_status(user_id, status, 7)
-        resultado = consultar_multas_transito_atlantico(documento_placa)
+    
         
-        # Generar HTML bonito
-        html_display = generar_html_respuesta(resultado)
+        if not documento_placa:
+            return {
+                "error": "No se entregó ningún documento o placa al realizar la búsqueda. Solicita al usuario que proporcione alguna de estas opciones."
+            }
+
+
+
+        resultado = consultar_multas_simit(documento_placa)
         
-        # Retornar en formato JSON para NAIA
+        # USAR EL NUEVO GENERADOR HTML SIMIT
+        html_display = generar_html_respuesta_simit(resultado)
+        
         return {
             "display": html_display,
             "status": resultado['status'],
             "tiene_multas": resultado.get('tiene_multas', False),
-            "documento_placa": documento_placa
+            "documento_placa": documento_placa,
+            "resumen": resultado.get('resumen', {}),
+            "total_multas": len(resultado.get('multas_detalle', []))
         }
         
     except Exception as e:
-        # HTML de error
         error_html = f"""
         <div class="alert alert-danger border-danger" style="border-radius: 10px; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">
             <div class="d-flex align-items-center">
                 <i class="fas fa-exclamation-triangle text-danger me-3" style="font-size: 24px;"></i>
                 <div>
-                    <h5 class="mb-1 text-danger">❌ Error en la consulta</h5>
+                    <h5 class="mb-1 text-danger">❌ Error en consulta SIMIT</h5>
                     <p class="mb-0">No fue posible consultar las multas para <strong>{documento_placa}</strong></p>
                     <small class="text-muted">Error: {str(e)}</small>
                 </div>
@@ -854,7 +996,8 @@ def search_traffic_fines(documento_placa: int, user_id: int, status: str) -> Dic
             "display": error_html,
             "status": "error",
             "tiene_multas": False,
-            "documento_placa": documento_placa
+            "documento_placa": documento_placa,
+            "error": str(e)
         }
   
 def explain_passport_process(user_id: int, status: str, auto_slide_interval: int = 4000) -> Dict:
@@ -1399,3 +1542,114 @@ def explain_passport_process(user_id: int, status: str, auto_slide_interval: int
             "proceso": "pasaporte",
             "error": str(e)
         }
+    
+
+
+
+def get_location_events(location: str = "Barranquilla", user_id: int = 0, status: str = "", event_query: str = "") -> dict:
+    """
+    Get events happening in a specific location using SerpAPI.
+    Returns both display and graph using real event images.
+    """
+    try:
+        if user_id:
+            set_status(user_id, status, 7)
+
+        api_key = os.getenv('SERPAPI_KEY')
+        if not api_key:
+            raise ValueError("SERPAPI_KEY not found in environment variables")
+
+        params_google = {
+            "engine": "google_events",
+            "q": f"{event_query} en {location}, Atlántico",
+            "hl": "es",
+            "gl": "co",
+            "api_key": api_key
+        }
+
+        search = GoogleSearch(params_google)
+        results = search.get_dict()
+        
+        if "events_results" not in results:
+            return {"error": f"No se encontraron eventos para {location}"}
+            
+        events_results = results["events_results"]
+        
+        # Generate display and collect real images
+        display_html = generate_events_display(events_results, location)
+        
+        # Extract real images from events results
+        event_images = []
+        for event in events_results[:8]:
+            if 'thumbnail' in event and event['thumbnail']:
+                event_images.append({
+                    'url': event['thumbnail'],
+                    'title': event.get('title', 'Evento'),
+                    'venue': event.get('venue', {}).get('name', 'Lugar por confirmar'),
+                    'date': event.get('date', {}).get('start_date', 'Fecha por confirmar')
+                })
+        
+        graph_html = generate_functional_carousel(event_images, f"Eventos en {location}", "events")
+        
+        return {
+            "display": display_html,
+            "graph": graph_html
+        }
+        
+    except Exception as e:
+        print(f"Error in get_location_events: {str(e)}")
+        return {"error": f"Error al buscar eventos: {str(e)}"}
+
+def get_location_places(location: str = "Barranquilla", user_id: int = 0, status: str = "", location_query: str = "") -> dict:
+    """
+    Get places to visit in a specific location using SerpAPI.
+    Returns both display and graph using real place images.
+    """
+    try:
+        if user_id:
+            set_status(user_id, status, 7)
+
+        api_key = os.getenv('SERPAPI_KEY')
+        if not api_key:
+            raise ValueError("SERPAPI_KEY not found in environment variables")
+
+        params = {
+            "engine": "google_local",
+            "q": f"{location_query} en {location}, Atlántico",
+            "location": location,
+            "api_key": api_key
+        }
+
+        search = GoogleSearch(params)
+        results = search.get_dict()
+        
+        if "local_results" not in results:
+            return {"error": f"No se encontraron lugares para visitar en {location}"}
+            
+        local_results = results["local_results"]
+        
+        # Generate display and collect real images
+        display_html = generate_places_display(local_results, location)
+        
+        # Extract real images from places results
+        place_images = []
+        for place in local_results[:8]:
+            if 'thumbnail' in place and place['thumbnail']:
+                place_images.append({
+                    'url': place['thumbnail'],
+                    'title': place.get('title', 'Lugar'),
+                    'rating': place.get('rating', 0),
+                    'type': place.get('type', ''),
+                    'address': place.get('address', '')
+                })
+        
+        graph_html = generate_functional_carousel(place_images, f"Lugares en {location}", "places")
+        
+        return {
+            "display": display_html,
+            "graph": graph_html
+        }
+        
+    except Exception as e:
+        print(f"Error in get_location_places: {str(e)}")
+        return {"error": f"Error al buscar lugares: {str(e)}"}

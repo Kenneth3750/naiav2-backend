@@ -19,7 +19,7 @@ class LLMService:
         self.available_tools = available_tools
         self.tools = tools
 
-        self.ROUTER_MODEL = "gpt-4.1-nano"
+        self.ROUTER_MODEL = "gpt-4o-mini"
         self.CHAT_MODEL = "gpt-4.1-mini"
         self.FUNCTION_MODEL = "gpt-4.1"
         self.MODEL_FOR_LAST_RESPONSE = "gpt-4.1-mini"
@@ -160,7 +160,8 @@ class LLMService:
         response = self.client.chat.completions.create(
             model=self.ROUTER_MODEL,
             messages=router_messages,
-            service_tier="priority"
+            service_tier="priority",
+            temperature=0.5
         )
         
         routing_decision = response.choices[0].message.content.strip()
@@ -168,7 +169,8 @@ class LLMService:
         routing_time = time.time() - start_time
         print(f"Routing time: {routing_time:.2f}s")
         print(f"Routing decision: {routing_decision}")
-        
+        print(f"Routing decision made by {self.ROUTER_MODEL}")
+
         if "NO_FUNCTION_NEEDED" in routing_decision:
             return False
         else:
