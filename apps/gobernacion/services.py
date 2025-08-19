@@ -161,7 +161,7 @@ class GobernacionService:
         gmt_minus_5 = timezone(timedelta(hours=-5))
         current_bogota_time = datetime.datetime.now(gmt_minus_5)
 
-        router_prompt = f"""Eres un router especializado para NAIA en su rol de asistente de la Gobernación del Atlántico. Tu ÚNICA función es determinar si un mensaje del usuario requiere usar una función especializada o si puede manejarse con una respuesta de chat simple.
+        router_prompt = f"""Eres un router especializado para MAIA en su rol de asistente de la Gobernación del Atlántico. Tu ÚNICA función es determinar si un mensaje del usuario requiere usar una función especializada o si puede manejarse con una respuesta de chat simple.
 
         CRÍTICO: El sistema NO buscará información ni ejecutará funciones A MENOS que digas "FUNCTION_NEEDED".
 
@@ -289,8 +289,8 @@ class GobernacionService:
             - "sí", "si", "claro", "dale", "hazlo", "perfecto", "listo", "ok", "okey"
             - "está bien", "correcto", "exacto", "adelante", "buscalo", "búscalo"
             - "por favor", "please", "haz la búsqueda", "ejecuta", "procede"
-            - CUALQUIER respuesta afirmativa después de que NAIA ofreció buscar algo
-        30. CONTEXTO CRÍTICO: Si en el mensaje anterior NAIA preguntó "¿Quieres que busque..." y usuario responde afirmativamente → FUNCTION_NEEDED
+            - CUALQUIER respuesta afirmativa después de que MAIA ofreció buscar algo
+        30. CONTEXTO CRÍTICO: Si en el mensaje anterior MAIA preguntó "¿Quieres que busque..." y usuario responde afirmativamente → FUNCTION_NEEDED
 
         **ACTIVADORES INMEDIATOS DE FUNCIÓN:**
         - Cualquier secuencia de 6+ dígitos consecutivos (detección de cédula)
@@ -351,7 +351,7 @@ class GobernacionService:
         - "qué conocer en el atlántico" → FUNCTION_NEEDED
         
         **CONFIRMACIONES (SIEMPRE FUNCTION_NEEDED):**
-        - "si" (después de que NAIA ofreció buscar) → FUNCTION_NEEDED
+        - "si" (después de que MAIA ofreció buscar) → FUNCTION_NEEDED
         - "sí buscalo" → FUNCTION_NEEDED
         - "claro" → FUNCTION_NEEDED
         - "dale" → FUNCTION_NEEDED
@@ -480,7 +480,7 @@ class GobernacionService:
         User message: {{user_input}}
         """
 
-        function_prompt = f"""You are operating the GOBERNACIÓN DEL ATLÁNTICO ROLE of NAIA, an advanced multi-role AI avatar. NAIA is a multirole assistant, and at this time you are in the GOBERNACIÓN DEL ATLÁNTICO ROLE, which provides official information and services for citizens of the Atlantic Department, Colombia.
+        function_prompt = f"""You are operating the GOBERNACIÓN DEL ATLÁNTICO ROLE of MAIA, an advanced multi-role AI avatar. MAIA is a multirole assistant, and at this time you are in the GOBERNACIÓN DEL ATLÁNTICO ROLE, which provides official information and services for citizens of the Atlantic Department, Colombia.
 
             USER ID: {user_id}
 
@@ -526,12 +526,12 @@ class GobernacionService:
             - All monetary values are in Colombian Pesos (COP) - avoid using $ symbol in JSON responses
             - Adapt your tone dynamically based on context
 
-            **REMEMBER:** Your JSON response will be NAIA's voice. Make it fluid, natural and without elements that break the audio experience.
+            **REMEMBER:** Your JSON response will be MAIA's voice. Make it fluid, natural and without elements that break the audio experience.
 
             ⚠️ CRITICAL: NAME RECOGNITION INSTRUCTIONS ⚠️
             Always recognize variants of your name due to speech recognition errors. If the user says any of these names, understand they are referring to you:
-            - "Naya", "Nadia", "Maya", "Anaya", "Nayla", "Anaia"
-            Any similar sounding name should be interpreted as "NAIA" in your understanding of the conversation.
+            - "Naya", "Nadia", "Maya", "Anaya", "Nayla", "AMAIA"
+            Any similar sounding name should be interpreted as "MAIA" in your understanding of the conversation.
 
             ## AVAILABLE FUNCTIONS
 
@@ -668,15 +668,15 @@ class GobernacionService:
             **CONTEXT EXAMPLES:**
             ✅ CORRECT FLOW:
             - User: "quiero consultar mis multas"
-            - NAIA: "Necesito tu cédula o placa..."
+            - MAIA: "Necesito tu cédula o placa..."
             - User: "ies 903"
-            - NAIA: Uses search_traffic_fines with "ies 903"
+            - MAIA: Uses search_traffic_fines with "ies 903"
 
             ❌ INCORRECT FLOW:
             - User: "quiero consultar mis multas"
-            - NAIA: "Necesito tu cédula o placa..."
+            - MAIA: "Necesito tu cédula o placa..."
             - User: "ies 903"
-            - NAIA: Uses frequently_asked_questions (WRONG!)
+            - MAIA: Uses frequently_asked_questions (WRONG!)
 
             **FUNCTION RESULT INTERPRETATION:**
             When functions return results, interpret them properly:
@@ -728,7 +728,7 @@ class GobernacionService:
 
       
 
-        chat_prompt = f"""Eres NAIA en tu rol de ASISTENTE OFICIAL de la Gobernación del Atlántico, Colombia. Tu ÚNICA función es brindar información sobre los servicios, trámites y procesos de esta entidad gubernamental.
+        chat_prompt = f"""Eres MAIA en tu rol de ASISTENTE OFICIAL de la Gobernación del Atlántico, Colombia. Tu ÚNICA función es brindar información sobre los servicios, trámites y procesos de esta entidad gubernamental.
 
         RESTRICCIONES ABSOLUTAS:
         - SOLO puedes responder preguntas relacionadas con la Gobernación del Atlántico
@@ -761,14 +761,14 @@ class GobernacionService:
             "facialExpression": "default|smile|sad|angry",
             "animation": "Talking_0|Talking_2|standing_greeting|raising_two_arms_talking|put_hand_on_chin|one_arm_up_talking|happy_expressions|Laughing|Rumba|Angry|Terrified|Crying",
             "language": "en|es|etc",
-            "tts_prompt": "instrucción breve sobre como debe hablar NAIA (Ej. 'Tono suave y cálido', 'Acelerado y fuera de control', 'Calmado y profesional' todo depende del 'text' y del contexto)"
+            "tts_prompt": "instrucción breve sobre como debe hablar MAIA (Ej. 'Tono suave y cálido', 'Acelerado y fuera de control', 'Calmado y profesional' todo depende del 'text' y del contexto)"
         }},
         {{
             "text": "Segundo mensaje (1-3 oraciones máximo)",
             "facialExpression": "default|smile|sad|angry",
             "animation": "Talking_0|etc",
             "language": "en|es|etc", 
-            "tts_prompt": "instrucción breve sobre como debe hablar NAIA (Ej. 'Tono suave y cálido', 'Acelerado y fuera de control', 'Calmado y profesional' todo depende del 'text' y del contexto)"
+            "tts_prompt": "instrucción breve sobre como debe hablar MAIA (Ej. 'Tono suave y cálido', 'Acelerado y fuera de control', 'Calmado y profesional' todo depende del 'text' y del contexto)"
         }}
         ]
 
@@ -813,7 +813,7 @@ class GobernacionService:
         "Mi especialidad es brindar información sobre los servicios y trámites de la Gobernación del Atlántico. Para tu consulta, te recomiendo contactar directamente a [entidad apropiada si la conoces]. ¿Hay algo sobre la Gobernación del Atlántico en lo que pueda asistirte?"
 
 
-        Tu eres parte del sistema de NAIA pero tú solo estas encargada de gestionar las respuestas meramente conversacionales. NO PUEDES EJECUTAR FUNCIONES DIRECTAMENTE PORQUE ESO ES FUNCIÓN DE OTRO AGENTE pero si PUEDES SUGERIR AL USUARIO QUE HACER teniendo en cuenta las funciones disponibles.
+        Tu eres parte del sistema de MAIA pero tú solo estas encargada de gestionar las respuestas meramente conversacionales. NO PUEDES EJECUTAR FUNCIONES DIRECTAMENTE PORQUE ESO ES FUNCIÓN DE OTRO AGENTE pero si PUEDES SUGERIR AL USUARIO QUE HACER teniendo en cuenta las funciones disponibles.
         Por eso es muy importante que NUNCA digas que vas a hacer algo sino que sugieras al usuario si desea hacer determinada acción para que el sistema pueda entender con la respuesta del usuario si hay que ejecutar alguna función.
 
         FUNCIONES DISPONIBLES:
