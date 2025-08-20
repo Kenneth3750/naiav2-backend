@@ -179,8 +179,8 @@ class GobernacionService:
         4. get_location_events: Obtiene eventos que ocurren en una ubicación dentro del departamento del Atlántico. Devuelve tanto una visualización elegante como un calendario interactivo para el descubrimiento de eventos.
         5. get_location_places: Obtiene lugares para visitar en una ubicación dentro del departamento del Atlántico. Devuelve tanto una visualización elegante como un mapa interactivo para el descubrimiento de lugares.
 
+        
         SIEMPRE ENRUTAR A "FUNCTION_NEEDED" CUANDO:
-
         **DETECCIÓN CRÍTICA DE DATOS DE IDENTIFICACIÓN (SIEMPRE → FUNCTION_NEEDED):**
         
         1. **CÉDULAS VÁLIDAS** - Cualquier secuencia de 6 o más dígitos consecutivos:
@@ -291,6 +291,38 @@ class GobernacionService:
             - "por favor", "please", "haz la búsqueda", "ejecuta", "procede"
             - CUALQUIER respuesta afirmativa después de que MAIA ofreció buscar algo
         30. CONTEXTO CRÍTICO: Si en el mensaje anterior MAIA preguntó "¿Quieres que busque..." y usuario responde afirmativamente → FUNCTION_NEEDED
+        31. Cualquier pregunta sobre el servicio social obligatorio debe ser enviada si o si a FUNCTION_NEEDED
+        32. TEMAS FRECUENTES -> Cualquier pregunta sobre que trate sobre cualquiera de las siguientes áreas:
+            TEMAS LEGALES Y ADMINISTRATIVOS:
+            - Acciones de tutela, derechos de petición, actos administrativos, procesos judiciales
+            - Control disciplinario, defensores de oficio, demandas, notificaciones
+            - Certificados laborales, historia laboral, CETIL, pensiones, bonos pensionales
+            - Radicación documentos, solicitudes administrativas
+
+            TEMAS DE SALUD:
+            - Afiliación salud, seguridad social, traslados territoriales, portabilidad
+            - REPS, RETHUS, Servicio Social Obligatorio (SSO), registro títulos
+            - Habilitación servicios, farmacovigilancia, tecnovigilancia, alertas sanitarias
+
+            TEMAS EDUCATIVOS Y JUVENTUD:
+            - Licencias funcionamiento educación, certificados laborales educación
+            - Plataformas juventud, consejos juventud, participación juvenil
+            - Pruebas SABER, ICFES, escuela en casa
+
+            TEMAS DE DESARROLLO Y CULTURA:
+            - Emprendimiento, formalización empresarial, turismo, infraestructura
+            - Estampilla ProCultura, vigías patrimonio, museos, bibliotecas, SINIC
+            - Concertación cultural, Atlántico Teatral
+
+            TEMAS DE GESTIÓN PÚBLICA:
+            - PASAPORTES (proceso, requisitos, costos, citas, documentos)
+            - MIPG, control interno, planes anticorrupción, rendición de cuentas
+            - Planes de desarrollo, POT, SICEP, transparencia
+
+            TEMAS ESPECÍFICOS:
+            - PDA (Planes Departamentales Agua), estampilla ciudadela universitaria
+            - Impuesto vehicular, desembargos, trámites tributarios
+            - Gobierno digital, PETI, zonas Wi-Fi, videojuegos
 
         **ACTIVADORES INMEDIATOS DE FUNCIÓN:**
         - Cualquier secuencia de 6+ dígitos consecutivos (detección de cédula)
@@ -300,6 +332,7 @@ class GobernacionService:
         - Cualquier pregunta sobre servicios de la Gobernación
         - Cualquier respuesta de confirmación cuando el asistente ofreció verificar algo
         - Cualquier pregunta sobre eventos o lugares para visitar en el departamento del Atlántico
+        - Cualquier pregunta que trate sobre cualquier tema dentro de la sección 31. TEMAS FRECUENTES
 
         **SUPER CRÍTICO - CONTEXTO DE MULTAS:**
         Si en PREVIOUS MESSAGES hay mención de "multas", "infracciones", "sanciones", "tránsito" y el usuario ahora proporciona CUALQUIER combinación alfanumérica → SIEMPRE FUNCTION_NEEDED
@@ -364,100 +397,17 @@ class GobernacionService:
         - "muestramelo otra vez" → FUNCTION_NEEDED
         - "borré el resultado sin querer, muéstramelo de nuevo" → FUNCTION_NEEDED
 
-        **DETECCIÓN CRÍTICA DE CONSULTAS SOBRE SERVICIOS DE LA GOBERNACIÓN DEL ATLÁNTICO (SIEMPRE → FUNCTION_NEEDED):**
-        Para toda pregunta sobre estos temas específicos, debes responder con "FUNCTION_NEEDED" sin excepciones.
-
-        **TEMAS JURÍDICOS Y LEGALES:**
-        - Acciones de tutela, nulidad, restablecimiento del derecho, acciones populares, acciones de grupo -> FUNCTION_NEEDED
-        - Derechos de petición, actos administrativos, notificaciones, pretensiones, excepciones -> FUNCTION_NEEDED
-        - Procesos judiciales, demandas, competencia, jurisdicción -> FUNCTION_NEEDED
-        - Control disciplinario, defensores de oficio, etapas procesales, poderes -> FUNCTION_NEEDED
-
-        **TEMAS DE AGUA POTABLE Y SERVICIOS PÚBLICOS:**
-        - Planes Departamentales de Agua (PDA), financiación de proyectos de agua -> FUNCTION_NEEDED
-        - Mecanismos de viabilización, participantes PDA, municipios beneficiarios -> FUNCTION_NEEDED
-        - Aseguramiento prestación servicios, gestión social PDA -> FUNCTION_NEEDED
-
-        **TEMAS DE JUVENTUD Y PARTICIPACIÓN CIUDADANA:**
-        - Plataformas de juventud, consejos de juventud, agendas juveniles -> FUNCTION_NEEDED
-        - Registro plataformas juventudes, elecciones consejos juventud -> FUNCTION_NEEDED
-        - Derechos juventudes, participación juvenil, asambleas juventudes -> FUNCTION_NEEDED
-
-        **TEMAS DE CIUDADELA UNIVERSITARIA:**
-        - Estampilla ciudadela universitaria, junta especial ciudadela -> FUNCTION_NEEDED
-        - Actos gravados estampilla, recaudo estampilla -> FUNCTION_NEEDED
-
-        **TEMAS DE CONTROL INTERNO Y GESTIÓN PÚBLICA:**
-        - MIPG (Modelo Integrado de Planeación y Gestión), comités institucionales -> FUNCTION_NEEDED
-        - Control interno, planes de mejoramiento, secretaría control interno -> FUNCTION_NEEDED
-        - Planes anticorrupción, rendición de cuentas, transparencia -> FUNCTION_NEEDED
-        - Riesgos de corrupción, acceso información pública -> FUNCTION_NEEDED
-
-        **TEMAS CULTURALES:**
-        - Concertación cultural, Atlántico Teatral, estampilla ProCultura -> FUNCTION_NEEDED
-        - Vigías patrimonio cultural, red departamental museos/bibliotecas -> FUNCTION_NEEDED
-        - Consejo departamental cultura/patrimonio, SINIC -> FUNCTION_NEEDED
-
-        **TEMAS DE DESARROLLO ECONÓMICO Y TURISMO:**
-        - Emprendimiento, formalización empresarial, unidades productivas -> FUNCTION_NEEDED
-        - Gestión empresarial, ferias empresariales, programas emprendimiento -> FUNCTION_NEEDED
-        - Turismo, infraestructura turística, turismo comunitario, ecohoteles -> FUNCTION_NEEDED
-        - Colegios amigos del turismo, cluster turismo naturaleza -> FUNCTION_NEEDED
-        - Áreas protegidas, deportes náuticos, parques temáticos -> FUNCTION_NEEDED
-
-        **TEMAS EDUCATIVOS:**
-        - Licencias funcionamiento educación, inspección y vigilancia educativa -> FUNCTION_NEEDED
-        - Certificados laborales educación, pruebas SABER, ICFES -> FUNCTION_NEEDED
-        - Escuela en casa, evaluación desempeño docente -> FUNCTION_NEEDED
-        - Municipios atendidos secretaría educación
-
-        **TEMAS DE HACIENDA DEPARTAMENTAL:**
-        - Impuesto vehicular, desembargos por impuesto vehicular -> FUNCTION_NEEDED
-        - Trámites tributarios departamentales -> FUNCTION_NEEDED
-
-        **TEMAS DE GESTIÓN ADMINISTRATIVA (SECRETARÍA GENERAL):**
-        - **PASAPORTES** (CRÍTICO): proceso, requisitos, costos, citas, documentos -> FUNCTION_NEEDED
-        - Certificados laborales, historia laboral, tiempos laborados (CETIL) -> FUNCTION_NEEDED
-        - Pensiones, bonos pensionales, sustitución pensional -> FUNCTION_NEEDED
-        - Auxilios funerarios, certificados pensionado/no pensionado -> FUNCTION_NEEDED
-        - Radicación documentos, solicitudes administrativas -> FUNCTION_NEEDED
-
-        **TEMAS DE PLANEACIÓN DEPARTAMENTAL:**
-        - Planes de desarrollo, banco de proyectos, ordenamiento territorial (POT) -> FUNCTION_NEEDED
-        - SICEP, direccionamiento estratégico, sistemas de información -> FUNCTION_NEEDED
-        - Fortalecimiento institucional, plan desarrollo "Atlántico Líder" -> FUNCTION_NEEDED
-
-        **TEMAS DE SALUD DEPARTAMENTAL:**
-        - Afiliación salud, seguridad social integral, traslados territoriales -> FUNCTION_NEEDED
-        - Portabilidad nacional, movilidad entre regímenes -> FUNCTION_NEEDED
-        - Asociaciones usuarios salud, habilitación servicios salud -> FUNCTION_NEEDED
-        - REPS (Registro Especial Prestadores), RETHUS (Registro Talento Humano) -> FUNCTION_NEEDED
-        - Servicio Social Obligatorio (SSO), registro títulos profesionales -> FUNCTION_NEEDED
-        - Farmacovigilancia, tecnovigilancia, alertas sanitarias -> FUNCTION_NEEDED
-        - COVID-19, eventos adversos, resoluciones autorización ejercicio -> FUNCTION_NEEDED
-
-        **TEMAS DE TECNOLOGÍA E INNOVACIÓN:**
-        - Gobierno digital, zonas Wi-Fi, conectividad -> FUNCTION_NEEDED
-        - PETI (Plan Estratégico de TIC), videojuegos, industria TIC -> FUNCTION_NEEDED
-        - Noticias falsas, rol estratégico TIC en Atlántico -> FUNCTION_NEEDED
-
-        **REGLA CRÍTICA PARA SERVICIOS DE LA GOBERNACIÓN:**
-        - CUALQUIER mención de estos temas específicos → SIEMPRE FUNCTION_NEEDED
-        - CUALQUIER pregunta sobre "cómo hacer", "requisitos", "proceso", "trámite" + estos temas → SIEMPRE FUNCTION_NEEDED
-        - CUALQUIER consulta sobre servicios departamentales específicos → SIEMPRE FUNCTION_NEEDED
-        - CUALQUIER pregunta sobre secretarías o dependencias de la Gobernación → SIEMPRE FUNCTION_NEEDED
-
-        **EJEMPLOS ESPECÍFICOS QUE REQUIEREN FUNCTION_NEEDED:**
-        - "¿Cómo presentar una acción de tutela?"
-        - "¿Qué es el MIPG?"
-        - "¿Cómo registrar una plataforma de juventud?"
-        - "¿Cuánto cuesta la estampilla ProCultura?"
-        - "¿Cómo solicitar certificado laboral?"
-        - "¿Qué es el RETHUS?"
-        - "¿Cómo funciona el PDA?"
-        - "¿Dónde hago el servicio social obligatorio?"
-        - "¿Qué es el gobierno digital?"
-        - "¿Cómo me afilio al sistema de salud?"
+        **Preguntas frecuentes (SIEMPRE FUNCTION_NEEDED):**
+        - "¿Cómo presentar una acción de tutela?" -> FUNCTION_NEEDED
+        - "¿Qué es el MIPG?" -> FUNCTION_NEEDED
+        - "¿Cómo registrar una plataforma de juventud?" -> FUNCTION_NEEDED
+        - "¿Cuánto cuesta la estampilla ProCultura?" -> FUNCTION_NEEDED
+        - "¿Cómo solicitar certificado laboral?" -> FUNCTION_NEEDED
+        - "¿Qué es el RETHUS?" -> FUNCTION_NEEDED
+        - "¿Cómo funciona el PDA?" -> FUNCTION_NEEDED
+        - "¿Dónde hago el servicio social obligatorio?" -> FUNCTION_NEEDED
+        - "¿Qué es el gobierno digital?" -> FUNCTION_NEEDED
+        - "¿Cómo me afilio al sistema de salud?" -> FUNCTION_NEEDED
 
         EJEMPLOS DE "NO_FUNCTION_NEEDED" (MUY LIMITADOS):
         - "Hola, ¿cómo estás?" → NO_FUNCTION_NEEDED (saludo general)

@@ -62,7 +62,8 @@ https://www.atlantico.gov.co/index.php/preguntas-frecuentes/416-juridica12/14857
 https://www.atlantico.gov.co/index.php/preguntas-frecuentes/416-juridica12/14856-que-debo-tener-en-cuenta-al-presentar-una-accion-de-tutela
 https://www.atlantico.gov.co/index.php/preguntas-frecuentes/416-juridica12/14854-puedo-presentar-accion-de-tutela-en-la-gobernacion-del-atlantico
 https://www.atlantico.gov.co/index.php/preguntas-frecuentes/416-juridica12/14853-quien-puede-instaurar-accion-de-tutela
-https://www.atlantico.gov.co/index.php/preguntas-frecuentes/416-juridica12/14851-que-es-la-accion-de-tutela
+https://www.atlantico.gov.co/index.php/preguntas-frecuentes/416-juridica12/14851-que-es-la-accion-de-
+https://www.atlantico.gov.co/index.php/preguntas-frecuentes/416-juridica12/14852-ante-quien-debo-presentar-la-accion-de-tutela
 https://www.atlantico.gov.co/index.php/preguntas-frecuentes/416-juridica12/14850-que-requisitos-debe-cumplir-una-demanda
 https://www.atlantico.gov.co/index.php/preguntas-frecuentes/416-juridica12/14849-que-es-una-demanda
 https://www.atlantico.gov.co/index.php/preguntas-frecuentes/416-juridica12/14848-que-es-la-competencia
@@ -365,7 +366,8 @@ https://www.atlantico.gov.co/index.php/preguntas-frecuentes/785-secretaria-de-ti
         messages=[
             {"role": "developer", "content": agent_prompt},
             {"role": "user", "content": question}
-        ]
+        ],
+        service_tier="priority"
     )
 
     array_str = response.choices[0].message.content
