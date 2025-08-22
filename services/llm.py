@@ -202,11 +202,12 @@ class LLMService:
         
         return re.sub(pattern, replacement, text, flags=re.IGNORECASE)
     
-    def generate_response(self, user_input, image_url, messages, user_id):
+    def generate_response(self, user_input, image_url, messages, user_id, role_id):
         """
         Generate a response from the model based on user input and context.
         """
         start_time = time.time()
+        role_id = role_id
         user_input = self.fix_naia_misspelling(user_input)
         print(f"User input after fixing spelling: {user_input}")
         is_function = self.route_query(user_input, messages)
@@ -218,11 +219,9 @@ class LLMService:
                 model_prompt = self.prompts["function"]
                 model = self.FUNCTION_MODEL
                 messages = self._init_conversation(messages, user_input, image_url, model_prompt)
-                completions = self._call_openai_with_fallback(
-                    model=model,
+                completions = self._call_with_fallback(
                     messages=messages,
-                    tools=self.tools,
-                    tool_choice="required"
+                    tools=self.tools
                 )
             else:
                 model_prompt = self.prompts["chat"]
@@ -231,7 +230,8 @@ class LLMService:
                 completions = self.client.chat.completions.create(
                     model=model,
                     messages=messages,
-                    tools=None  # No tools for chat model
+                    tools=None,  # No tools for chat model
+                    service_tier="priority"
                 )
         except Exception as e:
             if "invalid_image_url" in str(e) and not retry_without_image:
@@ -242,11 +242,9 @@ class LLMService:
                     model_prompt = self.prompts["function"]
                     model = self.FUNCTION_MODEL
                     messages = self._init_conversation(messages, user_input, None, model_prompt)
-                    completions = self._call_openai_with_fallback(
-                        model=model,
+                    completions = self._call_with_fallback(
                         messages=messages,
-                        tools=self.tools,
-                        tool_choice="required"
+                        tools=self.tools
                     )
                 else:
                     model_prompt = self.prompts["chat"]
@@ -328,7 +326,7 @@ class LLMService:
             completions = self.client.chat.completions.create(
                 model= self.MODEL_FOR_LAST_RESPONSE,
                 messages=messages,
-                tools=None,  # Disable tools for final response
+                tools=None,  
                 service_tier="priority"
             )
             final_content = completions.choices[0].message.content
@@ -353,40 +351,6 @@ class LLMService:
         }
         return json_response
     
-
-    def _call_openai_with_fallback(self, model, messages, tools=None, tool_choice=None):
-        """Fallback universal para todas las llamadas a OpenAI"""
-        models_to_try = [
-            model,
-            "gpt-5",
-            "gpt-4.1",
-            "gpt-5-mini",           
-            "gpt-4.1-mini",
-            "gpt-4o",
-            "gpt-4o-mini",
-        ]
-
-
-
-        for try_model in models_to_try:
-            try:
-                print(f"Trying model: {try_model}")
-                return self.client.chat.completions.create(
-                    model=try_model,
-                    messages=messages,
-                    tools=tools,
-                    tool_choice=tool_choice,
-                )
-            except Exception as e:
-                if "rate_limit_exceeded" in str(e) or "429" in str(e):
-                    print(e)
-                    print(f"TPM exceeded with {try_model}, trying next...")
-                    continue
-                else:
-                    raise e
-        
-        # Si todo falla, respuesta predeterminada
-        return self._create_default_response()
     
     def _call_with_fallback(self, messages, tools):
         """
@@ -394,6 +358,8 @@ class LLMService:
         """
         models_to_try = [
             self.FUNCTION_MODEL,
+            "gpt-5",
+            "gpt-5-mini",
             "gpt-4.1", 
             "gpt-4o",
             "gpt-4.1-mini",
@@ -407,6 +373,7 @@ class LLMService:
                     model=model,
                     messages=messages,
                     tools=tools,
+                    service_tier="priority",
                 )
                 return completions
             except Exception as e:

@@ -506,6 +506,7 @@ class GobernacionService:
                     * Motorcycle plates: 3 letters + 2 numbers + 1 letter (ABC12D, xyz45f)
                 - RETURNS: Fine details with amounts in Colombian Pesos (COP)
                 - DIRECT EXECUTION: If user provides valid data, execute immediately without asking for confirmation
+                - MUST DO: If the user does not provide an ID or a plate number, you must tell him to write it down on the bar next to the communication buttons.
 
             2. **frequently_asked_questions**: Search official information in the Atlantic Department knowledge base
                 - PURPOSE: Access official information about government services, procedures, and processes
