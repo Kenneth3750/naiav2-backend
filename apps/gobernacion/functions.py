@@ -24,7 +24,7 @@ load_dotenv()
 
 OPENAI_API_KEY = os.getenv("open_ai")
 client = OpenAI(api_key=OPENAI_API_KEY)
-VSS_MINIMUM_SCORE = 0.3
+VSS_MINIMUM_SCORE = 0.45
 VSS_DIMENSION = 500
 
 r = redis.Redis(host='localhost', port=6379, db=0)
@@ -80,7 +80,7 @@ def frequently_asked_questions(user_id: int, question: str, status: str) -> Dict
             links.append(doc.link)
     else:
         print("No se encontraron resultados")
-        return {"content_for_answers": ["No se encontró información relevante en la base de datos."], "display": None}
+        return {"content_for_answers": ["No se encontró información relevante en la base de datos."]}
 
     if links:  # Cambiar array por links
         cards_html = ""
