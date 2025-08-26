@@ -30,5 +30,8 @@ class UserService():
             raise e
         
     def has_user_permission(self, email):
+        print(f"Checking permission for email: '{email}'")
+        print(f"Email in list: {email in self.user_list}")
+        print(f"User list length: {len(self.user_list)}")
         return True if email in self.user_list else False
         
