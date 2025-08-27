@@ -44,6 +44,7 @@ INSTALLED_APPS = [
     'apps.skills',
     'apps.personal',
     'apps.recepcionist',
+    'apps.gobernacion',
 ]
 
 
