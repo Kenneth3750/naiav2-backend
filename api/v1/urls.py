@@ -12,6 +12,7 @@ urlpatterns = [
     path('uniguide/', include('api.v1.uniguide.urls')),
     path('skills/', include('api.v1.skills.urls')),
     path('gov_images/', include('api.v1.gov_images.urls')),
+    path('gobernacion/', include('api.v1.gobernacion.urls')),
     path('api-auth/', include('rest_framework.urls')), 
     path('schema/', SpectacularAPIView.as_view(), name='schema'),
     path('schema/swagger-ui/', SpectacularSwaggerView.as_view(url_name='schema'), name='swagger-ui'),

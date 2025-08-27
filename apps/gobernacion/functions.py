@@ -1300,48 +1300,171 @@ def get_location_events(location: str = "Barranquilla", user_id: int = 0, status
 
 def get_location_places(location: str = "Barranquilla", user_id: int = 0, status: str = "", location_query: str = "") -> dict:
     """
-    Get places to visit in a specific location using SerpAPI.
+    Get places to visit in a specific location using hardcoded data from Atlantic department.
     Returns both display and graph using real place images.
     """
     try:
         if user_id:
             set_status(user_id, status, 7)
 
-        api_key = os.getenv('SERPAPI_KEY')
-        if not api_key:
-            raise ValueError("SERPAPI_KEY not found in environment variables")
-
-        params = {
-            "engine": "google_local",
-            "q": f"{location_query} en {location}, Atlántico",
-            "location": location,
-            "api_key": api_key
+        # Hardcoded data for Atlantic department tourism locations
+        ATLANTICO_PLACES = {
+            "department": "Atlántico",
+            "municipios": {
+                "Barranquilla": [
+                    {
+                        "id": 1,
+                        "nombre": "Malecón del Rio",
+                        "descripcion": "El Malecón del Río de Barranquilla, un destino vibrante donde la modernidad se encuentra con la tradición caribeña. Con más de 5 kilómetros de espacios al aire libre, este icónico corredor turístico ofrece restaurantes, zonas verdes, miradores y un ambiente único frente al majestuoso río Magdalena. Ideal para caminar, ejercitarte, disfrutar en familia o vivir experiencias gastronómicas y culturales, el Malecón se ha convertido en el punto de encuentro por excelencia para locales y visitantes que buscan vivir lo mejor de la ciudad en un solo lugar.",
+                        "imagenes": [
+                            "https://barranquilla.gov.co/wp-content/uploads/2019/10/granmalecondelrio-e1570032547330.jpeg",
+                            "https://dynamic-media-cdn.tripadvisor.com/media/photo-o/26/50/3a/87/caiman-del-rio-gana-el.jpg?w=900&h=500&s=1",
+                            "https://dynamic-media-cdn.tripadvisor.com/media/photo-o/1d/e3/fd/a5/sector-recreodeportivo.jpg?w=1200&h=1200&s=1",
+                            "https://www.solonoticiasweb.com/wp-content/uploads/2024/02/20240207_121322.jpg"
+                        ]
+                    },
+                    {
+                        "id": 2,
+                        "nombre": "La Ventana del Mundo",
+                        "descripcion": "La Ventana al Mundo es uno de los símbolos más emblemáticos de Barranquilla, una colorida obra de 47 metros de altura que representa la apertura de la ciudad hacia nuevas oportunidades. Ubicada en la entrada de la ciudad, se ha convertido en un espacio ideal para disfrutar de vistas panorámicas, tomarse fotografías y comenzar un recorrido lleno de arte, cultura y tradición que se extiende a lo largo de todo Barranquilla.",
+                        "imagenes": [
+                            "https://imagenes.eltiempo.com/files/og_thumbnail/uploads/2021/04/07/606dd5650f268.jpeg",
+                            "https://extranoticias.com.co/wp-content/uploads/2023/12/Ventana-al-mundo-2.jpg",
+                            "https://caracol.com.co/resizer/v2/IIQZMLTPJFCSHDG5475PBXEEWA.jpg?auth=7a64e4b0a70d727854365cb890386b047a31db55f3096c69ab56c6ea32bc9b2a&width=650&height=488&quality=70&smart=true",
+                            "https://cloudfront-us-east-1.images.arcpublishing.com/elheraldoco/7EYAJXMN2VB2DFZCUNQCRJ4YM4.jpeg"
+                        ]
+                    },
+                    {
+                        "id": 3,
+                        "nombre": "Ventana de Campeones",
+                        "descripcion": "La Ventana de Campeones es un monumento que celebra con orgullo la pasión de Barranquilla por el fútbol y el legado del Junior, equipo que ha marcado la historia deportiva de la ciudad. Con su diseño moderno, colorido y lleno de movimiento, este espacio se ha convertido en un punto de encuentro para aficionados y visitantes que quieren vivir de cerca el espíritu barranquillero. Ubicada en una de las principales entradas de la ciudad, la obra no solo rinde homenaje a la tradición futbolera, sino que también suma un atractivo más a la ruta turística que recorre el arte y la cultura en Barranquilla.",
+                        "imagenes": [
+                            "https://www.revistaaxxis.com.co/wp-content/uploads/2020/12/DJI_0330-1-1024x576.jpg",
+                            "https://www.tecnoglass.com/wp-content/uploads/2021/03/AXXIS-2020-1.png",
+                            "https://www.revistaaxxis.com.co/wp-content/uploads/2020/12/T3P_2388-1024x683.jpg"
+                        ]
+                    },
+                    {
+                        "id": 4,
+                        "nombre": "Puerto Mocho",
+                        "descripcion": "Puerto Mocho, también conocido como Playa de Puerto Mocho, es la única playa de Barranquilla y un lugar ideal para quienes buscan un ambiente tranquilo, lejos del bullicio de la ciudad. Ubicada en la zona de Bocas de Ceniza, ofrece arenas suaves, brisa fresca y el encanto natural del mar Caribe en un entorno sencillo y auténtico. Es un espacio perfecto para disfrutar en familia, degustar pescados y mariscos frescos preparados por la comunidad local y conectarse con la tradición costera que caracteriza a la región.",
+                        "imagenes": [
+                            "https://www.semana.com/resizer/v2/4RKT527JP5DAHAKS4RWGCKXUBA.jpeg?auth=eb72a38f04044ca84b4df5c68df919b18315c4267b366b7934d1e8a9092327f9&smart=true&quality=75&width=1280&fitfill=false",
+                            "https://cloudfront-us-east-1.images.arcpublishing.com/elespectador/HJGBKYXNHVC33FOUNHCXCQPC5Y.jpeg",
+                            "https://upload.wikimedia.org/wikipedia/commons/thumb/0/08/Puerto_Mocho%2C_Barranquilla.jpg/1024px-Puerto_Mocho%2C_Barranquilla.jpg"
+                        ]
+                    },
+                    {
+                        "id": 5,
+                        "nombre": "Zoológico de Barranquilla",
+                        "descripcion": "El Zoológico de Barranquilla es uno de los lugares más visitados de la ciudad, reconocido por su labor de conservación y educación ambiental. Alberga más de 500 animales de 140 especies provenientes de Colombia y el mundo, incluyendo jaguares, flamencos, monos, tortugas y el emblemático oso hormiguero. Más allá de la exhibición, el zoológico promueve programas de rescate y protección de fauna silvestre, convirtiéndolo en un espacio ideal para aprender, disfrutar en familia y conectarse con la riqueza natural del país.",
+                        "imagenes": [
+                            "https://upload.wikimedia.org/wikipedia/commons/9/9b/Barranquilla_Zool%C3%B3gico_Flamencos.jpg",
+                            "https://viajandox.com.co/uploads/Elefante_1.jpg",
+                            "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcR52TwZuIXMQM6e36wOYV0_qvx92-SWdDypzg&s"
+                        ]
+                    },
+                    {
+                        "id": 6,
+                        "nombre": "Ciénaga de Mallorquín",
+                        "descripcion": "La Ciénaga de Mallorquín es un tesoro natural de Barranquilla, ubicada en la zona noroccidental de la ciudad, donde el mar Caribe se encuentra con el río Magdalena. Este ecosistema de manglares y humedales es hogar de diversas aves migratorias y especies nativas, lo que lo convierte en un lugar privilegiado para el ecoturismo, la observación de fauna y el contacto con la naturaleza. En los últimos años ha sido objeto de proyectos de recuperación ambiental y adecuación turística, ofreciendo senderos, miradores y espacios ideales para disfrutar de un entorno tranquilo y único dentro de la ciudad.",
+                        "imagenes": [
+                            "https://ecoturismocienagademallorquin.com/wp-content/uploads/2025/04/Yoga-en-Barranquilla.-Cienaga-de-Mallorquin-1024x683.jpg",
+                            "https://dynamic-media-cdn.tripadvisor.com/media/photo-o/2b/22/4d/af/caption.jpg?w=1200&h=1200&s=1",
+                            "https://i.ytimg.com/vi/Cp-SdGYgh2E/hq720.jpg?sqp=-oaymwE7CK4FEIIDSFryq4qpAy0IARUAAAAAGAElAADIQj0AgKJD8AEB-AH-DoACuAiKAgwIABABGFIgZShJMA8=&rs=AOn4CLDzXFHh0exHSv6Y4ltb7aB3hVvm8w",
+                            "https://barranquilla.gov.co/wp-content/uploads/2024/06/cienaga-de-mallorquin-3-scaled.jpeg"
+                        ]
+                    }
+                ],
+                "Puerto Colombia": [
+                    {
+                        "id": 1,
+                        "nombre": "Muelle de Puerto Colombia",
+                        "descripcion": "El Muelle de Puerto Colombia es un lugar histórico y emblemático del Atlántico, que en el pasado fue la principal puerta de entrada de inmigrantes, mercancías e ideas al país. Hoy, restaurado y abierto al público, se ha convertido en un atractivo turístico que combina historia, cultura y paisaje. Caminar por su extenso corredor sobre el mar permite disfrutar de atardeceres inolvidables, sentir la brisa caribeña y conectar con el legado que marcó el desarrollo de la región. A su alrededor, restaurantes y espacios culturales completan la experiencia, haciendo del muelle un punto imperdible para locales y visitantes.",
+                        "imagenes": [
+                            "https://cloudfront-us-east-1.images.arcpublishing.com/infobae/LJEZ2WLYQJE7VEAE62DH27ZUDA.jpg",
+                            "https://likebarranquilla.com/wp-content/uploads/2022/01/Muelle-de-Puerto-Colombia.jpeg"
+                        ]
+                    },
+                    {
+                        "id": 7,
+                        "nombre": "Restaurante Muelle 1888",
+                        "descripcion": "El Restaurante Muelle 1888 es un lugar emblemático del Atlántico, ubicado en el Muelle de Puerto Colombia. Ofrece una experiencia culinaria única, con platos típicos de la región y una vista panorámica al mar. Es un lugar perfecto para disfrutar de un almuerzo o cena en familia, y también para celebrar eventos especiales.",
+                        "imagenes": [
+                            "https://www.notaseconomicas.com/wp-content/uploads/2024/08/GobernacionMuelle1888-1.jpg",
+                            "https://www.atlantico.gov.co/images/stories/Fotos_2023/Atlantico_Muelle_1888_Puerto_Colombia.jpeg",
+                            "https://imagenes.eltiempo.com/files/og_thumbnail/uploads/2024/07/23/669fd499afcb6.jpeg",
+                            "https://barranquilla.guide/wp-content/uploads/2024/04/muelle-1888-768x439.jpg"
+                        ]
+                    },
+                    {
+                        "id": 8,
+                        "nombre": "Castillo de Salgar",
+                        "descripcion": "El Castillo de Salgar, construido en 1848 por la Corona Española, es uno de los tesoros históricos más emblemáticos de Puerto Colombia. Ubicado en lo alto de un acantilado frente al mar Caribe, este fuerte militar fue clave en la defensa y el comercio de la región, y hoy se erige como un atractivo turístico que combina historia y paisajes inolvidables. Desde sus murallas se contemplan atardeceres únicos, mientras que su interior se ha convertido en escenario de eventos culturales, bodas y actividades sociales. El Castillo no solo es un símbolo del pasado colonial, sino también un espacio vivo que refleja el patrimonio y la identidad de Puerto Colombia.",
+                        "imagenes": [
+                            "https://dynamic-media-cdn.tripadvisor.com/media/photo-o/04/a0/6a/a8/castillo-de-salgar.jpg?w=1200&h=-1&s=1",
+                            "https://elpunto.co/wp-content/uploads/2022/10/Image-1-scaled.jpeg",
+                            "https://images.joseartgallery.com/168282/conversions/landscape-photography-castillo-de-salgar-belleza-y-conquista-thumb1920.jpg",
+                            "https://www.tesorosdelatlantico.com/media/pvdd2x0t/1.jpg"
+                        ]
+                    },
+                    {
+                        "id": 9,
+                        "nombre": "Ventana de Sueños",
+                        "descripcion": "La Ventana de Sueños, ese faro de esperanza y progreso, ya ilumina el corazón del malecón de Puerto Colombia. Con sus 70 metros de altura y su deslumbrante manto de vidrio azulado degradado, esta escultura monumental diseñada por los hermanos Ariza Barraza rinde un sentido homenaje a los inmigrantes que, desde finales del siglo XIX, trajeron al país los primeros avances tecnológicos y culturales. Dotada con 55 000 luces LED, energía solar y una luz giratoria visible a 20 millas náuticas (aproximadamente 35 km), esta obra donada por Tecnoglass no solo guía a las embarcaciones, sino también a los corazones, atrayendo a turistas y convirtiéndose en símbolo de identidad, historia y futuro para la región del Atlántico.",
+                        "imagenes": [
+                            "https://sociedadcolombianadearquitectos.org/home/wp-content/uploads/2023/12/Ventana-de-Suenos-1280x720-1.webp",
+                            "https://upload.wikimedia.org/wikipedia/commons/9/90/Faro_de_Puerto_Colombia.jpg",
+                            "https://dronesskyzoom.com/wp-content/uploads/2023/12/ventana-de-los-suenos-puerto-colombia-tecnoglass.jpg",
+                            "https://www.dimar.mil.co/sites/default/files/2018-03/a_12.jpg"
+                        ]
+                    }
+                ]
+            }
         }
 
-        search = GoogleSearch(params)
-        results = search.get_dict()
+        # Normalize location name for lookup
+        location_normalized = location.strip().title()
+        if "barranquilla" in location.lower():
+            location_normalized = "Barranquilla"
+        elif "puerto colombia" in location.lower():
+            location_normalized = "Puerto Colombia"
         
-        if "local_results" not in results:
-            return {"error": f"No se encontraron lugares para visitar en {location}"}
+        # Get places for the specified location
+        if location_normalized not in ATLANTICO_PLACES["municipios"]:
+            return {"error": f"No se encontraron lugares para visitar en {location}. Lugares disponibles: Barranquilla y Puerto Colombia"}
             
-        local_results = results["local_results"]
+        places_data = ATLANTICO_PLACES["municipios"][location_normalized]
         
-        # Generate display and collect real images
-        display_html = generate_places_display(local_results, location)
+        # Convert our JSON data to the format expected by existing functions
+        # Simulate the structure that SerpAPI would return
+        local_results = []
+        for place in places_data:
+            local_results.append({
+                'title': place['nombre'],
+                'type': 'Atracción turística',
+                'address': f"{location_normalized}, Atlántico, Colombia",
+                'rating': 4.5,  # Default rating for demo
+                'thumbnail': place['imagenes'][0] if place['imagenes'] else None,
+                'description': place['descripcion'][:150] + "..." if len(place['descripcion']) > 150 else place['descripcion']
+            })
         
-        # Extract real images from places results
+        # Generate display and collect real images using existing functions
+        display_html = generate_places_display(local_results, location_normalized)
+        
+        # Extract real images from places data for carousel
         place_images = []
-        for place in local_results[:8]:
-            if 'thumbnail' in place and place['thumbnail']:
+        for place in places_data:
+            if place['imagenes']:
                 place_images.append({
-                    'url': place['thumbnail'],
-                    'title': place.get('title', 'Lugar'),
-                    'rating': place.get('rating', 0),
-                    'type': place.get('type', ''),
-                    'address': place.get('address', '')
+                    'url': place['imagenes'][0],
+                    'title': place['nombre'],
+                    'rating': 4.5,
+                    'type': 'Atracción turística',
+                    'address': f"{location_normalized}, Atlántico"
                 })
         
-        graph_html = generate_functional_carousel(place_images, f"Lugares en {location}", "places")
+        graph_html = generate_functional_carousel(place_images, f"Lugares en {location_normalized}", "places")
         
         return {
             "display": display_html,

@@ -96,6 +96,7 @@ class GobernacionService:
                             "location": {
                                 "type": "string",
                                 "description": "The location to search for places to visit inside the Atlantic department (city, neighborhood, or area). Examples: 'Barranquilla', 'Puerto Colombia', 'Soledad'",
+                                "enum": ["Barranquilla", "Puerto Colombia"],
                                 "default": "Barranquilla"
                             },
                             "user_id": {
