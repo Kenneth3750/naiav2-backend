@@ -8,6 +8,7 @@ import requests
 from dotenv import load_dotenv
 import json
 import os
+from datetime import datetime
 load_dotenv()
 
 class RegisterAndLoginView(APIView):
@@ -54,12 +55,13 @@ class LogoutView(APIView):
             )
         
 class OpenAIRealtimeTokenView(APIView):
-    def get(self, request):
+    def post(self, request):
         """
         Genera un token ephímero para OpenAI Realtime API
         """
         try:
             # Obtener la API key de OpenAI desde las variables de entorno
+            role_id = request.data.get('roleId')
             api_key = os.getenv("open_ai")
             if not api_key:
                 return Response(
@@ -91,10 +93,22 @@ class OpenAIRealtimeTokenView(APIView):
                 timeout=30
             )
 
-            # Verificar si la respuesta fue exitosa
+
+
             if response.status_code == 200:
                 data = response.json()
+                expires_at_timestamp = data.get("expires_at")
+                if expires_at_timestamp:
+                    expires_at_datetime = datetime.utcfromtimestamp(expires_at_timestamp)
+                    expires_at_formatted = expires_at_datetime.strftime('%Y-%m-%dT%H:%M:%SZ')
+                else:
+                    expires_at_formatted = None
+                data = {
+                    "client_secret": data.get("value"),
+                    "expires_at": expires_at_formatted
+                }
                 return Response(data, status=status.HTTP_200_OK)
+
             else:
                 return Response(
                     {
