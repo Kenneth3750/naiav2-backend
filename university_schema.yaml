@@ -1,0 +1,30 @@
+index:
+  name: university
+  prefix: rag:university
+  key_separator: ':'
+  storage_type: hash
+fields:
+- name: id
+  type: tag
+  attrs:
+    sortable: false
+- name: doc_id
+  type: tag
+  attrs:
+    sortable: false
+- name: text
+  type: text
+  attrs:
+    sortable: false
+- name: file_name
+  type: tag
+  attrs:
+    sortable: false
+- name: vector
+  type: vector
+  attrs:
+    dims: 800
+    algorithm: hnsw
+    datatype: float32
+    distance_metric: cosine
+version: 0.1.0

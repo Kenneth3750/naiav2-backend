@@ -14,10 +14,8 @@ from selenium.webdriver.chrome.options import Options
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.common.by import By
-from bs4 import BeautifulSoup
 import time
 from services.files import B2FileService
-from datetime import datetime, timezone, timedelta
 import json
 from serpapi import GoogleSearch
 from typing import Dict
@@ -25,163 +23,159 @@ from apps.researcher.functions import generate_image_carousel_html
 from apps.researcher.functions import get_user_info_from_graph
 import smtplib
 from email.mime.text import MIMEText
-import requests # no qa
+import requests
 from apps.personal.functions import generate_contacts_html_enhanced
 from apps.users.services import UserService
+from services.files import B2FileService
+from llama_index.core import VectorStoreIndex, SimpleDirectoryReader
+from llama_index.vector_stores.redis import RedisVectorStore
+import redis
+from llama_index.embeddings.openai import OpenAIEmbedding
+from llama_index.core import StorageContext, Document
+import tempfile
+from dotenv import load_dotenv
+from tqdm import tqdm
+from redisvl.schema import IndexSchema
+from llama_index.core.settings import Settings
+import io
+from PyPDF2 import PdfReader
+
+
 load_dotenv()
 
 DEFAULT_FROM_EMAIL=os.getenv("DEFAULT_FROM_EMAIL")
 EMAIL_HOST_PASSWORD=os.getenv("EMAIL_HOST_PASSWORD")
 
 openai_api_key = os.getenv("open_ai")
+r = redis.Redis(host='localhost', port=6379, db=0)
+embedded_model = OpenAIEmbedding(model="text-embedding-3-small", dimensions=800, api_key=openai_api_key)
 
+Settings.embed_model = embedded_model
 client = OpenAI(
     api_key= openai_api_key
 )
 
-
 def create_rag():
-    """
-    Save documents from B2 cloud storage into a vector database
-    """
-    try:
-        # Get documents from B2
-        b2_service = B2FileService()
-        document_bytes_list = b2_service.download_uniguide_documents()
+    b2_service = B2FileService()
+    document_bytes_list = b2_service.download_uniguide_documents()
+
+    if not document_bytes_list:
+        raise ValueError("No documents found in B2 storage.")
+
+    documents = []
+    for i, file_info in tqdm(enumerate(document_bytes_list)):
+        if isinstance(file_info, dict) and 'bytes' in file_info and 'filename' in file_info:
+            file_bytes = file_info['bytes']
+            file_name = file_info['filename']
+        else:
+            file_bytes = file_info
+            file_name = ""
+
+        # Check if it's a PDF by content, not just filename
+        is_pdf = file_bytes.startswith(b'%PDF')
         
-        if not document_bytes_list:
-            raise ValueError("No documents found in B2 storage.")
-            
-        all_documents = []
-        
-        # Process each document from B2
-        for i, file_info in enumerate(document_bytes_list):
-            # Extract file bytes and filename from the returned data
-            if isinstance(file_info, dict) and 'bytes' in file_info and 'filename' in file_info:
-                file_bytes = file_info['bytes']
-                file_name = file_info['filename']
-            else:
-                # If not in expected format, use the old behavior
-                file_bytes = file_info
-                file_name = ""
-            
-            # Determine appropriate file extension for temp file
-            if file_name and file_name.lower().endswith('.docx'):
-                suffix = '.docx'
-            elif file_name and file_name.lower().endswith('.txt'):
-                suffix = '.txt'
-            else:
-                suffix = '.pdf'  # Default to PDF
-            
-            with tempfile.NamedTemporaryFile(delete=False, suffix=suffix) as temp_file:
-                temp_path = temp_file.name
+        if file_name and file_name.lower().endswith('.txt'):
+            with tempfile.NamedTemporaryFile(delete=False, suffix='.txt') as temp_file:
                 temp_file.write(file_bytes)
-            
-            try:
-                if suffix == '.pdf':
-                    # Process as PDF
-                    loader = PyPDFLoader(temp_path)
-                    docs = loader.load()
-                    all_documents.extend(docs)
-                    print(f"Processed PDF document #{i+1}")
-                elif suffix == '.docx':
-                    # Process as DOCX
-                    loader = Docx2txtLoader(temp_path)
-                    docs = loader.load()
-                    all_documents.extend(docs)
-                    print(f"Processed DOCX document #{i+1}")
-                else:
-                    # Process as text
-                    loader = TextLoader(temp_path)
-                    docs = loader.load()
-                    all_documents.extend(docs)
-                    print(f"Processed TXT document #{i+1}")
-            except Exception as e:
-                print(f"Failed to process document #{i+1}: {str(e)}")
-                try:
-                    # Fallback: try as plain text if original processing fails
-                    loader = TextLoader(temp_path, encoding='utf-8', autodetect_encoding=True)
-                    docs = loader.load()
-                    all_documents.extend(docs)
-                    print(f"Processed document #{i+1} as fallback text")
-                except Exception as inner_e:
-                    print(f"All processing methods failed for document #{i+1}: {str(inner_e)}")
-            
-            # Clean up temp file
+                temp_path = temp_file.name
+            with open(temp_path, 'r', encoding='utf-8') as f:
+                text = f.read()
+            documents.append(Document(text=text))
             os.unlink(temp_path)
+        elif (file_name and file_name.lower().endswith('.pdf')) or is_pdf:
+            # Process PDF files (either by extension or by content detection)
+            try:
+                pdf_stream = io.BytesIO(file_bytes)
+                reader = PdfReader(pdf_stream)
+                text = ""
+                for page in reader.pages:
+                    text += page.extract_text() or ""
+                if text.strip():  # Only add if we extracted some text
+                    documents.append(Document(text=text))
+                else:
+                    print(f"Warning: No text extracted from PDF: {file_name or 'unknown'}")
+            except Exception as e:
+                print(f"Error processing PDF {file_name or 'unknown'}: {e}")
+        else:
+            # fallback: try decode as utf-8 text only if not a PDF
+            try:
+                text = file_bytes.decode('utf-8')
+                documents.append(Document(text=text))
+            except Exception as e:
+                print(f"Error decoding {file_name or 'unknown'}: {e}")
 
-        if not all_documents:
-            raise ValueError("No documents could be successfully processed.")
-        
-        # Create embeddings and store in Chroma
-        persist_dir = "./chromadb_uniguide"
-        os.makedirs(persist_dir, exist_ok=True)
+    print(f"Documents processed: {len(documents)}")
+    custom_schema = IndexSchema.from_dict(
+        {
+            # customize basic index specs
+            "index": {
+                "name": "university",
+                "prefix": "rag:university",
+                "key_separator": ":",
+            },
+            # customize fields that are indexed
+            "fields": [
+                # required fields for llamaindex
+                {"type": "tag", "name": "id"},
+                {"type": "tag", "name": "doc_id"},
+                {"type": "text", "name": "text"},
+                # custom metadata fields
+                {"type": "tag", "name": "file_name"},
+                # custom vector field definition for cohere embeddings
+                {
+                    "type": "vector",
+                    "name": "vector",
+                    "attrs": {
+                        "dims": 800,
+                        "algorithm": "hnsw",
+                        "distance_metric": "cosine",
+                    },
+                },
+            ],
+        }
+    )
 
-        embeddings = OpenAIEmbeddings(
-            api_key=openai_api_key,
-            model="text-embedding-3-large"
-        )
+    vector_store = RedisVectorStore(
+        redis_client=r, 
+        overwrite=True,
+        schema=custom_schema
+    )
 
-        # Create text splitter
-        text_splitter = CharacterTextSplitter.from_tiktoken_encoder(
-            encoding_name="cl100k_base",
-            chunk_size=1000,
-            chunk_overlap=200
-        )
+    # Crear el contexto de almacenamiento
+    storage_context = StorageContext.from_defaults(vector_store=vector_store)
 
-        # Split documents into chunks
-        chunks = text_splitter.split_documents(all_documents)
-
-        # Create and persist vector store
-        vector_store = Chroma(
-            persist_directory=persist_dir,
-            embedding_function=embeddings
-        )
-        
-        vector_store.add_documents(chunks)
-        vector_store.persist()
-
-        return f"Successfully processed {len(document_bytes_list)} documents from B2 storage"
-
-    except Exception as e:
-        print(f"Error processing documents: {str(e)}")
-        return {"error": str(e)}
+    # Construir el índice
+    index = VectorStoreIndex.from_documents(
+        documents, storage_context=storage_context
+    )
+    
+    custom_schema.to_yaml("university_schema.yaml")
 
 def query_university_rag(user_id: int, question: str, k: int = 3, status:str = "") -> dict:
     """
     Query the information stored in the vector store and generate a response.
     """
     try:
+        start_time = time.time()
         set_status(user_id, status, 2)
-        persist_dir = "./chromadb_uniguide"
-
-        if not os.path.exists(persist_dir):
-            create_rag()
-            raise FileNotFoundError("No documents have been indexed yet.")
-
-        embeddings = OpenAIEmbeddings(
-            api_key=openai_api_key,
-            model="text-embedding-3-large"
+        os.environ["OPENAI_API_KEY"] = openai_api_key
+        vector_store = RedisVectorStore(
+            schema=IndexSchema.from_yaml("university_schema.yaml"),
+            redis_client=r,
         )
-        
-        vector_store = Chroma(
-            persist_directory=persist_dir,
-            embedding_function=embeddings
+        search_index = VectorStoreIndex.from_vector_store(vector_store=vector_store)
+        retriever = search_index.as_retriever(
+            similarity_top_k=3
         )
-
-        results = vector_store.similarity_search(question, k=k)
-
-        if not results:
-            return {"response": "No relevant documents found for your question."}
-        
-        rag_results = []
-        for i, doc in enumerate(results, 1):
-            rag_results.append(f"Document {i}: {doc.page_content}")
-
-        result_text = "\n\n".join(rag_results)
-
-        print(f"RAG results: {result_text}")
-        return {"resolved_rag": result_text}
+        result_nodes = retriever.retrieve(question)
+        rag_info = ""
+        for node in result_nodes:
+            print(f"Info: {node.text}")
+            print("-" * 80)
+            rag_info += f"{node.text}\n"
+        print(f"Time taken for RAG query: {time.time() - start_time:.2f} seconds")
+        print(f"RAG results: {rag_info}")
+        return {"resolved_rag": rag_info}
 
     except Exception as e:
         print(f"Error retrieving documents: {str(e)}")
