@@ -83,7 +83,8 @@ class OpenAIRealtimeTokenView(APIView):
                         },
                     },
                     "instructions": prompt,
-                    "tools": tools
+                    "tools": tools,
+                    "tool_choice": "auto"
                 }
             }
 
