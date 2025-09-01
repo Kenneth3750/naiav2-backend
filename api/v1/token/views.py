@@ -9,6 +9,7 @@ from dotenv import load_dotenv
 import json
 import os
 from datetime import datetime
+from apps.roles.services import RealtimeRoleService
 load_dotenv()
 
 class RegisterAndLoginView(APIView):
@@ -62,6 +63,8 @@ class OpenAIRealtimeTokenView(APIView):
         try:
             # Obtener la API key de OpenAI desde las variables de entorno
             role_id = request.data.get('roleId')
+            realtime_role_service = RealtimeRoleService(role_id)
+            tools, prompt = realtime_role_service.get_role(5)
             api_key = os.getenv("open_ai")
             if not api_key:
                 return Response(
@@ -76,9 +79,11 @@ class OpenAIRealtimeTokenView(APIView):
                     "model": "gpt-realtime",
                     "audio": {
                         "output": {
-                            "voice": "marin",
+                            "voice": "alloy",
                         },
                     },
+                    "instructions": prompt,
+                    "tools": tools
                 }
             }
 
@@ -110,6 +115,8 @@ class OpenAIRealtimeTokenView(APIView):
                 return Response(data, status=status.HTTP_200_OK)
 
             else:
+                print(f"Failed to generate token - {response.status_code}")
+                print(f"Response details: {response.text}")
                 return Response(
                     {
                         "error": "Failed to generate token",
@@ -119,16 +126,19 @@ class OpenAIRealtimeTokenView(APIView):
                 )
 
         except requests.exceptions.Timeout:
+            print("Request timeout - OpenAI API took too long to respond")
             return Response(
                 {"error": "Request timeout - OpenAI API took too long to respond"},
                 status=status.HTTP_408_REQUEST_TIMEOUT
             )
         except requests.exceptions.RequestException as e:
+            print(f"Network error: {str(e)}")
             return Response(
                 {"error": f"Network error: {str(e)}"},
                 status=status.HTTP_502_BAD_GATEWAY
             )
         except Exception as e:
+            print(f"Token generation error: {str(e)}")
             return Response(
                 {"error": f"Token generation error: {str(e)}"},
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR
