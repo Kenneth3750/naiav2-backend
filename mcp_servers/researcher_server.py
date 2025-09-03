@@ -17,7 +17,7 @@ load_dotenv()
 
 # Initialize MCP server
 mcp = FastMCP(
-    name="NAIA Researcher MCP Server"
+    name="NAIAResearcherMCPServer"
 )
 
 # Environment variables
