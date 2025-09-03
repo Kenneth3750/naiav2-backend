@@ -1,5 +1,5 @@
 import os
-from mcp.server.fastmcp import FastMCP
+from fastmcp import FastMCP
 from dotenv import load_dotenv
 from openai import OpenAI
 from serpapi import GoogleSearch
@@ -17,9 +17,7 @@ load_dotenv()
 
 # Initialize MCP server
 mcp = FastMCP(
-    name="NAIAResearcherMCPServer",
-    host="0.0.0.0",
-    port=9000
+    name="NAIAResearcherMCPServer"
 )
 
 # Environment variables
@@ -39,6 +37,8 @@ def escape(text):
 @mcp.tool(
     name="scholar_search",
     description="EXCLUSIVELY for finding academic articles and research papers. Never use for general internet searches. Call this function any time the user wants academic references, citations, or scholarly information.",
+    tags={"academic", "research", "scholar"},
+    meta={"version": "1.0", "author": "NAIA-team"}
 )
 def scholar_search(query: str = "", query_2: str = "", num_results: int = 3, status: str = "", user_id: int = 0, language1: str = "", language2: str = "en"):
     """
@@ -200,7 +200,9 @@ def convert_to_html(search_result):
 
 @mcp.tool(
     name="factual_web_query",
-    description="For real-time information from the internet. DO NOT use for finding academic papers (use scholar_search instead). This function is for current events, factual information, or getting specific content from web sources. Only use when other functions cannot provide the answer."
+    description="For real-time information from the internet. DO NOT use for finding academic papers (use scholar_search instead). This function is for current events, factual information, or getting specific content from web sources. Only use when other functions cannot provide the answer.",
+    tags={"web", "search", "factual"},
+    meta={"version": "1.0", "author": "NAIA-team"}
 )
 def factual_web_query(query: str, status: str = "", user_id: int = 0):
     """
@@ -444,6 +446,8 @@ def generate_image_carousel_html(search_results, max_images=4):
 @mcp.tool(
     name="send_email",
     description="Send an email to the user. This function is used to send an email to the user with the information provided by the user.",
+    tags={"email", "communication"},
+    meta={"version": "1.0", "author": "NAIA-team"}
 )
 def send_email(to_email: str, subject: str, body: str, status: str = "", user_id: int = 0):
     """
@@ -499,6 +503,8 @@ def send_email(to_email: str, subject: str, body: str, status: str = "", user_id
 @mcp.tool(
     name="get_current_news",
     description="Gets the latest news from a specific location with modern and attractive visualization.",
+    tags={"news", "current", "location"},
+    meta={"version": "1.0", "author": "NAIA-team"}
 )
 def get_current_news(location: str, user_id: int, status: str, query: str, language: str):
     """
@@ -809,4 +815,8 @@ async def health(request):
     return JSONResponse({"status": "ok", "server": "NAIA Researcher MCP"})
 
 if __name__ == "__main__":
-    mcp.run(transport="streamable-http")
+    mcp.run(
+        transport="http",
+        host="0.0.0.0",
+        port=9000
+    )
