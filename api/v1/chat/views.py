@@ -1,4 +1,4 @@
-from apps.chat.services import ChatService
+from apps.chat.services import ChatService, RealtimeChatService
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status
@@ -125,4 +125,24 @@ def upload_current_image(request):
         import traceback
         traceback.print_exc()
         logging.error(f"Error in upload_current_image view: {str(e)}")
+        return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+    
+
+@api_view(["POST"])
+def save_realtime_memory(request):
+    try:
+        user_id = request.data.get('user_id')
+        role_id = request.data.get('role_id')
+        summary = request.data.get('memory_summary')
+
+        if not user_id or not role_id or not summary:
+            return Response({"error": "user_id, role_id, and summary are required"}, status=status.HTTP_400_BAD_REQUEST)
+
+        realtime_service = RealtimeChatService(user_id, role_id)
+        realtime_service.save_memory(summary)
+
+        return Response({"message": "Memory saved"}, status=status.HTTP_200_OK)
+    except Exception as e:
+        print("Error en la vista save_realtime_memory: ", str(e))
+        logging.error(f"Error en la vista save_realtime_memory: {str(e)}")
         return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)

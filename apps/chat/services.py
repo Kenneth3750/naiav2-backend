@@ -2,7 +2,7 @@ from services.llm import LLMService
 import json
 from services.files import B2FileService
 from .repositories import ChatRepository
-from .functions import num_tokens_from_messages
+from .functions import num_tokens_from_messages, save_current_memory_for_realtime, get_current_memory_for_realtime
 from apps.status.services import delete_status, set_status
 from apps.roles.services import RoleService
 import time
@@ -155,3 +155,23 @@ class ChatService():
         if not is_uploaded:
             raise Exception("The image could not be uploaded. Check the B2 service.")
         pass
+
+
+class RealtimeChatService:
+    def __init__(self, user_id, role_id):
+        self.user_id = user_id
+        self.role_id = role_id
+
+    def save_memory(self, summary):
+        try:
+            save_current_memory_for_realtime(summary, self.user_id, self.role_id)
+        except Exception as e:
+            print(f"Error saving memory: {e}")
+
+    def get_memory(self):
+        try:
+            memory = get_current_memory_for_realtime(self.user_id, self.role_id)
+            return memory
+        except Exception as e:
+            print(f"Error retrieving memory: {e}")
+            return None

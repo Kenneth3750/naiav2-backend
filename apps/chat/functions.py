@@ -1,5 +1,8 @@
 import tiktoken
 import json
+import redis
+
+r = redis.Redis(host='localhost', port=6379, db=0)
 
 def num_tokens_from_messages(messages):
     total_chars = sum(len(str(m.get("content", ""))) for m in messages)
@@ -118,3 +121,16 @@ def get_last_four_messages(messages):
 
     print(f"Last messages text: {last_messages_text}")
     return last_messages_text
+
+
+
+def save_current_memory_for_realtime(summary, user_id, role_id):
+    # Save the current memory state to Redis for real-time access
+    r.set(f"realtime_memory:{user_id}:{role_id}", summary)
+    print(f"Memory saved for user {user_id} and role {role_id}")
+
+
+def get_current_memory_for_realtime(user_id, role_id):
+    memory = r.get(f"realtime_memory:{user_id}:{role_id}")
+    print(f"Memory retrieved for user {user_id} and role {role_id}")
+    return memory

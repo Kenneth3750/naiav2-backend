@@ -6,7 +6,6 @@ from apps.skills.services import SkillsTrainerService
 from apps.recepcionist.services import RecepcionistService
 from apps.gobernacion.services import GobernacionService, RealtimeGobernacionService
 
-
 class RoleService:
     def __init__(self, role_id):
         if role_id == 1:
@@ -40,9 +39,10 @@ class RoleService:
 
 class RealtimeRoleService:
     def __init__(self, role_id):
+        self.role_id = role_id
         if role_id == "ciudadano":
             self.role = RealtimeGobernacionService()
 
-    def get_role(self, user_id):
-        tools, prompt = self.role.get_realtime_tools(user_id)
+    def get_role(self, user_id, memory):
+        tools, prompt = self.role.get_realtime_tools(user_id, memory)
         return tools, prompt

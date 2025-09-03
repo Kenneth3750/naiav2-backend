@@ -10,6 +10,7 @@ import json
 import os
 from datetime import datetime
 from apps.roles.services import RealtimeRoleService
+from apps.chat.services import RealtimeChatService
 load_dotenv()
 
 class RegisterAndLoginView(APIView):
@@ -63,8 +64,12 @@ class OpenAIRealtimeTokenView(APIView):
         try:
             # Obtener la API key de OpenAI desde las variables de entorno
             role_id = request.data.get('roleId')
+            user_id = request.data.get('user_id')
+            print(f"Role ID: {role_id}, User ID: {user_id} para el token efímero")
             realtime_role_service = RealtimeRoleService(role_id)
-            tools, prompt = realtime_role_service.get_role(5)
+            realtime_chat = RealtimeChatService(user_id, role_id)
+            memory = realtime_chat.get_memory()
+            tools, prompt = realtime_role_service.get_role(user_id, memory)
             api_key = os.getenv("open_ai")
             if not api_key:
                 return Response(
@@ -77,9 +82,10 @@ class OpenAIRealtimeTokenView(APIView):
                 "session": {
                     "type": "realtime",
                     "model": "gpt-realtime",
+                    "output_modalities": ["audio"],
                     "audio": {
                         "output": {
-                            "voice": "alloy",
+                            "voice": "marin",
                         },
                     },
                     "instructions": prompt,
