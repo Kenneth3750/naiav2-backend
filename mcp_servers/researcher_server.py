@@ -35,65 +35,6 @@ def escape(text):
     return str(text).replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;").replace('"', "&quot;").replace("'", "&#39;")
 
 @mcp.tool(
-    name="get_references",
-    description="This function searches for academic papers using Google Scholar API. It retrieves the title, authors, snippet, and link of the papers.",
-    tags={"academic", "scholar", "references"},
-    meta={"version": "1.0", "author": "NAIA-team"}
-)
-def get_references(query: str = "", num_results: int = 5, language: str = "en"):
-    """
-    This function searches for academic papers using Google Scholar API.
-    It retrieves the title, authors, snippet, and link of the papers.
-    """
-    load_dotenv()
-    api_key = os.getenv("SERPAPI_KEY")
-
-    if not api_key:
-        print("Error: SERPAPI_KEY not found in .env file")
-        return {"error": "SERPAPI_KEY not found"}
-
-    # Configure search parameters
-    params = {
-        "engine": "google_scholar",
-        "q": query,
-        "api_key": api_key,
-        "num": num_results,
-        "hl": language,
-    }
-
-    try:
-        search = GoogleSearch(params)
-        results = search.get_dict()
-
-        search_result = {"query": query, "results": []}
-
-        print(f"\n=== Search Results for: {query} ===\n")
-        for i, result in enumerate(results.get("organic_results", []), 1):
-            research_information = {
-                "result_number": i,
-                "title": result.get("title", "N/A"),
-                "authors": [
-                    author.get("name", "N/A")
-                    for author in result.get("publication_info", {})
-                    .get("authors", [])
-                ],
-                "snippet": result.get("snippet", "N/A"),
-                "link": result.get("link", "N/A"),
-            }
-            search_result["results"].append(research_information)
-            print(f"Result {i}:")
-        return search_result
-    except (ValueError, TypeError, KeyError) as e:
-        print(f"Error during search: {str(e)}")
-        return {"error": str(e),
-                "action": "Do not put references on the text"}
-    except ConnectionError as e:
-        print(f"Connection error during search: {str(e)}")
-        error_msg = f"Connection error during search: {str(e)}"
-        return {"error": str(e),
-        "action": "Do not put references on the text"}
-
-@mcp.tool(
     name="scholar_search",
     description="EXCLUSIVELY for finding academic articles and research papers. Never use for general internet searches. Call this function any time the user wants academic references, citations, or scholarly information.",
     tags={"academic", "research", "scholar"},
@@ -859,6 +800,19 @@ def get_current_news(location: str, user_id: int, status: str, query: str, langu
     except Exception as e:
         print(f"Error obteniendo noticias: {str(e)}")
         return {"error": str(e)}
+    
+
+@mcp.get("/")
+async def root():
+    return {
+        "name": "NAIA Researcher MCP Server",
+        "version": "1.0.0",
+        "tools": ["scholar_search", "factual_web_query", "send_email", "get_current_news"]
+    }
+
+@mcp.get("/health")
+async def health():
+    return {"status": "ok", "server": "NAIA Researcher MCP"}
 
 if __name__ == "__main__":
     mcp.run(
