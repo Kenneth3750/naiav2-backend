@@ -11,7 +11,7 @@ from email.mime.text import MIMEText
 import requests
 import datetime
 from datetime import timedelta, timezone
-
+from starlette.responses import JSONResponse
 # Load environment variables
 load_dotenv()
 
@@ -804,15 +804,15 @@ def get_current_news(location: str, user_id: int, status: str, query: str, langu
 
 @mcp.custom_route("/", methods=["GET"])
 async def root(request):
-    return {
+    return JSONResponse({
         "name": "NAIA Researcher MCP Server",
         "version": "1.0.0",
         "tools": ["scholar_search", "factual_web_query", "send_email", "get_current_news"]
-    }
+    })
 
 @mcp.custom_route("/health", methods=["GET"])
 async def health(request):
-    return {"status": "ok", "server": "NAIA Researcher MCP"}
+    return JSONResponse({"status": "ok", "server": "NAIA Researcher MCP"})
 
 if __name__ == "__main__":
     mcp.run(
