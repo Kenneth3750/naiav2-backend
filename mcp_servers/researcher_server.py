@@ -861,4 +861,7 @@ def get_current_news(location: str, user_id: int, status: str, query: str, langu
         return {"error": str(e)}
 
 if __name__ == "__main__":
-    mcp.run()
+    mcp.run(
+        host="0.0.0.0",
+        port=8080
+    )
