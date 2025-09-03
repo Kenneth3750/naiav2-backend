@@ -67,32 +67,13 @@ class OpenAIRealtimeTokenView(APIView):
             user_id = request.data.get('user_id')
             print(f"Role ID: {role_id}, User ID: {user_id} para el token efímero")
             realtime_role_service = RealtimeRoleService(role_id)
-            realtime_chat = RealtimeChatService(user_id, role_id)
-            memory = realtime_chat.get_memory()
-            tools, prompt = realtime_role_service.get_role(user_id, memory)
+            session_config = realtime_role_service.get_role(user_id, None)
             api_key = os.getenv("open_ai")
             if not api_key:
                 return Response(
                     {"error": "OpenAI API key not configured"},
                     status=status.HTTP_500_INTERNAL_SERVER_ERROR
                 )
-
-            # Configuración de la sesión
-            session_config = {
-                "session": {
-                    "type": "realtime",
-                    "model": "gpt-realtime",
-                    "output_modalities": ["audio"],
-                    "audio": {
-                        "output": {
-                            "voice": "marin",
-                        },
-                    },
-                    "instructions": prompt,
-                    "tools": tools,
-                    "tool_choice": "auto"
-                }
-            }
 
             # Hacer la petición a OpenAI
             response = requests.post(

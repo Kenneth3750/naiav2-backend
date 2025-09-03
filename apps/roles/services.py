@@ -40,9 +40,24 @@ class RoleService:
 class RealtimeRoleService:
     def __init__(self, role_id):
         self.role_id = role_id
-        if role_id == "ciudadano":
+        if role_id == "ciudadano" or role_id == 7:
             self.role = RealtimeGobernacionService()
 
     def get_role(self, user_id, memory):
-        tools, prompt = self.role.get_realtime_tools(user_id, memory)
-        return tools, prompt
+        tools, prompt, voice = self.role.get_realtime_tools(user_id, memory)
+        session_config = {
+                "session": {
+                    "type": "realtime",
+                    "model": "gpt-realtime",
+                    "output_modalities": ["audio"],
+                    "audio": {
+                        "output": {
+                            "voice": voice,
+                        },
+                    },
+                    "instructions": prompt,
+                    "tools": tools,
+                    "tool_choice": "auto"
+                }
+            }
+        return session_config
