@@ -803,7 +803,7 @@ def get_current_news(location: str, user_id: int, status: str, query: str, langu
     
 
 @mcp.custom_route("/", methods=["GET"])
-async def root():
+async def root(request):
     return {
         "name": "NAIA Researcher MCP Server",
         "version": "1.0.0",
@@ -811,7 +811,7 @@ async def root():
     }
 
 @mcp.custom_route("/health", methods=["GET"])
-async def health():
+async def health(request):
     return {"status": "ok", "server": "NAIA Researcher MCP"}
 
 if __name__ == "__main__":
