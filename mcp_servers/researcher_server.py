@@ -1,5 +1,5 @@
 import os
-from fastmcp import FastMCP
+from fastmcp import FastMCP, Client
 from dotenv import load_dotenv
 from openai import OpenAI
 from serpapi import GoogleSearch
@@ -814,49 +814,9 @@ async def root(request):
 async def health(request):
     return JSONResponse({"status": "ok", "server": "NAIA Researcher MCP"})
 
-@mcp.tool(
-    name="search",
-    description="Search for information and return a list of results with identifiers."
-)
-def search(query: str):
-    """
-    Must return list of results with IDs that can be used by fetch tool.
-    """
-    # Use your existing search logic
-    if "academic" in query.lower():
-        results = scholar_search(query)
-    else:
-        results = factual_web_query(query)
-    
-    # Transform to required format: list of items with IDs
-    formatted_results = []
-    for i, result in enumerate(results.get('results', [])):
-        formatted_results.append({
-            "id": f"result_{i}",
-            "title": result.get('title', ''),
-            "summary": result.get('snippet', ''),
-            "url": result.get('link', ''),
-            "type": "web_result"
-        })
-    
-    return {"results": formatted_results}
-
-
-@mcp.tool(
-    name="fetch", 
-    description="Fetch full content for a specific item ID returned by search."
-)
-def fetch(id: str):
-    """
-    Retrieve full content using ID from search results.
-    """
-    # Parse the ID to get the original result
-    # Implementation depends on how you want to store/retrieve content
-    return {
-        "id": id,
-        "content": "Full content here",
-        "metadata": {"source": "your_server"}
-    }
+@mcp.tool
+def say_hello(name: str):
+    return f"Hello, {name}!"
 
 if __name__ == "__main__":
     mcp.run(
