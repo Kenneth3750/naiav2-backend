@@ -802,7 +802,7 @@ def get_current_news(location: str, user_id: int, status: str, query: str, langu
         return {"error": str(e)}
     
 
-@mcp.get("/")
+@mcp.custom_route("/", methods=["GET"])
 async def root():
     return {
         "name": "NAIA Researcher MCP Server",
@@ -810,7 +810,7 @@ async def root():
         "tools": ["scholar_search", "factual_web_query", "send_email", "get_current_news"]
     }
 
-@mcp.get("/health")
+@mcp.custom_route("/health", methods=["GET"])
 async def health():
     return {"status": "ok", "server": "NAIA Researcher MCP"}
 
