@@ -819,8 +819,6 @@ def say_hello(name: str):
     return f"Hello, {name}!"
 
 if __name__ == "__main__":
-    mcp.run(
-        transport="http",
-        host="0.0.0.0",
-        port=9000
-    )
+    import uvicorn
+    app = mcp.http_app()
+    uvicorn.run(app, host="0.0.0.0", port=9000)
