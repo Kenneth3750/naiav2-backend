@@ -42,7 +42,12 @@ mcp = FastMCP(
     name="NAIAUniGuideMCPServer"
 )
 
-@mcp.tool()
+@mcp.tool(
+        name="university_rag_query",
+        description="Query the university RAG system for information about Universidad del Norte.",
+        tags={"university", "rag", "query"},
+        meta={"version": "1.0", "author": "NAIA-team"}
+)
 def university_rag_query(question: str, user_id: int = 1, k: int = 3, status: str = "Searching university documents...") -> dict:
     """
     Query the university RAG system for information about Universidad del Norte.
@@ -61,7 +66,12 @@ def university_rag_query(question: str, user_id: int = 1, k: int = 3, status: st
     except Exception as e:
         return {"error": f"RAG query failed: {str(e)}"}
 
-@mcp.tool()
+@mcp.tool(
+        name="get_campus_calendar",
+        description="Get university calendar events for multiple months to find specific dates and events",
+        tags={"university", "calendar", "query"},
+        meta={"version": "1.0", "author": "NAIA-team"}
+)
 def get_campus_calendar(months: list[int], user_id: int = 1, status: str = "Fetching university calendar...") -> dict:
     """
     Get university calendar events for specified months.
@@ -79,7 +89,12 @@ def get_campus_calendar(months: list[int], user_id: int = 1, status: str = "Fetc
     except Exception as e:
         return {"error": f"Calendar fetch failed: {str(e)}"}
 
-@mcp.tool()
+@mcp.tool(
+        name="virtual_campus_tour",
+        description="Generate an interactive virtual campus tour with images and detailed information about university facilities. Perfect for showcasing campus locations, providing facility details, and helping users explore the university virtually.",
+        tags={"university", "tour", "virtual"},
+        meta={"version": "1.0", "author": "NAIA-team"}
+)
 def virtual_campus_tour(area_filter: str = None, place_name: str = None, language: str = "Spanish", user_id: int = 1, status: str = "Generating virtual tour...") -> dict:
     """
     Generate an interactive virtual campus tour.
@@ -99,7 +114,12 @@ def virtual_campus_tour(area_filter: str = None, place_name: str = None, languag
     except Exception as e:
         return {"error": f"Virtual tour failed: {str(e)}"}
 
-@mcp.tool()
+@mcp.tool(
+        name="search_university_internet",
+        description="Search the internet for specific information about Universidad del Norte. Use ONLY for highly specific questions about campus facilities, architectural details, or very detailed information that requires direct observation. Do NOT use for academic policies, procedures, scholarships, or administrative processes (use university_rag_query for those).",
+        tags={"university", "internet", "search"},
+        meta={"version": "1.0", "author": "NAIA-team"}
+)
 def search_university_internet(query: str, user_id: int = 1, status: str = "Searching internet for university info...", image_query: str = "") -> dict:
     """
     Search the internet for specific information about Universidad del Norte.
@@ -118,7 +138,12 @@ def search_university_internet(query: str, user_id: int = 1, status: str = "Sear
     except Exception as e:
         return {"error": f"Internet search failed: {str(e)}"}
 
-@mcp.tool()
+@mcp.tool(
+        name="send_university_email",
+        description="Send an email through the university email system. Use this function when users request to send an email to themselves or others.",
+        tags={"university", "email", "send"},
+        meta={"version": "1.0", "author": "NAIA-team"}
+)
 def send_university_email(to_email: str, subject: str, body: str, user_id: int = 1, status: str = "Sending email...") -> dict:
     """
     Send an email through the university email system.
@@ -138,7 +163,12 @@ def send_university_email(to_email: str, subject: str, body: str, user_id: int =
     except Exception as e:
         return {"error": f"Email sending failed: {str(e)}"}
 
-@mcp.tool()
+@mcp.tool(
+        name="search_university_contacts",
+        description="Search for contacts in the university directory. Use this function when users request to search for a contact in the university directory.",
+        tags={"university", "contacts", "search"},
+        meta={"version": "1.0", "author": "NAIA-team"}
+)
 def search_university_contacts(name: str, user_id: int = 1, status: str = "Searching contacts...") -> dict:
     """
     Search for contacts in the university directory.
@@ -156,7 +186,12 @@ def search_university_contacts(name: str, user_id: int = 1, status: str = "Searc
     except Exception as e:
         return {"error": f"Contact search failed: {str(e)}"}
 
-@mcp.tool()
+@mcp.tool(
+        name="create_university_calendar_event",
+        description="Create a personal calendar reminder for university events. Perfect for helping users save important university events to their personal calendar so they don't miss them.",
+        tags={"university", "calendar", "event"},
+        meta={"version": "1.0", "author": "NAIA-team"}
+)
 def create_university_calendar_event(title: str, start_datetime: str, end_datetime: str, user_id: int = 1, description: str = "", status: str = "Creating calendar event...") -> dict:
     """
     Create a calendar event/reminder.

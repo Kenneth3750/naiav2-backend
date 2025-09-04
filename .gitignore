@@ -28,3 +28,6 @@ chromadb_uniguide/
 chromadb_recepcionist/
 rag_docs/
 apps/uniguide/rag_test.py
+
+
+rag_comparison.py
