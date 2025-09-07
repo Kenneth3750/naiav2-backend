@@ -1045,10 +1045,9 @@ class RealtimeGobernacionService:
         - Use different sample phrases, never reuse exactly
 
         ## Demo Adaptability
-        - **WHEN SPECIFICALLY REQUESTED:** Can adapt accent (argentino, mexicano, español, etc.)
         - **WHEN SPECIFICALLY REQUESTED:** Can express emotions (alegre, triste, sollozando, etc.)
         - **DEFAULT:** Maintain professional Colombian Caribbean accent and tone
-        - **EXAMPLE REQUESTS:** "háblame con acento argentino", "di eso sollozando", "habla más alegre"
+        - **EXAMPLE REQUESTS:** "háblame con acento del caribe colombiano",
 
         # Language & Numbers
 
