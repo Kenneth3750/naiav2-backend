@@ -4,7 +4,8 @@ import django
 from pathlib import Path
 from fastmcp import FastMCP, Client
 from starlette.responses import JSONResponse
-
+from typing import Annotated
+from pydantic import Field
 # Add the project root to Python path
 project_root = Path(__file__).parent.parent
 sys.path.insert(0, str(project_root))
@@ -44,7 +45,7 @@ mcp = FastMCP(
 
 @mcp.tool(
         name="university_rag_query",
-        description="Query the university RAG system for information about Universidad del Norte.",
+        description="Query the RAG database for academic information about Universidad del Norte. Use for questions about academic programs, scholarships, financial aid, certificates, graduation requirements, administrative procedures, enrollment processes, tutoring programs, internships, and any procedural university information.",
         tags={"university", "rag", "query"},
         meta={"version": "1.0", "author": "NAIA-team"}
 )
@@ -59,7 +60,7 @@ def university_rag_query(question: str, user_id: int = 1, k: int = 3, status: st
         status: Status message for tracking
         
     Returns:
-        Dictionary with resolved_rag content or error
+        Dictionary with resolved_rag content containing relevant university information
     """
     try:
         return query_university_rag(user_id, question, k, status)
@@ -67,22 +68,23 @@ def university_rag_query(question: str, user_id: int = 1, k: int = 3, status: st
         return {"error": f"RAG query failed: {str(e)}"}
 
 @mcp.tool(
-        name="get_campus_calendar",
-        description="Get university calendar events for multiple months to find specific dates and events",
-        tags={"university", "calendar", "query"},
-        meta={"version": "1.0", "author": "NAIA-team"}
+        name="get_campus_calendar"
 )
-def get_campus_calendar(months: list[int], user_id: int = 1, status: str = "Fetching university calendar...") -> dict:
+def get_campus_calendar(
+    months: Annotated[list[int], Field(description="List of month numbers (1-12) to search for university events (e.g., [7, 8, 9] for July-September events)")] ,
+    user_id: Annotated[int, Field(description="User ID for tracking calendar requests")] = 1,
+    status: Annotated[str, Field(description="Status message for calendar search progress")] = "Fetching university calendar..."
+) -> dict:
     """
-    Get university calendar events for specified months.
-     
-    Args:
-        months: List of month numbers (1-12) to search
-        user_id: User ID for tracking
-        status: Status message for tracking
-        
-    Returns:
-        Dictionary with calendar events and HTML graph
+    Get university calendar events for multiple months to find specific dates and timing of university activities.
+    
+    Use for date/timing questions like "cuándo es", "when is", "fecha de", when users mention
+    specific months by name, or when they ask to verify/search calendar information.
+    
+    Examples: "When do classes start?", "cuándo son los finales", "búscalo en el calendario"
+    
+    Always suggest adding interesting events to personal calendar after showing results.
+    Returns calendar events with HTML visualization.
     """
     try:
         return get_university_calendar_multi_month(user_id, months, status)
@@ -90,24 +92,23 @@ def get_campus_calendar(months: list[int], user_id: int = 1, status: str = "Fetc
         return {"error": f"Calendar fetch failed: {str(e)}"}
 
 @mcp.tool(
-        name="virtual_campus_tour",
-        description="Generate an interactive virtual campus tour with images and detailed information about university facilities. Perfect for showcasing campus locations, providing facility details, and helping users explore the university virtually.",
-        tags={"university", "tour", "virtual"},
-        meta={"version": "1.0", "author": "NAIA-team"}
+        name="virtual_campus_tour"
 )
-def virtual_campus_tour(area_filter: str = None, place_name: str = None, language: str = "Spanish", user_id: int = 1, status: str = "Generating virtual tour...") -> dict:
+def virtual_campus_tour(
+    area_filter: Annotated[str | None, Field(description="Filter by category: 'academic', 'recreational', 'services', or None for complete tour")] = None,
+    place_name: Annotated[str | None, Field(description="Specific facility name (e.g., 'biblioteca', 'piscina', 'cafetería') or None for overview")] = None,
+    language: Annotated[str, Field(description="Language for tour interface: 'Spanish' or 'English'")] = "Spanish",
+    user_id: Annotated[int, Field(description="User ID for tracking")] = 1,
+    status: Annotated[str, Field(description="Status message for tour generation progress")] = "Generating virtual tour..."
+) -> dict:
     """
-    Generate an interactive virtual campus tour.
+    Generate interactive virtual campus tour with images and facility information.
     
-    Args:
-        area_filter: Filter by category ("academic", "recreational", "services") or None for all
-        place_name: Specific place name or None for category/all places
-        language: Language for the tour interface
-        user_id: User ID for tracking
-        status: Status message for tracking
-        
-    Returns:
-        Dictionary with HTML tour interface split between "display" and "graph"
+    Use when users want to explore campus facilities, see university locations, or ask about
+    specific places like "show me the campus", "where is the library", "tour virtual".
+    
+    Returns HTML interface with image galleries and detailed facility information.
+    Cannot make reservations - only shows facility details and contact information.
     """
     try:
         return get_virtual_campus_tour(area_filter, place_name, language, user_id, status)
@@ -115,23 +116,36 @@ def virtual_campus_tour(area_filter: str = None, place_name: str = None, languag
         return {"error": f"Virtual tour failed: {str(e)}"}
 
 @mcp.tool(
-        name="search_university_internet",
-        description="Search the internet for specific information about Universidad del Norte. Use ONLY for highly specific questions about campus facilities, architectural details, or very detailed information that requires direct observation. Do NOT use for academic policies, procedures, scholarships, or administrative processes (use university_rag_query for those).",
-        tags={"university", "internet", "search"},
-        meta={"version": "1.0", "author": "NAIA-team"}
+        name="search_university_internet"
 )
-def search_university_internet(query: str, user_id: int = 1, status: str = "Searching internet for university info...", image_query: str = "") -> dict:
+def search_university_internet(
+    query: Annotated[str, Field(description="The search query about Universidad del Norte. Use for: 1) Promotional/comparative queries like 'why study engineering at UniNorte vs other coast universities', 'what distinguishes UniNorte's medicine program', 'UniNorte advantages over other institutions'; 2) Fallback when RAG returns irrelevant information (e.g., user asks about curriculum but RAG returns scholarship info); 3) Highly specific physical details like 'how many floors does building J have', 'what color are the park benches', architectural measurements")],
+    user_id: Annotated[int, Field(description="Unique identifier for the user making the request, used for tracking and logging purposes across all university guide functions")] = 1,
+    status: Annotated[str, Field(description="Descriptive status message explaining the current search operation, should use conjugated verbs in the same language as user's question (e.g., 'Buscando información sobre ventajas de UniNorte...', 'Searching for UniNorte competitive advantages...')")] = "Searching internet for university info...",
+    image_query: Annotated[str, Field(description="Optional search query specifically for finding relevant images about the topic (e.g., 'Universidad del Norte campus', 'UniNorte facilities', 'engineering labs UniNorte'). Leave empty if no visual content is needed")] = ""
+) -> dict:
     """
-    Search the internet for specific information about Universidad del Norte.
+    Search the internet for Universidad del Norte information with three primary use cases:
     
-    Args:
-        query: The search query about the university
-        user_id: User ID for tracking
-        status: Status message for tracking
-        image_query: Related image search query
-        
-    Returns:
-        Dictionary with search results and image carousel
+    1) AUTOMATIC FALLBACK - Use when RAG database doesn't contain relevant information for user's specific question.
+       Examples: user asks about curriculum details but RAG returns unrelated scholarship information, 
+       user asks about specific procedures but RAG returns general policies.
+    
+    2) PROMOTIONAL/COMPARATIVE QUESTIONS - Use for queries comparing UniNorte advantages vs other universities.
+       Examples: 'por qué estudiar ingeniería en la Universidad del Norte vs otras universidades de la costa',
+       'qué diferencia el programa de medicina de UniNorte de otras instituciones',
+       'why choose UniNorte over other Caribbean coast universities',
+       'what makes UniNorte's engineering program better than competitors',
+       questions about UniNorte's ranking, prestige, unique features, research capabilities, 
+       international connections, campus quality, or competitive advantages.
+    
+    3) HIGHLY SPECIFIC PHYSICAL DETAILS - Use for architectural questions requiring direct observation.
+       Examples: 'cuántos pisos tiene el edificio J', 'de qué color son las bancas del parque',
+       'qué altura tiene la torre administrativa', specific measurements, construction details,
+       or visual elements not available in official university documents.
+    
+    Always use as seamless fallback when RAG results don't match user's query - never announce 
+    the fallback, just provide comprehensive information from internet sources.
     """
     try:
         return search_internet_for_uni_answers(query, status, user_id, image_query)
@@ -139,24 +153,23 @@ def search_university_internet(query: str, user_id: int = 1, status: str = "Sear
         return {"error": f"Internet search failed: {str(e)}"}
 
 @mcp.tool(
-        name="send_university_email",
-        description="Send an email through the university email system. Use this function when users request to send an email to themselves or others.",
-        tags={"university", "email", "send"},
-        meta={"version": "1.0", "author": "NAIA-team"}
+        name="send_university_email"
 )
-def send_university_email(to_email: str, subject: str, body: str, user_id: int = 1, status: str = "Sending email...") -> dict:
+def send_university_email(
+    to_email: Annotated[str, Field(description="Recipient email address. Can use 'mi correo' for user's own email or specific email addresses")],
+    subject: Annotated[str, Field(description="Email subject line describing the content being sent")],
+    body: Annotated[str, Field(description="Email body content with the information requested by the user")],
+    user_id: Annotated[int, Field(description="User ID for tracking email requests")] = 1,
+    status: Annotated[str, Field(description="Status message for email sending progress")] = "Sending email..."
+) -> dict:
     """
-    Send an email through the university email system.
+    Send an email through the university email system when users explicitly request it.
     
-    Args:
-        to_email: Recipient email address (can use "mi correo" for user's own email)
-        subject: Email subject
-        body: Email body content
-        user_id: User ID for tracking
-        status: Status message for tracking
-        
-    Returns:
-        Dictionary with success message or error
+    Use when users ask to send information via email like "Send me the details at my email",
+    "Please email me the information", or "envíame eso por correo".
+    
+    Only use when user explicitly requests email delivery - not for general information sharing.
+    Returns success confirmation or error message.
     """
     try:
         return send_email(to_email, subject, body, status, user_id)
@@ -164,46 +177,51 @@ def send_university_email(to_email: str, subject: str, body: str, user_id: int =
         return {"error": f"Email sending failed: {str(e)}"}
 
 @mcp.tool(
-        name="search_university_contacts",
-        description="Search for contacts in the university directory. Use this function when users request to search for a contact in the university directory.",
-        tags={"university", "contacts", "search"},
-        meta={"version": "1.0", "author": "NAIA-team"}
+        name="search_university_contacts"
 )
-def search_university_contacts(name: str, user_id: int = 1, status: str = "Searching contacts...") -> dict:
+def search_university_contacts(
+    name: Annotated[str, Field(description="Name to search for in university directory. Can be partial name, first name, last name, or full name (e.g., 'Juan', 'Pérez', 'Dr. García')")],
+    user_id: Annotated[int, Field(description="User ID for tracking contact search requests")] = 1,
+    status: Annotated[str, Field(description="Status message for contact search progress")] = "Searching contacts..."
+) -> dict:
     """
-    Search for contacts in the university directory.
+    Search for contacts in the university directory to find email addresses and contact information.
     
-    Args:
-        name: Name to search for
-        user_id: User ID for tracking
-        status: Status message for tracking
-        
-    Returns:
-        Dictionary with contact results and HTML display
+    Use when users want to find contact information for university staff, professors, or 
+    administrative personnel, or when they need email addresses to send information to specific people.
+    
+    Examples: "busca el contacto de Dr. García", "find Professor Martinez email", 
+    "necesito el email del coordinador de..."
+    
+    Returns contact results with HTML display of found directory entries.
     """
-
-    return search_contacts_by_name(name, user_id, status)
+    try:
+        return search_contacts_by_name(name, user_id, status)
+    except Exception as e:
+        return {"error": f"Contact search failed: {str(e)}"}
 
 @mcp.tool(
-        name="create_university_calendar_event",
-        description="Create a personal calendar reminder for university events. Perfect for helping users save important university events to their personal calendar so they don't miss them.",
-        tags={"university", "calendar", "event"},
-        meta={"version": "1.0", "author": "NAIA-team"}
+        name="create_university_calendar_event"
 )
-def create_university_calendar_event(title: str, start_datetime: str, end_datetime: str, user_id: int = 1, description: str = "", status: str = "Creating calendar event...") -> dict:
+def create_university_calendar_event(
+    title: Annotated[str, Field(description="Event title/name for the calendar reminder")],
+    start_datetime: Annotated[str, Field(description="Start date and time in YYYY-MM-DDTHH:MM format (Colombia time zone)")],
+    end_datetime: Annotated[str, Field(description="End date and time in YYYY-MM-DDTHH:MM format (Colombia time zone)")],
+    user_id: Annotated[int, Field(description="User ID for tracking calendar event creation")] = 1,
+    description: Annotated[str, Field(description="Optional detailed description of the event")] = "",
+    status: Annotated[str, Field(description="Status message for calendar event creation progress")] = "Creating calendar event..."
+) -> dict:
     """
-    Create a calendar event/reminder.
+    Create a personal calendar reminder for university events to help users not miss important activities.
     
-    Args:
-        title: Event title
-        start_datetime: Start date and time in YYYY-MM-DDTHH:MM format (Colombia time)
-        end_datetime: End date and time in YYYY-MM-DDTHH:MM format (Colombia time)
-        user_id: User ID for tracking
-        description: Optional event description
-        status: Status message for tracking
-        
-    Returns:
-        Dictionary with success message or error
+    Use when users want to save university events to their personal calendar after seeing 
+    calendar information, or when they express interest in attending specific events.
+    
+    Examples: "add that event to my calendar", "remind me about the graduation ceremony",
+    "I want to save that date so I don't forget"
+    
+    Perfect for creating personal reminders of university deadlines, events, or important dates.
+    Returns success confirmation or error message.
     """
     try:
         return create_calendar_event(title, start_datetime, end_datetime, user_id, description, status)
