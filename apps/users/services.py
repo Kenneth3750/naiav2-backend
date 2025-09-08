@@ -20,6 +20,7 @@ class UserService():
     
     def create_or_update_user_token(self, user_id, token):
         try:
+            print(f"Creating or updating token for user_id: {user_id}")
             self.user_repository.create_or_update_user_token(user_id, token)
         except Exception as e:
             raise e

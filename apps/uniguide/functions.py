@@ -2359,6 +2359,8 @@ def search_contacts_by_name(name: str, user_id: int, status: str = "Buscando con
         # Get user's Microsoft Graph token
         user_service = UserService()
         access_token = user_service.get_user_token(user_id)
+
+        print(f"Using access token: {access_token[:10]}...")  # Print only first 10 chars for security
         
         if not access_token:
             return {"error": "No access token found for user. Please authenticate with Microsoft first."}

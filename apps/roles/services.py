@@ -1,5 +1,5 @@
 from apps.researcher.services import ResearcherService
-from apps.uniguide.services import UniGuideService
+from apps.uniguide.services import UniGuideService, RealtimeUniGuideService
 from apps.mental.services import MentalHealthService
 from apps.personal.services import PersonalAssistantService
 from apps.skills.services import SkillsTrainerService
@@ -42,6 +42,11 @@ class RealtimeRoleService:
         self.role_id = role_id
         if role_id == "ciudadano" or role_id == 7:
             self.role = RealtimeGobernacionService()
+        elif role_id == 2:
+            self.role = RealtimeUniGuideService()
+
+        else:
+            raise Exception(f"Realtime Role {role_id} not found")
 
     def get_role(self, user_id, memory):
         tools, prompt, voice = self.role.get_realtime_tools(user_id, memory)
