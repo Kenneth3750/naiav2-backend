@@ -2060,6 +2060,7 @@ def search_internet_for_uni_answers(query: str, status: str, user_id: int, image
                 {"role": "system", "content": system_prompt},
                 {"role": "user", "content": user_prompt}
             ],
+            service_tier="priority",
         )
 
         answer = response.choices[0].message.content
