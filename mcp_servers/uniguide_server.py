@@ -75,7 +75,7 @@ def university_rag_query(question: str, user_id: int = 1, k: int = 3, status: st
 def get_campus_calendar(months: list[int], user_id: int = 1, status: str = "Fetching university calendar...") -> dict:
     """
     Get university calendar events for specified months.
-    
+     
     Args:
         months: List of month numbers (1-12) to search
         user_id: User ID for tracking
@@ -181,10 +181,8 @@ def search_university_contacts(name: str, user_id: int = 1, status: str = "Searc
     Returns:
         Dictionary with contact results and HTML display
     """
-    try:
-        return search_contacts_by_name(name, user_id, status)
-    except Exception as e:
-        return {"error": f"Contact search failed: {str(e)}"}
+
+    return search_contacts_by_name(name, user_id, status)
 
 @mcp.tool(
         name="create_university_calendar_event",
