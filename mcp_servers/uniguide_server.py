@@ -44,23 +44,49 @@ mcp = FastMCP(
 )
 
 @mcp.tool(
-        name="university_rag_query",
-        description="Query the RAG database for academic information about Universidad del Norte. Use for questions about academic programs, scholarships, financial aid, certificates, graduation requirements, administrative procedures, enrollment processes, tutoring programs, internships, and any procedural university information.",
-        tags={"university", "rag", "query"},
-        meta={"version": "1.0", "author": "NAIA-team"}
+        name="university_rag_query"
 )
-def university_rag_query(question: str, user_id: int = 1, k: int = 3, status: str = "Searching university documents...") -> dict:
+def university_rag_query(
+    question: Annotated[str, Field(description="The academic or administrative question to search for in Universidad del Norte's official knowledge base. Use for policies, procedures, scholarships, certificates, requirements, academic programs, enrollment processes, and any procedural university information")],
+    user_id: Annotated[int, Field(description="User ID for tracking purposes across university guide functions")] = 1,
+    k: Annotated[int, Field(description="Number of relevant results to return from the RAG database")] = 3,
+    status: Annotated[str, Field(description="Status message describing the search operation, use conjugated verbs in user's language (e.g., 'Consultando información universitaria...', 'Querying university information...')")] = "Searching university documents..."
+) -> dict:
     """
-    Query the university RAG system for information about Universidad del Norte.
+    Query Universidad del Norte's official RAG database for verified academic and administrative information.
     
-    Args:
-        question: The question to search for in university documents
-        user_id: User ID for tracking (default: 1)
-        k: Number of results to return (default: 3)
-        status: Status message for tracking
-        
-    Returns:
-        Dictionary with resolved_rag content containing relevant university information
+    PRIORITY 1 FUNCTION - ALWAYS TRY RAG FIRST for university information:
+    Use for ALL administrative, academic, and procedural questions about Universidad del Norte.
+    Contains verified and up-to-date official university information.
+    
+    INFORMATION AVAILABLE:
+    - Academic flexibility and dual programs
+    - UniNorte scholarships and financial aid
+    - Certificates and official university documents  
+    - Undergraduate-graduate program connections
+    - Academic regulation exceptions
+    - Graduation procedures and requirements
+    - Academic and financial enrollment processes
+    - Tutoring programs and academic monitoring
+    - Professional internships and legal practices
+    - University policies, procedures, and services
+    
+    EXAMPLES OF USE:
+    - "¿Cómo solicito una beca?" → query_university_rag ONLY
+    - "¿Cuáles son los requisitos de grado?" → query_university_rag ONLY
+    - "What scholarships does UniNorte offer?"
+    - "How do I get an academic certificate?"
+    - "¿Qué materias se dan en el pregrado de ingeniería biomédica?"
+    - "¿Cuál es el pensum de medicina?"
+    
+    CRITICAL RULES:
+    - ONLY use for Universidad del Norte information, not other institutions
+    - Information comes in JSON with key "resolved_rag" - use ONLY this retrieved information
+    - Do NOT add information that wasn't retrieved from the function
+    - If uncertain about information availability, ALWAYS try this function first
+    - Check if menus are already attached to response before suggesting to provide them
+    
+    Returns official university information from verified knowledge base.
     """
     try:
         return query_university_rag(user_id, question, k, status)
