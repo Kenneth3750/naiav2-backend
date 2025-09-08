@@ -146,9 +146,9 @@ def virtual_campus_tour(
 )
 def search_university_internet(
     query: Annotated[str, Field(description="The search query about Universidad del Norte. Use for: 1) Promotional/comparative queries like 'why study engineering at UniNorte vs other coast universities', 'what distinguishes UniNorte's medicine program', 'UniNorte advantages over other institutions'; 2) Fallback when RAG returns irrelevant information (e.g., user asks about curriculum but RAG returns scholarship info); 3) Highly specific physical details like 'how many floors does building J have', 'what color are the park benches', architectural measurements")],
-    user_id: Annotated[int, Field(description="Unique identifier for the user making the request, used for tracking and logging purposes across all university guide functions")] = 1,
-    status: Annotated[str, Field(description="Descriptive status message explaining the current search operation, should use conjugated verbs in the same language as user's question (e.g., 'Buscando información sobre ventajas de UniNorte...', 'Searching for UniNorte competitive advantages...')")] = "Searching internet for university info...",
-    image_query: Annotated[str, Field(description="Optional search query specifically for finding relevant images about the topic (e.g., 'Universidad del Norte campus', 'UniNorte facilities', 'engineering labs UniNorte'). Leave empty if no visual content is needed")] = ""
+    user_id: Annotated[int, Field(description="Unique identifier for the user making the request, used for tracking and logging purposes across all university guide functions")],
+    status: Annotated[str, Field(description="Descriptive status message explaining the current search operation, should use conjugated verbs in the same language as user's question (e.g., 'Buscando información sobre ventajas de UniNorte...', 'Searching for UniNorte competitive advantages...')")],
+    image_query: Annotated[str, Field(description="Optional search query specifically for finding relevant images about the topic (e.g., 'Universidad del Norte campus', 'UniNorte facilities', 'engineering labs UniNorte'). Leave empty if no visual content is needed")]
 ) -> dict:
     """
     Search the internet for Universidad del Norte information with three primary use cases:
