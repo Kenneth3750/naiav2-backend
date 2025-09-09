@@ -147,8 +147,8 @@ def virtual_campus_tour(
 def search_university_internet(
     query: Annotated[str, Field(description="The search query about Universidad del Norte. Use for: 1) Promotional/comparative queries like 'why study engineering at UniNorte vs other coast universities', 'what distinguishes UniNorte's medicine program', 'UniNorte advantages over other institutions'; 2) Fallback when RAG returns irrelevant information (e.g., user asks about curriculum but RAG returns scholarship info); 3) Highly specific physical details like 'how many floors does building J have', 'what color are the park benches', architectural measurements")],
     user_id: Annotated[int, Field(description="Unique identifier for the user making the request, used for tracking and logging purposes across all university guide functions")],
-    status: Annotated[str, Field(description="Descriptive status message explaining the current search operation, should use conjugated verbs in the same language as user's question (e.g., 'Buscando información sobre ventajas de UniNorte...', 'Searching for UniNorte competitive advantages...')")],
-    image_query: Annotated[str, Field(description="Optional search query specifically for finding relevant images about the topic (e.g., 'Universidad del Norte campus', 'UniNorte facilities', 'engineering labs UniNorte'). Leave empty if no visual content is needed")]
+    image_query: Annotated[str, Field(description="Optional search query specifically for finding relevant images about the topic (e.g., 'Universidad del Norte campus', 'UniNorte facilities', 'engineering labs UniNorte'). Leave empty if no visual content is needed")],
+    status: Annotated[str, Field(description="Descriptive status message explaining the current search operation, should use conjugated verbs in the same language as user's question (e.g., 'Buscando información sobre ventajas de UniNorte...', 'Searching for UniNorte competitive advantages...')")] = "Searching the internet..."
 ) -> dict:
     """
     Search the internet for Universidad del Norte information with three primary use cases:
@@ -185,7 +185,7 @@ def send_university_email(
     to_email: Annotated[str, Field(description="Recipient email address. Can use 'mi correo' for user's own email or specific email addresses")],
     subject: Annotated[str, Field(description="Email subject line describing the content being sent")],
     body: Annotated[str, Field(description="Email body content with the information requested by the user")],
-    user_id: Annotated[int, Field(description="User ID for tracking email requests")] = 1,
+    user_id: Annotated[int, Field(description="User ID for tracking email requests")],
     status: Annotated[str, Field(description="Status message for email sending progress")] = "Sending email..."
 ) -> dict:
     """
@@ -207,7 +207,7 @@ def send_university_email(
 )
 def search_university_contacts(
     name: Annotated[str, Field(description="Name to search for in university directory. Can be partial name, first name, last name, or full name (e.g., 'Juan', 'Pérez', 'Dr. García')")],
-    user_id: Annotated[int, Field(description="User ID for tracking contact search requests")] = 1,
+    user_id: Annotated[int, Field(description="User ID for tracking contact search requests")],
     status: Annotated[str, Field(description="Status message for contact search progress")] = "Searching contacts..."
 ) -> dict:
     """
@@ -233,7 +233,7 @@ def create_university_calendar_event(
     title: Annotated[str, Field(description="Event title/name for the calendar reminder")],
     start_datetime: Annotated[str, Field(description="Start date and time in YYYY-MM-DDTHH:MM format (Colombia time zone)")],
     end_datetime: Annotated[str, Field(description="End date and time in YYYY-MM-DDTHH:MM format (Colombia time zone)")],
-    user_id: Annotated[int, Field(description="User ID for tracking calendar event creation")] = 1,
+    user_id: Annotated[int, Field(description="User ID for tracking calendar event creation")],
     description: Annotated[str, Field(description="Optional detailed description of the event")] = "",
     status: Annotated[str, Field(description="Status message for calendar event creation progress")] = "Creating calendar event..."
 ) -> dict:
