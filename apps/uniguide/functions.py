@@ -2076,7 +2076,7 @@ def search_internet_for_uni_answers(query: str, status: str, user_id: int, image
             search_results = GoogleSearch(image_params)
             image_html = generate_image_carousel_html(search_results.get_dict().get("images_results", []))
 
-        return {"answer": answer, "graph": image_html} if image_query else {"answer": answer}
+        return {"answer": f"Give an answer with this information:\n {answer}", "graph": image_html} if image_query else {"answer": answer}
     except Exception as e:
         print(f"Error in search_internet_for_uni_answers: {str(e)}")
         return {"error": str(e), "answer": None}
