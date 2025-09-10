@@ -1143,7 +1143,7 @@ Present information that is factual, balanced, and thoroughly researched."""
         print(f"Error during deep content analysis: {str(e)}\n{error_details}")
         return {"error": str(e), "details": error_details}
     
-def generate_image_carousel_html(search_results, max_images=4):
+def generate_image_carousel_html(search_results, max_images=7):
     """
     Genera HTML para un carrusel de imágenes a partir de los resultados de búsqueda de SerpAPI.
     
