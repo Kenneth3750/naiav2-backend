@@ -740,7 +740,7 @@ def explain_passport_process(user_id: int, status: str, auto_slide_interval: int
                 "titulo": "Verificar Requisitos",
                 "descripcion": "Revisar todos los documentos necesarios para la expedición del pasaporte",
                 "url": "https://pasaportesatlantico.gov.co/publicaciones/2/requisitos-para-expedicion-de-pasaporte/",
-                "imagen": "http://127.0.0.1:8000/api/v1/gov_images/step1_requisitos.png",
+                "imagen": "https://naia.uninorte.edu.co/api/v1/gov_images/step1_requisitos.png",
                 "detalles": "Confirme que cuenta con todos los documentos en buen estado y perfectamente legibles"
             },
             {
@@ -748,7 +748,7 @@ def explain_passport_process(user_id: int, status: str, auto_slide_interval: int
                 "titulo": "Realizar Primer Pago",
                 "descripcion": "Efectuar el primer pago correspondiente al tipo de pasaporte solicitado",
                 "url": "https://pasaportesatlantico.gov.co/pasaporte/",
-                "imagen": "http://127.0.0.1:8000/api/v1/gov_images/step2_primer_pago.png",
+                "imagen": "https://naia.uninorte.edu.co/api/v1/gov_images/step2_primer_pago.png",
                 "detalles": f"Pasaporte Ordinario: ${passport_info['primer_pago']['ordinario']:,} | Pasaporte Ejecutivo: ${passport_info['primer_pago']['ejecutivo']:,}"
             },
             {
@@ -756,7 +756,7 @@ def explain_passport_process(user_id: int, status: str, auto_slide_interval: int
                 "titulo": "Agendar Cita",
                 "descripcion": "Solicitar cita únicamente después de que el primer pago haya sido aceptado",
                 "url": "https://pasaportesatlantico.gov.co/pasaporte/cita/datos-usuario/",
-                "imagen": "http://127.0.0.1:8000/api/v1/gov_images/step3_agendar_cita.png",
+                "imagen": "https://naia.uninorte.edu.co/api/v1/gov_images/step3_agendar_cita.png",
                 "detalles": "Para casos especiales, se recomienda agendar en jornada de mañana"
             },
             {
@@ -764,7 +764,7 @@ def explain_passport_process(user_id: int, status: str, auto_slide_interval: int
                 "titulo": "Realizar Segundo Pago",
                 "descripcion": "Efectuar el segundo pago después de la formalización en la oficina",
                 "url": "https://tramites.cancilleria.gov.co/ApostillaLegalizacion/pago/inicioPagoTC.aspx",
-                "imagen": "http://127.0.0.1:8000/api/v1/gov_images/step4_segundo_pago.png",
+                "imagen": "https://naia.uninorte.edu.co/api/v1/gov_images/step4_segundo_pago.png",
                 "detalles": f"Pasaporte Ordinario: ${passport_info['segundo_pago']['ordinario']:,} | Pasaporte Ejecutivo: ${passport_info['segundo_pago']['ejecutivo']:,}"
             }
         ]
