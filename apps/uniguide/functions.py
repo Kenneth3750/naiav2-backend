@@ -2806,3 +2806,763 @@ def create_calendar_event(title: str, start_datetime: str, end_datetime: str, us
         print(f"Unexpected error: {error_msg}")
         return {"error": error_msg}
     
+
+
+# Functions for presentation
+
+
+def generate_uninorte_image_carousel(image_urls: list, title: str = "Galería de Imágenes") -> str:
+    """
+    Genera un carrusel HTML para imágenes usando las dimensiones y estilos exactos del proyecto.
+    Mantiene la consistencia con los carruseles existentes en researcher y recepcionist.
+    
+    Args:
+        image_urls: Lista de URLs de imágenes
+        title: Título del carrusel
+    
+    Returns:
+        str: HTML completo del carrusel
+    """
+    if not image_urls:
+        return "<div class='no-results'>No se encontraron imágenes para mostrar.</div>"
+    
+    # Generar HTML usando la estructura exacta del proyecto
+    html = f"""
+    <!DOCTYPE html>
+    <html lang="es">
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>{title}</title>
+        <style>
+            * {{
+                box-sizing: border-box;
+                margin: 0;
+                padding: 0;
+            }}
+            
+            body {{
+                font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', sans-serif;
+                background-color: #f8fafc;
+                color: #1e293b;
+            }}
+            
+            .carousel-container {{
+                width: 100%;
+                max-width: 800px;
+                margin: 0 auto;
+                padding: 20px;
+                background-color: white;
+                border-radius: 12px;
+                box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+            }}
+            
+            .carousel-title {{
+                font-size: 1.25rem;
+                font-weight: 600;
+                margin-bottom: 16px;
+                color: #334155;
+                display: flex;
+                align-items: center;
+            }}
+            
+            .carousel {{
+                position: relative;
+                overflow: hidden;
+                border-radius: 8px;
+            }}
+            
+            .carousel-inner {{
+                display: flex;
+                transition: transform 0.5s ease;
+            }}
+            
+            .carousel-item {{
+                min-width: 100%;
+                position: relative;
+            }}
+            
+            .carousel-image {{
+                width: 100%;
+                height: 400px;
+                object-fit: cover;
+                display: block;
+                border-radius: 8px;
+            }}
+            
+            .carousel-caption {{
+                position: absolute;
+                bottom: 0;
+                left: 0;
+                right: 0;
+                background: linear-gradient(to top, rgba(0,0,0,0.8), transparent);
+                color: white;
+                padding: 20px;
+                font-size: 0.875rem;
+                border-radius: 0 0 8px 8px;
+            }}
+            
+            .carousel-controls {{
+                position: absolute;
+                top: 50%;
+                left: 0;
+                right: 0;
+                transform: translateY(-50%);
+                display: flex;
+                justify-content: space-between;
+                padding: 0 16px;
+                pointer-events: none;
+            }}
+            
+            .carousel-control {{
+                width: 40px;
+                height: 40px;
+                background-color: rgba(255, 255, 255, 0.8);
+                border-radius: 50%;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                cursor: pointer;
+                box-shadow: 0 2px 6px rgba(0,0,0,0.2);
+                transition: all 0.2s ease;
+                pointer-events: auto;
+                z-index: 10;
+                border: none;
+            }}
+            
+            .carousel-control:hover {{
+                background-color: white;
+                box-shadow: 0 4px 8px rgba(0,0,0,0.25);
+                transform: scale(1.05);
+            }}
+            
+            .carousel-indicators {{
+                display: flex;
+                justify-content: center;
+                gap: 8px;
+                margin-top: 16px;
+            }}
+            
+            .carousel-indicator {{
+                width: 8px;
+                height: 8px;
+                border-radius: 50%;
+                background-color: #cbd5e1;
+                cursor: pointer;
+                transition: all 0.3s ease;
+            }}
+            
+            .carousel-indicator.active {{
+                background-color: #2563eb;
+                transform: scale(1.25);
+            }}
+            
+            .carousel-attribution {{
+                margin-top: 12px;
+                font-size: 0.75rem;
+                color: #94a3b8;
+                text-align: center;
+            }}
+            
+            /* Impresión */
+            @media print {{
+                .carousel-container {{
+                    box-shadow: none;
+                }}
+                
+                .carousel-controls,
+                .carousel-indicators {{
+                    display: none;
+                }}
+                
+                .carousel-inner {{
+                    display: block;
+                }}
+                
+                .carousel-item {{
+                    page-break-inside: avoid;
+                    margin-bottom: 20px;
+                }}
+            }}
+            
+            @media (max-width: 640px) {{
+                .carousel-container {{
+                    padding: 12px;
+                }}
+                
+                .carousel-image {{
+                    height: 300px;
+                }}
+            }}
+        </style>
+    </head>
+    <body>
+        <div class="carousel-container">
+            <h2 class="carousel-title">
+                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-right: 8px;">
+                    <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
+                    <circle cx="8.5" cy="8.5" r="1.5"></circle>
+                    <polyline points="21 15 16 10 5 21"></polyline>
+                </svg>
+                {title}
+            </h2>
+            <div class="carousel" id="imageCarousel">
+                <div class="carousel-inner" id="carouselInner">
+    """
+    
+    # Generar slides para cada imagen
+    for i, image_url in enumerate(image_urls):
+        html += f"""
+                    <div class="carousel-item" id="slide{i}">
+                        <img src="{image_url}" alt="Imagen {i+1}" class="carousel-image" />
+                        <div class="carousel-caption">
+                            Universidad del Norte - Excelencia Académica
+                        </div>
+                    </div>
+        """
+    
+    # Agregar controles de navegación
+    html += """
+                </div>
+                <div class="carousel-controls">
+                    <div class="carousel-control" id="prevButton">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <polyline points="15 18 9 12 15 6"></polyline>
+                        </svg>
+                    </div>
+                    <div class="carousel-control" id="nextButton">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <polyline points="9 18 15 12 9 6"></polyline>
+                        </svg>
+                    </div>
+                </div>
+                <div class="carousel-indicators" id="indicators">
+    """
+    
+    # Generar indicadores
+    for i in range(len(image_urls)):
+        active = "active" if i == 0 else ""
+        html += f'<div class="carousel-indicator {active}" data-slide="{i}"></div>'
+    
+    # Cerrar HTML con JavaScript funcional
+    html += f"""
+                </div>
+            </div>
+            <div class="carousel-attribution">
+                Universidad del Norte - Barranquilla, Colombia
+            </div>
+        </div>
+        
+        <script>
+            let currentSlide = 0;
+            const totalSlides = {len(image_urls)};
+            
+            function updateCarousel() {{
+                const carouselInner = document.getElementById('carouselInner');
+                const indicators = document.querySelectorAll('.carousel-indicator');
+                
+                carouselInner.style.transform = `translateX(-${{currentSlide * 100}}%)`;
+                
+                indicators.forEach((indicator, index) => {{
+                    indicator.classList.toggle('active', index === currentSlide);
+                }});
+            }}
+            
+            function nextSlide() {{
+                currentSlide = (currentSlide + 1) % totalSlides;
+                updateCarousel();
+            }}
+            
+            function prevSlide() {{
+                currentSlide = (currentSlide - 1 + totalSlides) % totalSlides;
+                updateCarousel();
+            }}
+            
+            // Event listeners
+            document.getElementById('nextButton').addEventListener('click', nextSlide);
+            document.getElementById('prevButton').addEventListener('click', prevSlide);
+            
+            // Indicator clicks
+            document.querySelectorAll('.carousel-indicator').forEach((indicator, index) => {{
+                indicator.addEventListener('click', () => {{
+                    currentSlide = index;
+                    updateCarousel();
+                }});
+            }});
+            
+            // Auto-advance every 5 seconds
+            setInterval(nextSlide, 5000);
+        </script>
+    </body>
+    </html>
+    """
+    
+    return html
+
+def why_is_uninorte_at_the_top() -> Dict:
+    """
+    Provides reasons why Universidad del Norte is ranked among the top universities in Colombia.
+    
+    Returns:
+        dict: A dictionary containing a list of reasons with supporting data
+    """
+    images_list = [
+        "https://www.uninorte.edu.co/documents/13400067/25028114/laboratorio-instalacion-geologia.jpeg",
+        "https://www.uninorte.edu.co/documents/14957788/0/Laboratorio_UniGrid.png",
+        "https://www.uninorte.edu.co/documents/13400067/23243268/Lab_Medicina_retorno.jpg",
+        "https://www.uninorte.edu.co/documents/13619699/22279375/como-solicitarlo-cr%C3%A9dito-empresas.jpg",
+        "https://www.uninorte.edu.co/documents/13400067/26295249/Campus-panora%CC%81mica.jpeg",
+        "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcTkEVXB1j3OcK5IkNA32zwf_7NV1yNYaBy4Gw&s",
+        "https://www.uninorte.edu.co/documents/13400067/23243196/Biblioteca-retorno-campus.jpg",
+        "https://www.uninorte.edu.co/documents/13619699/13621505/Cr%C3%A9dito-Uninorte-OFE.jpg"
+    ]
+    
+    return {
+        "message": "Uninorte es reconocida como una de las mejores universidades del país por su excelencia académica, sus programas acreditados y un campus vibrante con laboratorios de última tecnología, espacios culturales, deportivos y un ambiente que inspira a crecer como persona y profesional.",
+        "key_reasons": [
+            {
+                "title": "Posicionamiento en Rankings Internacionales",
+                "description": "Según el QS World University Rankings 2025, Uninorte se ubica entre las posiciones 1001-1200 a nivel mundial y es la 11va mejor universidad de Colombia. En el ranking QS América Latina y el Caribe 2025, ocupa la posición 52 regional y es la 7ma mejor del país, siendo la única universidad de la región Caribe colombiana en el top 10 nacional.",
+                "supporting_data": "QS World University Rankings 2025 - Posición 1001-1200 mundial, 11va en Colombia"
+            },
+            {
+                "title": "Excelencia en Investigación",
+                "description": "En el ranking U-Sapiens 2025, que mide índices de investigación, Uninorte ascendió a la 9na posición en Colombia con un puntaje de 42 puntos. Destaca especialmente en red internacional de investigación (75.4 puntos) y en la reputación de sus egresados (71.9 puntos).",
+                "supporting_data": "Ranking U-Sapiens 2025 - 9na posición nacional en investigación"
+            },
+            {
+                "title": "Acreditaciones de Alta Calidad",
+                "description": "Uninorte cuenta con acreditación institucional de alta calidad otorgada por el Ministerio de Educación Nacional. Múltiples programas están acreditados en alta calidad, incluyendo Economía (renovada por 8 años en 2022), Relaciones Internacionales (6 años), y Enfermería con reconocimiento internacional de ACEN.",
+                "supporting_data": "Acreditación MEN + programas con reconocimiento internacional"
+            },
+            {
+                "title": "Infraestructura de Vanguardia",
+                "description": "Campus moderno y completamente wireless con laboratorios de última tecnología, biblioteca digital Karl C. Parrish Jr., Hospital Universidad del Norte como centro de prácticas, y espacios culturales como el Museo Vivo. La universidad lidera proyectos como el Modelo Nacional de Riesgo Sísmico, reconocido por la Sociedad Colombiana de Ingenieros.",
+                "supporting_data": "Campus wireless + Hospital Universitario + Laboratorios especializados"
+            },
+            {
+                "title": "Liderazgo Regional",
+                "description": "Uninorte es la institución de educación superior más importante y reconocida de la región Caribe colombiana. Es la única universidad de esta región que se mantiene consistentemente en los rankings nacionales top 10, con una comunidad de más de 11,700 estudiantes y reconocimiento como la más destacada del Atlántico.",
+                "supporting_data": "Única universidad del Caribe en top 10 nacional"
+            },
+            {
+                "title": "Reconocimientos Internacionales",
+                "description": "Los programas de Uninorte han recibido reconocimientos únicos en Colombia, como la certificación de CRLA (College Reading & Learning Association) para el programa de tutores estudiantiles, y la acreditación internacional ACEN para Enfermería, que permite la validación de títulos en Estados Unidos.",
+                "supporting_data": "Certificaciones CRLA + ACEN + reconocimientos únicos en Colombia"
+            },
+            {
+                "title": "Proyección Internacional",
+                "description": "Más de 170 estudiantes han participado en programas internacionales en los últimos cinco años, incluyendo doble titulación, pasantías e investigación. El 87% de los profesores de planta en programas como Relaciones Internacionales cuentan con doctorado, una de las plantas docentes más preparadas del país.",
+                "supporting_data": "170+ estudiantes en programas internacionales + 87% docentes con PhD"
+            }
+        ],
+        "graph": generate_uninorte_image_carousel(images_list, title="Razones para elegir Uninorte"),
+    }
+
+
+def generate_engineering_opportunities_display() -> str:
+    """Genera el display HTML con oportunidades de ingeniería usando dimensiones del proyecto."""
+    return """
+    <div style="font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; max-width: 900px; margin: 0 auto; padding: 30px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); border-radius: 20px; box-shadow: 0 15px 35px rgba(0,0,0,0.2); color: white; text-align: center; position: relative; overflow: hidden;">
+        <div style="position: absolute; top: -50%; right: -50%; width: 200%; height: 200%; background: radial-gradient(circle, rgba(255,255,255,0.1) 0%, transparent 70%); pointer-events: none;"></div>
+        
+        <div style="position: relative; z-index: 1;">
+            <div style="font-size: 48px; margin-bottom: 15px; filter: drop-shadow(0 4px 8px rgba(0,0,0,0.3));">
+                🚀
+            </div>
+            
+            <h2 style="margin: 0 0 10px 0; font-size: 28px; font-weight: 700; text-shadow: 0 3px 6px rgba(0,0,0,0.4); line-height: 1.2;">
+                Oportunidades en Ingeniería Uninorte
+            </h2>
+            
+            <div style="background-color: rgba(255,255,255,0.15); padding: 3px 15px; border-radius: 20px; display: inline-block; margin-bottom: 15px; backdrop-filter: blur(10px);">
+                <span style="font-size: 14px; font-weight: 600; opacity: 0.9;">Desde el primer semestre</span>
+            </div>
+            
+            <p style="margin: 0 0 25px 0; font-size: 16px; opacity: 0.95; line-height: 1.4; text-shadow: 0 2px 4px rgba(0,0,0,0.3);">
+                Los estudiantes pueden experimentar la ingeniería en más de 40 laboratorios equipados con la mejor tecnología, participar en proyectos de innovación, ferias, hackathones e incluso hacer intercambios internacionales y doble titulación.
+            </p>
+            
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 20px; margin: 25px 0; text-align: left;">
+                
+                <div style="background-color: rgba(255,255,255,0.1); padding: 20px; border-radius: 15px; backdrop-filter: blur(10px);">
+                    <div style="font-size: 24px; margin-bottom: 10px;">🔬</div>
+                    <h3 style="font-size: 18px; font-weight: 600; margin-bottom: 8px;">Laboratorios de Vanguardia</h3>
+                    <p style="font-size: 14px; opacity: 0.9; line-height: 1.4;">Más de 40 laboratorios especializados incluyendo el UniGrid (único en Colombia), laboratorios de geotecnia, automatización y energías renovables.</p>
+                </div>
+                
+                <div style="background-color: rgba(255,255,255,0.1); padding: 20px; border-radius: 15px; backdrop-filter: blur(10px);">
+                    <div style="font-size: 24px; margin-bottom: 10px;">🌍</div>
+                    <h3 style="font-size: 18px; font-weight: 600; margin-bottom: 8px;">Movilidad Internacional</h3>
+                    <p style="font-size: 14px; opacity: 0.9; line-height: 1.4;">350+ convenios internacionales con universidades de Europa, América y Asia. 123 estudiantes de ingeniería realizaron movilidad en 2023.</p>
+                </div>
+                
+                <div style="background-color: rgba(255,255,255,0.1); padding: 20px; border-radius: 15px; backdrop-filter: blur(10px);">
+                    <div style="font-size: 24px; margin-bottom: 10px;">🎓</div>
+                    <h3 style="font-size: 18px; font-weight: 600; margin-bottom: 8px;">Doble Titulación</h3>
+                    <p style="font-size: 14px; opacity: 0.9; line-height: 1.4;">Programas con Institut Polytechnique de Grenoble, Politécnico de Milano y University of South Florida.</p>
+                </div>
+                
+                <div style="background-color: rgba(255,255,255,0.1); padding: 20px; border-radius: 15px; backdrop-filter: blur(10px);">
+                    <div style="font-size: 24px; margin-bottom: 10px;">🏢</div>
+                    <h3 style="font-size: 18px; font-weight: 600; margin-bottom: 8px;">Prácticas Profesionales</h3>
+                    <p style="font-size: 14px; opacity: 0.9; line-height: 1.4;">En empresas nacionales e internacionales como Promitel, Omnicon, Gecelca, Triple A, Cemex y Prodeco.</p>
+                </div>
+                
+                <div style="background-color: rgba(255,255,255,0.1); padding: 20px; border-radius: 15px; backdrop-filter: blur(10px);">
+                    <div style="font-size: 24px; margin-bottom: 10px;">⭐</div>
+                    <h3 style="font-size: 18px; font-weight: 600; margin-bottom: 8px;">Acreditación ABET</h3>
+                    <p style="font-size: 14px; opacity: 0.9; line-height: 1.4;">Desde 2008, primer programa en Colombia. Equivalente a estudiar en las mejores universidades de Estados Unidos.</p>
+                </div>
+                
+                <div style="background-color: rgba(255,255,255,0.1); padding: 20px; border-radius: 15px; backdrop-filter: blur(10px);">
+                    <div style="font-size: 24px; margin-bottom: 10px;">🔬</div>
+                    <h3 style="font-size: 18px; font-weight: 600; margin-bottom: 8px;">Investigación + Desarrollo</h3>
+                    <p style="font-size: 14px; opacity: 0.9; line-height: 1.4;">Proyectos de investigación desde pregrado, hackathones, ferias de innovación y programas de emprendimiento.</p>
+                </div>
+                
+            </div>
+            
+            <div style="margin: 25px 0; text-align: center;">
+                <h3 style="font-size: 20px; font-weight: 600; margin-bottom: 15px;">Estadísticas que Impresionan</h3>
+                <div style="display: flex; justify-content: space-around; flex-wrap: wrap; gap: 15px;">
+                    <div style="text-align: center;">
+                        <div style="font-size: 32px; font-weight: 700;">40+</div>
+                        <div style="font-size: 12px; opacity: 0.8;">Laboratorios</div>
+                    </div>
+                    <div style="text-align: center;">
+                        <div style="font-size: 32px; font-weight: 700;">350+</div>
+                        <div style="font-size: 12px; opacity: 0.8;">Convenios Int.</div>
+                    </div>
+                    <div style="text-align: center;">
+                        <div style="font-size: 32px; font-weight: 700;">123</div>
+                        <div style="font-size: 12px; opacity: 0.8;">Estudiantes 2023</div>
+                    </div>
+                    <div style="text-align: center;">
+                        <div style="font-size: 32px; font-weight: 700;">2008</div>
+                        <div style="font-size: 12px; opacity: 0.8;">Acred. ABET</div>
+                    </div>
+                </div>
+            </div>
+            
+            <div style="margin-top: 20px; font-size: 14px; opacity: 0.8;">
+                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align: middle; margin-right: 5px;">
+                    <circle cx="12" cy="12" r="10"></circle>
+                    <polyline points="12,6 12,12 16,14"></polyline>
+                </svg>
+                Oportunidades verificadas • Universidad del Norte • 2025
+            </div>
+        </div>
+    </div>
+    """
+
+
+def engineering_opportunities_at_uninorte() -> Dict:
+    """
+    Provides specific opportunities available to engineering students at Universidad del Norte.
+    
+    Returns:
+        dict: A dictionary containing opportunities info, carousel and display HTML
+    """
+    images_list = [
+        "https://www.uninorte.edu.co/documents/14149944/32435414/2021-09-21+PRIMERA+SESION+CON+ESTUDIANTES+EN+LABORATORIOS+DE+INGENIERIA19%282%29.jpg/1792bddf-cf22-bb92-76b6-6016bc2bc5e9?t=1666733289654",
+        "https://www.uninorte.edu.co/documents/19843942/0/image_gallery+%2829%29.png/d5f16854-3f3e-ebd4-57f3-68a329fab48c?t=1645301552323",
+        "https://www.uninorte.edu.co/documents/13400067/26791579/Feriadeproyectosing.jpg/54474939-7e3c-ae4a-5901-92d79f5dd37e?t=1654688256482",
+        "https://www.uninorte.edu.co/documents/13400067/60254482/Hackathon+STEM+2025.png/d1586886-53fd-c60d-10c2-2b3d82833895?t=1742134580265",
+        "https://www.uninorte.edu.co/documents/15954508/42845284/Ingenieria-Sistemas.jpg/95f37e9d-642d-9a15-9a07-ffa4f3d184cb?t=1700186777307"
+    ]
+    
+    # Generar el carrusel HTML con las imágenes usando las dimensiones exactas del proyecto
+    carousel_html = generate_uninorte_image_carousel(
+        images_list, 
+        "Laboratorios y Experiencias de Ingeniería"
+    )
+    
+    # Generar el display HTML con información específica
+    display_html = generate_engineering_opportunities_display()
+    
+    # Crear los graph tags para mostrar ambos elementos
+    carousel_graph = f"<graph>{carousel_html}</graph>"
+    
+    return {
+        "message": "Desde el primer semestre los estudiantes pueden experimentar la Ingeniería en más de 40 laboratorios equipados con la mejor tecnología, participar en proyectos de innovación, ferias, hackathones e incluso hacer intercambios internacionales y doble titulación.",
+        "key_opportunities": [
+            {
+                "title": "Laboratorios de Última Tecnología",
+                "description": "Más de 40 laboratorios especializados incluyendo el UniGrid (único en Colombia para sistemas de generación distribuidos), laboratorios de geotecnia y materiales, automatización, energías renovables y circuitos eléctricos.",
+                "supporting_data": "40+ laboratorios especializados + UniGrid único en Colombia"
+            },
+            {
+                "title": "Movilidad Internacional Masiva",
+                "description": "350+ convenios internacionales con universidades de Europa, América y Asia. En 2023, 123 estudiantes de ingenierías realizaron movilidad internacional, siendo la división académica con mayor participación.",
+                "supporting_data": "350+ convenios + 123 estudiantes de ingeniería en 2023"
+            },
+            {
+                "title": "Programas de Doble Titulación",
+                "description": "Convenios activos con Institut Polytechnique de Grenoble (Francia), Politécnico de Milano (Italia) y University of South Florida (USA). Los estudiantes obtienen títulos de ambas universidades.",
+                "supporting_data": "3 programas de doble titulación internacionales activos"
+            },
+            {
+                "title": "Prácticas Profesionales de Alto Nivel",
+                "description": "Oportunidades en empresas nacionales e internacionales como Promitel, Omnicon, DST, Columbus, Gecelca, Triple A, Cemex, Prodeco, Celsia y Codensa.",
+                "supporting_data": "Prácticas en 10+ empresas líderes del sector"
+            },
+            {
+                "title": "Acreditación Internacional ABET",
+                "description": "Desde 2008, Uninorte fue el primer programa de Ingeniería Eléctrica en Colombia en obtener acreditación ABET. Estudiar aquí es equivalente a estudiar en las mejores universidades de Estados Unidos. En la actualidad, todos los programas de ingeniería están acreditados por ABET.",
+                "supporting_data": "Acreditación ABET desde 2008 - Primera en Colombia"
+            },
+            {
+                "title": "Investigación desde Pregrado",
+                "description": "Programas de jóvenes investigadores, proyectos de I+D, participación en hackathones, ferias de innovación y conexión directa con grupos de investigación desde primer semestre.",
+                "supporting_data": "Programa de formación en investigación desde 4to semestre"
+            },
+            {
+                "title": "Becas y Estímulos Académicos",
+                "description": "Becas para idiomas extranjeros, descuentos en maestrías para estudiantes destacados, y oportunidades de becas internacionales como PEER-Berkeley y programas DAAD en Alemania.",
+                "supporting_data": "Becas PEER-Berkeley + DAAD Alemania + descuentos postgrado"
+            }
+        ],
+        "graph": carousel_graph,
+        "display": display_html
+    }
+
+
+
+def electrical_electronic_engineering_future() -> Dict:
+    """
+    Explains how Electrical and Electronic Engineering at Universidad del Norte help build the future.
+    
+    Returns:
+        dict: A dictionary containing future-building aspects and carousel
+    """
+    images_list = [
+        "https://www.uninorte.edu.co/documents/14913735/42845219/Ingenieria-electrica.jpg/eac056c4-b435-eeab-1e59-fa63bfb9efec?t=1700163025236",
+        "https://www.uninorte.edu.co/documents/14957788/0/Visitas_Empresariales_1.jpg/ffecc8fc-31e2-974b-b75e-a01dac2f0b78?t=1639065166502",
+        "https://www.uninorte.edu.co/documents/16298750/16461158/Grupo-de-estudiantes-junto-al-profesor-Gustavo-Espitia.png",
+        "https://www.uninorte.edu.co/documents/14957788/0/Estudiantes_PF_Lab_MicroRedes.jpg/7e6375e4-29b9-b7ba-79d6-9907ce9e9066?t=1639093070992",
+        "https://www.uninorte.edu.co/documents/14957788/0/Estudiante_Lab_UniGrid_2.jpg/ce0c9b32-5d02-ae12-cd5a-e000a0651e13?t=1639093483645"
+    ]
+    
+    carousel_html = generate_uninorte_image_carousel(
+        images_list, 
+        "Construyendo el Futuro desde el Caribe"
+    )
+    
+    # Crear el graph tag para mostrar el carrusel
+    carousel_graph = f"<graph>{carousel_html}</graph>"
+    
+    return {
+        "message": "La Ingeniería Eléctrica impulsa soluciones en energías limpias, movilidad eléctrica y redes inteligentes. La Electrónica desarrolla avances en inteligencia artificial, robótica, telecomunicaciones y automatización. Juntas, estas dos carreras forman ingenieros capaces de diseñar tecnologías que transforman la vida de las personas y enfrentan los grandes retos del mundo.",
+        "future_building_areas": [
+            {
+                "title": "Transición Energética y Sostenibilidad",
+                "description": "Desarrollo de sistemas de energías renovables, redes eléctricas inteligentes (Smart Grids) y microredes. El laboratorio UniGrid de Uninorte es único en Colombia para experimentación con generación distribuida y almacenamiento de energía.",
+                "supporting_data": "Laboratorio UniGrid único en Colombia + proyectos Energética 2030"
+            },
+            {
+                "title": "Inteligencia Artificial y Automatización",
+                "description": "Implementación de sistemas ciberfísicos, automatización industrial 4.0, control inteligente de procesos y robótica avanzada. Los estudiantes trabajan con sistemas de eventos discretos y realidad virtual inmersiva.",
+                "supporting_data": "Sistemas ciberfísicos + Industria 4.0 + IA aplicada"
+            },
+            {
+                "title": "Telecomunicaciones y Conectividad",
+                "description": "Desarrollo de redes inalámbricas de largo alcance, comunicaciones para Internet de las Cosas (IoT), ciudades inteligentes y tecnologías 5G. Investigación en procesamiento de señales y sistemas de comunicación modernos.",
+                "supporting_data": "IoT + Smart Cities + redes inalámbricas avanzadas"
+            },
+            {
+                "title": "Sistemas Biomédicos e Innovación en Salud",
+                "description": "Creación de dispositivos médicos inteligentes, sistemas de telemedicina, robótica médica y procesamiento de imágenes biomédicas. Aplicación de IA en diagnóstico y tratamiento médico.",
+                "supporting_data": "Dispositivos médicos + telemedicina + robótica médica"
+            },
+            {
+                "title": "Movilidad Eléctrica y Transporte Inteligente",
+                "description": "Diseño de sistemas de carga para vehículos eléctricos, desarrollo de infraestructura eléctrica para transporte sostenible y sistemas de gestión inteligente del tráfico urbano.",
+                "supporting_data": "Vehículos eléctricos + infraestructura de carga + transporte inteligente"
+            },
+        ],
+        "technological_impact": {
+            "acreditation": "Primera acreditación ABET en Colombia (2008) - Equivalente a universidades estadounidenses",
+            "unique_lab": "UniGrid - Único laboratorio en Colombia para redes de distribución eléctrica",
+            "energy_transition": "Liderando la transición energética en el Caribe colombiano"
+        },
+        "graph": carousel_graph,
+    }
+
+
+def generate_inscription_process_display() -> str:
+    """Genera el display HTML con el proceso de inscripción usando dimensiones del proyecto."""
+    return """
+    <div style="font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; max-width: 950px; margin: 0 auto; padding: 30px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); border-radius: 20px; box-shadow: 0 15px 35px rgba(0,0,0,0.2); color: white; text-align: center; position: relative; overflow: hidden;">
+        <div style="position: absolute; top: -50%; right: -50%; width: 200%; height: 200%; background: radial-gradient(circle, rgba(255,255,255,0.1) 0%, transparent 70%); pointer-events: none;"></div>
+        
+        <div style="position: relative; z-index: 1;">
+            <div style="font-size: 48px; margin-bottom: 15px; filter: drop-shadow(0 4px 8px rgba(0,0,0,0.3));">
+                🎓
+            </div>
+            
+            <h2 style="margin: 0 0 10px 0; font-size: 28px; font-weight: 700; text-shadow: 0 3px 6px rgba(0,0,0,0.4); line-height: 1.2;">
+                ¿Cómo Inscribirse en Ingeniería Uninorte?
+            </h2>
+            
+            <div style="background-color: rgba(255,255,255,0.15); padding: 3px 15px; border-radius: 20px; display: inline-block; margin-bottom: 15px; backdrop-filter: blur(10px);">
+                <span style="font-size: 14px; font-weight: 600; opacity: 0.9;">Proceso sencillo y 100% en línea</span>
+            </div>
+            
+            <p style="margin: 0 0 25px 0; font-size: 16px; opacity: 0.95; line-height: 1.4; text-shadow: 0 2px 4px rgba(0,0,0,0.3);">
+                El proceso es muy sencillo: solo debes ingresar a la página oficial de Uninorte, llenar el formulario de inscripción en línea. Además, la universidad ofrece becas y apoyos financieros para que todos los jóvenes con talento puedan cumplir su sueño de ser ingenieros.
+            </p>
+            
+            <!-- Pasos del proceso -->
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(290px, 1fr)); gap: 20px; margin: 25px 0; text-align: left;">
+                
+                <div style="background-color: rgba(255,255,255,0.1); padding: 20px; border-radius: 15px; backdrop-filter: blur(10px); border-left: 4px solid #00FF88;">
+                    <div style="display: flex; align-items: center; margin-bottom: 12px;">
+                        <div style="width: 30px; height: 30px; background-color: #00FF88; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: 700; color: #000; margin-right: 12px;">1</div>
+                        <h3 style="font-size: 18px; font-weight: 600; margin: 0;">Formulario en Línea</h3>
+                    </div>
+                    <p style="font-size: 14px; opacity: 0.9; line-height: 1.4; margin: 0;">Ingresa a uninorte.edu.co y diligencia el formulario de inscripción web. Adjunta documento de identidad y certificado de notas de 10° y 11°.</p>
+                </div>
+                
+                <div style="background-color: rgba(255,255,255,0.1); padding: 20px; border-radius: 15px; backdrop-filter: blur(10px); border-left: 4px solid #FF6B35;">
+                    <div style="display: flex; align-items: center; margin-bottom: 12px;">
+                        <div style="width: 30px; height: 30px; background-color: #FF6B35; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: 700; color: #fff; margin-right: 12px;">2</div>
+                        <h3 style="font-size: 18px; font-weight: 600; margin: 0;">Aplica a Becas</h3>
+                    </div>
+                    <p style="font-size: 14px; opacity: 0.9; line-height: 1.4; margin: 0;">Solicita becas institucionales hasta 100% de matrícula. Programas especiales como ver+ beca tech para Ingeniería de Sistemas y Ciencia de Datos (95% cobertura).</p>
+                </div>
+                
+                <div style="background-color: rgba(255,255,255,0.1); padding: 20px; border-radius: 15px; backdrop-filter: blur(10px); border-left: 4px solid #4ECDC4;">
+                    <div style="display: flex; align-items: center; margin-bottom: 12px;">
+                        <div style="width: 30px; height: 30px; background-color: #4ECDC4; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: 700; color: #000; margin-right: 12px;">3</div>
+                        <h3 style="font-size: 18px; font-weight: 600; margin: 0;">Documentos y Pagos</h3>
+                    </div>
+                    <p style="font-size: 14px; opacity: 0.9; line-height: 1.4; margin: 0;">Realiza el pago de inscripción y sube el diploma de bachiller. Obtén descuento especial al aplicar a becas.</p>
+                </div>
+                
+                <div style="background-color: rgba(255,255,255,0.1); padding: 20px; border-radius: 15px; backdrop-filter: blur(10px); border-left: 4px solid #A8E6CF;">
+                    <div style="display: flex; align-items: center; margin-bottom: 12px;">
+                        <div style="width: 30px; height: 30px; background-color: #A8E6CF; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: 700; color: #000; margin-right: 12px;">4</div>
+                        <h3 style="font-size: 18px; font-weight: 600; margin: 0;">Exámenes</h3>
+                    </div>
+                    <p style="font-size: 14px; opacity: 0.9; line-height: 1.4; margin: 0;">Presenta examen de clasificación de inglés y exámenes médicos. El Centro Médico y el Instituto de Idiomas se contactarán contigo.</p>
+                </div>
+                
+                <div style="background-color: rgba(255,255,255,0.1); padding: 20px; border-radius: 15px; backdrop-filter: blur(10px); border-left: 4px solid #FFD93D;">
+                    <div style="display: flex; align-items: center; margin-bottom: 12px;">
+                        <div style="width: 30px; height: 30px; background-color: #FFD93D; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: 700; color: #000; margin-right: 12px;">5</div>
+                        <h3 style="font-size: 18px; font-weight: 600; margin: 0;">Decisión de Admisión</h3>
+                    </div>
+                    <p style="font-size: 14px; opacity: 0.9; line-height: 1.4; margin: 0;">Recibe la notificación de admisión por correo electrónico. Consulta tu estado en el portal web con tu documento de identidad.</p>
+                </div>
+                
+                <div style="background-color: rgba(255,255,255,0.1); padding: 20px; border-radius: 15px; backdrop-filter: blur(10px); border-left: 4px solid #FF6B9D;">
+                    <div style="display: flex; align-items: center; margin-bottom: 12px;">
+                        <div style="width: 30px; height: 30px; background-color: #FF6B9D; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: 700; color: #fff; margin-right: 12px;">6</div>
+                        <h3 style="font-size: 18px; font-weight: 600; margin: 0;">¡Bienvenida Uninorte!</h3>
+                    </div>
+                    <p style="font-size: 14px; opacity: 0.9; line-height: 1.4; margin: 0;">Participa en la Bienvenida Uninorte y comienza tu experiencia universitaria. Matricúlate en tus asignaturas y inicia tu carrera en ingeniería.</p>
+                </div>
+                
+            </div>
+            
+            
+            <!-- Programas de apoyo -->
+            <div style="margin: 25px 0; text-align: center;">
+                <h3 style="font-size: 20px; font-weight: 600; margin-bottom: 15px;">💰 Apoyo Financiero Disponible</h3>
+                <div style="display: flex; justify-content: center; flex-wrap: wrap; gap: 12px;">
+                    <span style="background-color: rgba(255,255,255,0.2); padding: 8px 16px; border-radius: 20px; font-size: 13px; font-weight: 600;">Becas Institucionales</span>
+                    <span style="background-color: rgba(255,255,255,0.2); padding: 8px 16px; border-radius: 20px; font-size: 13px; font-weight: 600;">ICETEX</span>
+                    <span style="background-color: rgba(255,255,255,0.2); padding: 8px 16px; border-radius: 20px; font-size: 13px; font-weight: 600;">ver+ beca tech</span>
+                    <span style="background-color: rgba(255,255,255,0.2); padding: 8px 16px; border-radius: 20px; font-size: 13px; font-weight: 600;">Beca Nutresa</span>
+                    <span style="background-color: rgba(255,255,255,0.2); padding: 8px 16px; border-radius: 20px; font-size: 13px; font-weight: 600;">Crédito Uninorte</span>
+                    <span style="background-color: rgba(255,255,255,0.2); padding: 8px 16px; border-radius: 20px; font-size: 13px; font-weight: 600;">Entidades Financieras</span>
+                </div>
+            </div>
+            
+            <div style="margin-top: 20px; font-size: 14px; opacity: 0.8;">
+                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align: middle; margin-right: 5px;">
+                    <circle cx="12" cy="12" r="10"></circle>
+                    <polyline points="12,6 12,12 16,14"></polyline>
+                </svg>
+                ¡Es el primer paso para vivir la Ingeniería en Uninorte! • uninorte.edu.co
+            </div>
+        </div>
+    </div>
+    """
+
+
+def inscription_process_for_engineering() -> Dict:
+    """
+    Provides the step-by-step inscription process for engineering at Universidad del Norte.
+    
+    Returns:
+        dict: A dictionary containing the inscription process and financial aid information
+    """
+    
+    # Generar el display HTML con el proceso detallado
+    display_html = generate_inscription_process_display()
+    
+    return {
+        "message": "El proceso es muy sencillo: solo deben ingresar a la página oficial de Uninorte, llenar el formulario de inscripción en línea. Además, la universidad ofrece becas y apoyos financieros para que todos los jóvenes con talento puedan cumplir su sueño de ser ingenieros. ¡Es el primer paso para vivir la Ingeniería en Uninorte!",
+        "inscription_steps": [
+            {
+                "step": 1,
+                "title": "Formulario de Inscripción Web",
+                "description": "Ingresa a uninorte.edu.co y diligencia el formulario en línea. Adjunta documento de identidad y certificado de notas de 10° y 11° grado."
+            },
+            {
+                "step": 2,
+                "title": "Solicitar Becas",
+                "description": "Aplica a becas institucionales que cubren hasta el 100% de la matrícula. Programas especiales como ver+ beca tech (95% cobertura) para Ingeniería de Sistemas y Ciencia de Datos."
+            },
+            {
+                "step": 3,
+                "title": "Documentos y Pagos",
+                "description": "Realiza el pago de inscripción y sube el diploma de bachiller una vez graduado. Participar en becas otorga descuento especial en inscripción."
+            },
+            {
+                "step": 4,
+                "title": "Exámenes Obligatorios",
+                "description": "Presenta examen de clasificación de inglés y exámenes médicos de ingreso. El Centro Médico Uninorte y el Instituto de Idiomas te contactarán."
+            },
+            {
+                "step": 5,
+                "title": "Decisión de Admisión",
+                "description": "Recibe notificación de admisión por correo electrónico. Consulta tu estado en el portal con tu documento de identidad."
+            },
+            {
+                "step": 6,
+                "title": "Bienvenida y Matrícula",
+                "description": "Participa en la Bienvenida Uninorte, matricúlate en asignaturas y comienza tu experiencia universitaria en ingeniería."
+            }
+        ],
+        "financial_aid_options": [
+            {
+                "name": "Becas Institucionales Uninorte",
+                "coverage": "Hasta 100% matrícula",
+                "description": "Para jóvenes bachilleres graduados en últimos 3 años de la región Caribe con destacado desempeño académico"
+            },
+            {
+                "name": "ver+ beca tech",
+                "coverage": "95% matrícula + apoyo mensual",
+                "description": "Para Ingeniería de Sistemas y Ciencia de Datos. Dirigida a jóvenes SISBEN A, B o C"
+            },
+            {
+                "name": "Beca Nutresa-Uninorte",
+                "coverage": "Variable",
+                "description": "Aplica para múltiples ingenierías incluyendo Industrial, Eléctrica, Electrónica, Mecánica y Sistemas"
+            },
+            {
+                "name": "ICETEX",
+                "coverage": "Hasta 100%",
+                "description": "Crédito educativo con tasa de interés más baja del mercado"
+            },
+            {
+                "name": "Crédito Uninorte",
+                "coverage": "Variable",
+                "description": "Línea de crédito directa con la universidad para estudiantes nuevos y antiguos"
+            }
+        ],
+        "display": display_html
+    }
