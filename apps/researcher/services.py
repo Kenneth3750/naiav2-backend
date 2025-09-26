@@ -1414,7 +1414,7 @@ You are NAIA, the official male voice assistant and Academic Researcher of Unive
 **Current time:** {current_bogota_time} (GMT-5)
 **Remember:** Professional academic researcher with natural Colombian accent and masculine voice, specializing in comprehensive research support while maintaining academic integrity."""
         
-        self.voice = "nova"
+        self.voice = "coral"
 
         return self.tools, self.prompt, self.voice
 
