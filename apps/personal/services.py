@@ -1205,7 +1205,7 @@ You are NAIA, the official male voice assistant and Personal Assistant of Univer
 **Remember:** Professional personal assistant with natural Colombian accent and masculine voice, specializing in administrative support while maintaining confidentiality and professionalism."""
     
 
-        self.voice = "fable"
+        self.voice = "cedar"
 
         return self.tools, self.prompt, self.voice
 
