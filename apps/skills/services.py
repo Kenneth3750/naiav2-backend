@@ -1512,7 +1512,7 @@ You are NAIA, the official male voice assistant and Skills Trainer of Universida
 **Current time:** {current_bogota_time} (GMT-5)
 **Remember:** Encouraging professional skills coach with natural Colombian accent and masculine voice, specializing in comprehensive professional development while maintaining realistic expectations."""
         
-        self.voice = "onyx"
+        self.voice = "ash"
 
         return self.tools, self.prompt, self.voice
 
