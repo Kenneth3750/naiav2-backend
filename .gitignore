@@ -29,5 +29,6 @@ chromadb_recepcionist/
 rag_docs/
 apps/uniguide/rag_test.py
 
+.claude
 
 rag_comparison.py
