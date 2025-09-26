@@ -1,9 +1,9 @@
-from apps.researcher.services import ResearcherService
+from apps.researcher.services import ResearcherService, RealtimeResearchService
 from apps.uniguide.services import UniGuideService, RealtimeUniGuideService
 from apps.mental.services import MentalHealthService
-from apps.personal.services import PersonalAssistantService
-from apps.skills.services import SkillsTrainerService
-from apps.recepcionist.services import RecepcionistService
+from apps.personal.services import PersonalAssistantService, RealtimePersonalAssistantService
+from apps.skills.services import SkillsTrainerService, RealtimeSkillsTrainerService
+from apps.recepcionist.services import RecepcionistService, RealtimeReceptionistService
 from apps.gobernacion.services import GobernacionService, RealtimeGobernacionService
 
 class RoleService:
@@ -42,8 +42,16 @@ class RealtimeRoleService:
         self.role_id = role_id
         if role_id == "ciudadano" or role_id == 7:
             self.role = RealtimeGobernacionService()
+        elif role_id == 1:
+            self.role = RealtimeResearchService()
         elif role_id == 2:
             self.role = RealtimeUniGuideService()
+        elif role_id == 3:
+            self.role = RealtimePersonalAssistantService()
+        elif role_id == 4:
+            self.role = RealtimeSkillsTrainerService()
+        elif role_id == 5:
+            self.role = RealtimeReceptionistService()
 
         else:
             raise Exception(f"Realtime Role {role_id} not found")
