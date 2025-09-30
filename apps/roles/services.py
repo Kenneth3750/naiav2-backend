@@ -5,6 +5,7 @@ from apps.personal.services import PersonalAssistantService, RealtimePersonalAss
 from apps.skills.services import SkillsTrainerService, RealtimeSkillsTrainerService
 from apps.recepcionist.services import RecepcionistService, RealtimeReceptionistService
 from apps.gobernacion.services import GobernacionService, RealtimeGobernacionService
+from .funcs import ToeflRealtime
 
 class RoleService:
     def __init__(self, role_id):
@@ -52,6 +53,10 @@ class RealtimeRoleService:
             self.role = RealtimeSkillsTrainerService()
         elif role_id == 5:
             self.role = RealtimeReceptionistService()
+
+        elif role_id == 123:
+            self.role = ToeflRealtime()
+        
 
         else:
             raise Exception(f"Realtime Role {role_id} not found")
