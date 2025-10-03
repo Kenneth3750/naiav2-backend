@@ -487,7 +487,22 @@ def save_user_document_for_rag(pdf_files: List[bytes], user_id:int):
             except Exception as e:
                 print(f"[RAG] Error cleaning up temp file {tmp_path}: {str(e)}")
 
+def rebuild_user_rag(user_id: int):
+    """
+    Rebuild the user's RAG vector store from scratch.
+    Useful when documents are deleted to ensure consistency.
+    """
+    import shutil
 
+    persist_dir = f"./chromadb_user/{user_id}"
+
+    # Remove old vector store
+    if os.path.exists(persist_dir):
+        print(f"[RAG REBUILD] Removing old vector store for user {user_id}")
+        shutil.rmtree(persist_dir)
+
+    print(f"[RAG REBUILD] Vector store cleared for user {user_id}")
+    return True
 
 
 def answer_from_user_rag(user_id: int, pregunta: str, k: int = 3, status:str = "") -> dict:

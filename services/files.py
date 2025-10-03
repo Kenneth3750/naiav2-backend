@@ -187,9 +187,15 @@ class B2FileService:
         bucket = b2.Bucket(b2_api, self.bucket_id, name=self.bucket_name)
         try:
             bucket.delete_file_version(file_id, file_name=f"{self.document_prefix}/user_{user_id}/{file_name}")
+            print(f"File deleted successfully: {file_name}")
             return True
         except Exception as e:
-            print(f"Error deleting file: {str(e)}")
+            error_msg = str(e)
+            print(f"Error deleting file: {error_msg}")
+            # If file doesn't exist, consider it a success (idempotent delete)
+            if "File not present" in error_msg or "not_found" in error_msg.lower():
+                print(f"File already deleted or doesn't exist: {file_name}")
+                return True
             return False
         
     def download_user_documents(self, user_id):

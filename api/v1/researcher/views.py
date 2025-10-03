@@ -4,7 +4,7 @@ from rest_framework import status
 from apps.researcher.services import DocumentService
 from django.core.cache import cache
 from rest_framework.decorators import api_view
-from apps.researcher.functions import save_user_document_for_rag
+from apps.researcher.functions import save_user_document_for_rag, rebuild_user_rag
 class ResearchDocumentView(APIView):
     def post(self, request):
         try:
@@ -58,14 +58,22 @@ class ResearchDocumentView(APIView):
             file_id = request.query_params.get('file_id')
             file_name = request.query_params.get('file_name')
             user_id = request.query_params.get('user_id')
-            
+
             if not file_id:
                 return Response({"error": "file_id is required"}, status=status.HTTP_400_BAD_REQUEST)
-            
+
             document_service = DocumentService()
             result = document_service.delete_document_by_id(file_id, file_name, user_id)
-            
-            return Response({"message": "File deleted", "info": result}, status=status.HTTP_200_OK)
+
+            # Invalidate cache so next GET will fetch fresh data
+            document_service.invalidate_cache(user_id)
+            print(f"Cache invalidated for user {user_id} after deleting {file_name}")
+
+            # Clear the RAG vector store - it will be rebuilt when save_changes is called
+            rebuild_user_rag(user_id)
+            print(f"RAG vector store cleared for user {user_id}")
+
+            return Response({"message": "File deleted successfully. Please save changes to rebuild your document search.", "info": result}, status=status.HTTP_200_OK)
         except Exception as e:
             import traceback
             traceback.print_exc()
