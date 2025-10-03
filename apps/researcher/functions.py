@@ -417,51 +417,75 @@ def save_user_document_for_rag(pdf_files: List[bytes], user_id:int):
     """
     this function is to save the user pdf file into their own vector database
     pdf_file: list of file in byte format (max 5)
-    user_id: 
+    user_id:
     """
     if len(pdf_files) > 5 :
         raise ValueError("Maximo se permiten 5 archivos PDF.")
-    
+
+    print(f"[RAG] Starting to process {len(pdf_files)} PDF files for user {user_id}")
+
     all_documents = []
+    temp_files = []
 
-    for file_bytes in pdf_files:
-        with tempfile.NamedTemporaryFile(delete=False, suffix=".pdf") as tmp_file:
-            tmp_file.write(file_bytes)
-            tmp_file_path = tmp_file.name
-        
-        loader = PyPDFLoader(tmp_file_path)
-        docs = loader.load()
-        all_documents.extend(docs)
+    try:
+        # Process each PDF file
+        for idx, file_bytes in enumerate(pdf_files, 1):
+            print(f"[RAG] Processing PDF {idx}/{len(pdf_files)}")
+            with tempfile.NamedTemporaryFile(delete=False, suffix=".pdf") as tmp_file:
+                tmp_file.write(file_bytes)
+                tmp_file_path = tmp_file.name
+                temp_files.append(tmp_file_path)
 
-    if not all_documents:
-        raise ValueError("No se pudieron extraer textos de los PDFs-")
-    
-    # Limpieza del archivo temporal
-    os.unlink(tmp_file_path)
-    
-    # split
-    text_splitter = CharacterTextSplitter.from_tiktoken_encoder(
-        encoding_name="cl100k_base",
-        chunk_size=100,
-        chunk_overlap=50
-    )
+            loader = PyPDFLoader(tmp_file_path)
+            docs = loader.load()
+            all_documents.extend(docs)
+            print(f"[RAG] Extracted {len(docs)} pages from PDF {idx}")
 
-    chunks = text_splitter.split_documents(all_documents)
+        if not all_documents:
+            raise ValueError("No se pudieron extraer textos de los PDFs-")
 
+        print(f"[RAG] Total pages extracted: {len(all_documents)}")
 
-    # store
-    persist_dir = f"./chromadb_user/{user_id}"
-    os.makedirs(persist_dir, exist_ok=True)
+        # split
+        text_splitter = CharacterTextSplitter.from_tiktoken_encoder(
+            encoding_name="cl100k_base",
+            chunk_size=100,
+            chunk_overlap=50
+        )
 
-    embeddings = OpenAIEmbeddings(api_key=openai_api_key,
-                                  model="text-embedding-3-large")
+        chunks = text_splitter.split_documents(all_documents)
+        print(f"[RAG] Created {len(chunks)} chunks from documents")
 
-    vector_store = Chroma(persist_directory=persist_dir, embedding_function=embeddings)
-    vector_store.add_documents(chunks)
+        # store
+        persist_dir = f"./chromadb_user/{user_id}"
+        os.makedirs(persist_dir, exist_ok=True)
 
-    vector_store.persist()
+        embeddings = OpenAIEmbeddings(api_key=openai_api_key,
+                                      model="text-embedding-3-large")
 
-    return f"Documents from user {user_id} were correctly saved"
+        # Check if vector store exists
+        if os.path.exists(os.path.join(persist_dir, "chroma.sqlite3")):
+            print(f"[RAG] Loading existing vector store for user {user_id}")
+            vector_store = Chroma(persist_directory=persist_dir, embedding_function=embeddings)
+            print(f"[RAG] Adding {len(chunks)} new chunks to existing vector store")
+        else:
+            print(f"[RAG] Creating new vector store for user {user_id}")
+            vector_store = Chroma(persist_directory=persist_dir, embedding_function=embeddings)
+
+        vector_store.add_documents(chunks)
+        print(f"[RAG] Documents added successfully (auto-persisted)")
+
+        return f"Documents from user {user_id} were correctly saved"
+
+    finally:
+        # Clean up all temporary files
+        for tmp_path in temp_files:
+            try:
+                if os.path.exists(tmp_path):
+                    os.unlink(tmp_path)
+                    print(f"[RAG] Cleaned up temp file: {tmp_path}")
+            except Exception as e:
+                print(f"[RAG] Error cleaning up temp file {tmp_path}: {str(e)}")
 
 
 
@@ -471,31 +495,42 @@ def answer_from_user_rag(user_id: int, pregunta: str, k: int = 3, status:str = "
     query la información almacenada en el vectorstore del usuario y genera una respuesta.
     """
     try:
+        print(f"[RAG SEARCH] Starting search for user {user_id}, query: '{pregunta[:50]}...'")
         set_status(user_id, status, 1)
         persist_dir = f"./chromadb_user/{user_id}"
 
         if not os.path.exists(persist_dir):
             raise FileNotFoundError(f"No existe información para el usuario: {user_id}")
 
+        # Check if vector store has data
+        if not os.path.exists(os.path.join(persist_dir, "chroma.sqlite3")):
+            raise FileNotFoundError(f"Vector store not initialized for user: {user_id}")
+
         embeddings = OpenAIEmbeddings(api_key=openai_api_key,
                                     model="text-embedding-3-large")
-        
+
+        print(f"[RAG SEARCH] Loading vector store from {persist_dir}")
         vector_store = Chroma(persist_directory=persist_dir, embedding_function=embeddings)
 
+        print(f"[RAG SEARCH] Performing similarity search with k={k}")
         resultados = vector_store.similarity_search(pregunta, k=k)
 
         if not resultados:
+            print(f"[RAG SEARCH] No documents found for query")
             return "No se encontraron documentos relevantes para tu pregunta."
-        
+
+        print(f"[RAG SEARCH] Found {len(resultados)} relevant chunks")
         rag_results = []
         for i, doc in enumerate(resultados, 1):
             rag_results.append(f"Documento {i}: {doc.page_content}")
 
         result_text = "\n\n".join(rag_results)
-        print(f"Resultados de RAG: {result_text}")
+        print(f"[RAG SEARCH] Returning {len(rag_results)} results")
         return {"resolved_rag": result_text}
     except Exception as e:
-        print(f"Error al recuperar documentos: {str(e)}")
+        print(f"[RAG SEARCH ERROR] Error al recuperar documentos: {str(e)}")
+        import traceback
+        traceback.print_exc()
         return {"error": str(e)}
     
 def create_graph(user_query: str, information_for_graph: str, user_id: int, status: str = "", internet_is_required: bool = False) -> dict:
