@@ -1228,8 +1228,43 @@ class RealtimeResearchService:
     def __init__(self):
         load_dotenv()
         self.mcp_server = os.getenv('researcher_mcp_server')
+        self.document_service = B2FileService()
+
+    def list_user_documents(self, user_id):
+        try:
+            cache_key = f'user_documents_{user_id}'
+            cached_response = cache.get(cache_key)
+            if cached_response:
+                cache.set(cache_key, cached_response, timeout=60*60*24)  
+                # If we have cached documents, extract just the file names
+                if isinstance(cached_response, list) and len(cached_response) > 0 and isinstance(cached_response[0], dict):
+                    return [doc.get('file_name', '') for doc in cached_response if 'file_name' in doc]
+
+                return cached_response
+            else:
+                documents = self.document_service.retrieve_all_user_documents(user_id)
+                if not documents:
+                    return []  
+                cache.set(cache_key, documents, timeout=60*60*24)
+                # Extract just the file names from the documents
+                if isinstance(documents, list) and len(documents) > 0 and isinstance(documents[0], dict):
+                    return [doc.get('file_name', '') for doc in documents if 'file_name' in doc]
+                return documents
+        except Exception as e:
+            print(f"Error getting user documents: {str(e)}")
+            return [] 
 
     def get_realtime_tools(self, user_id, memory):
+
+        list_documents_raw = self.list_user_documents(user_id)
+        if isinstance(list_documents_raw, dict) and 'documents' in list_documents_raw:
+            documents_list = list_documents_raw['documents']
+            list_documents = [doc.get('file_name', '') for doc in documents_list if isinstance(doc, dict) and 'file_name' in doc]
+        elif isinstance(list_documents_raw, list):
+            list_documents = list_documents_raw
+        else:
+            # Para cualquier otro caso, usar lista vacía
+            list_documents = []
 
         self.tools = [
             {
@@ -1242,6 +1277,8 @@ class RealtimeResearchService:
         ]
         gmt_minus_5 = timezone(timedelta(hours=-5))
         current_bogota_time = datetime.datetime.now(gmt_minus_5)
+
+
 
 
         self.prompt = f"""# NAIA - Universidad del Norte Researcher
@@ -1317,9 +1354,44 @@ You are NAIA, the official male voice assistant and Academic Researcher of Unive
 - "Perfecto, voy a crear ese documento académico para ti"
 - "Generando el contenido estructurado que necesitas"
 
-### User Document Analysis:
-- "Analizando tus documentos subidos, esto puede tomar unos segundos"
-- "Revisando la información en tus archivos ahora mismo"
+### User Document Search (RAG):
+
+**Available documents:** {list_documents}
+
+**When you MUST search documents (mandatory):**
+1. User explicitly requests to search/review/consult their documents
+2. User asks about a topic that CLEARLY matches a document title
+3. User directly mentions a document name
+4. User follows up on previous searches ("search again", "check again", "busca de nuevo")
+
+**When you MUST ask before searching:**
+1. The topic might be in a document, but the title is not descriptive enough
+2. Multiple documents could contain the information
+3. You're unsure if the document contains what the user is looking for
+
+**Phrases to use during search:**
+- "Analizando tus documentos, esto puede tomar unos segundos..."
+- "Revisando [document name] ahora mismo..."
+- "Buscando esa información en tus archivos..."
+
+**Special case handling:**
+
+*No documents uploaded:*
+"Parece que no tienes documentos subidos. ¿Quieres que te ayude a subir alguno?"
+
+*Non-descriptive titles:*
+"Noto que algunos de tus documentos tienen títulos genéricos como [example]. ¿Te gustaría cambiarles el nombre para que sean más descriptivos? Esto me ayudaría a encontrar información más rápido."
+
+*Uncertain about relevance:*
+"Creo que la información que buscas podría estar en '[document name]'. ¿Quieres que busque ahí?"
+
+*Previous failed search:*
+"No encontré esa información en la búsqueda anterior. ¿Quieres que intente de nuevo con otros términos, o prefieres buscar en un documento diferente?"
+
+*Multiple relevant documents:*
+"Veo que tienes varios documentos que podrían contener esa información: [list]. ¿En cuál prefieres que busque primero?"
+
+**Important:** Always prioritize using RAG when there's a strong match between user query and document titles. When in doubt, ask the user for confirmation before searching.
 
 ### Data Visualization:
 - "Creando la visualización de datos para ti"
