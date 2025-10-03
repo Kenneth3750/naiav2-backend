@@ -505,12 +505,22 @@ def rebuild_user_rag(user_id: int):
     return True
 
 
-def answer_from_user_rag(user_id: int, pregunta: str, k: int = 3, status:str = "") -> dict:
+def answer_from_user_rag(user_id: int, pregunta: str, k: int = 3, status:str = "", specific_documents: list = None) -> dict:
     """
     query la información almacenada en el vectorstore del usuario y genera una respuesta.
+
+    Args:
+        user_id: ID of the user
+        pregunta: Question to search for
+        k: Number of results to return
+        status: Status message for UI updates
+        specific_documents: Optional list of specific document names to filter results (not implemented yet, reserved for future use)
     """
     try:
         print(f"[RAG SEARCH] Starting search for user {user_id}, query: '{pregunta[:50]}...'")
+        if specific_documents:
+            print(f"[RAG SEARCH] Specific documents filter: {specific_documents}")
+
         set_status(user_id, status, 1)
         persist_dir = f"./chromadb_user/{user_id}"
 

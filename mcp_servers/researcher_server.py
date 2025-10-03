@@ -135,7 +135,8 @@ def search_user_documents(
     user_id: Annotated[int, Field(description="The ID of the user whose documents to search")],
     pregunta: Annotated[str, Field(description="The question to search for in the user's documents")],
     status: Annotated[str, Field(description="A concise description of what is being searched for, using conjugated verbs (e.g., 'Buscando en tus documentos...', 'Searching through your files for...') in the same language as the user's question")],
-    k: Annotated[int, Field(description="The number of most relevant results to return (default: 3)")] = 3
+    k: Annotated[int, Field(description="The number of most relevant results to return (default: 3)")] = 3,
+    specific_documents: Annotated[list[str], Field(description="Optional list of specific document names to search in the user's library. Leave empty to search all documents.")] = []
 ) -> dict:
     """
     Query the information stored in the user's vector database and generate a response.
@@ -151,7 +152,7 @@ def search_user_documents(
     Returns relevant information extracted from user's documents.
     """
     try:
-        return answer_from_user_rag(user_id, pregunta, k, status)
+        return answer_from_user_rag(user_id, pregunta, k, status, specific_documents)
     except Exception as e:
         return {"error": f"RAG search failed: {str(e)}"}
 
