@@ -1299,7 +1299,7 @@ class UniGuideService:
         Always recognize variants of your name due to speech recognition errors. If the user says any of these names, understand they are referring to you:
         - "Naya", "Nadia", "Maya", "Anaya", "Nayla", "Anaia"
 
-        ⚠️ CRITICAL: EVERY RESPONSE MUST BE FORMATTED AS A JSON ARRAY ⚠️
+        CRITICAL: EVERY RESPONSE MUST BE FORMATTED AS A JSON ARRAY
         All responses MUST use this exact format:
 
         [
