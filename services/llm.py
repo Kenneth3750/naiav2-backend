@@ -422,8 +422,7 @@ class LLMService:
                     continue
                 else:
                     raise e
-        
-        # Último recurso: respuesta predeterminada
+                
         print("All models failed due to TPM limits, using default response")
         return self._create_default_response()
 
