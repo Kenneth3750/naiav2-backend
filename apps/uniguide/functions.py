@@ -151,7 +151,7 @@ def create_rag():
     
     custom_schema.to_yaml("university_schema.yaml")
 
-def query_university_rag(user_id: int, question: str, k: int = 3, status:str = "") -> dict:
+def query_university_rag(user_id: int, question: str, k: int = 5, status:str = "") -> dict:
     """
     Query the information stored in the vector store and generate a response.
     """
