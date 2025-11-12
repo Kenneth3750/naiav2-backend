@@ -51,6 +51,26 @@ MCP_TOKEN = os.getenv('uni_mcp_token')
 if not MCP_TOKEN:
     print("⚠ Warning: No MCP token configured. Authentication disabled.")
 
+# Fix Accept header middleware - OpenAI doesn't send text/event-stream
+class AcceptHeaderFixMiddleware(BaseHTTPMiddleware):
+    async def dispatch(self, request: Request, call_next):
+        # Fix the Accept header to include text/event-stream for MCP protocol
+        # OpenAI Realtime API doesn't send this header, but FastMCP requires it
+        accept_header = request.headers.get("accept", "")
+        if "text/event-stream" not in accept_header:
+            # Create new headers with the required Accept header
+            headers = dict(request.headers)
+            if accept_header:
+                headers["accept"] = f"{accept_header}, text/event-stream"
+            else:
+                headers["accept"] = "application/json, text/event-stream"
+
+            # Rebuild request with fixed headers
+            from starlette.datastructures import Headers
+            request._headers = Headers(headers)
+
+        return await call_next(request)
+
 # Authentication middleware - TEMPORARILY DISABLED FOR TESTING
 class AuthMiddleware(BaseHTTPMiddleware):
     async def dispatch(self, request: Request, call_next):
@@ -79,10 +99,15 @@ class AuthMiddleware(BaseHTTPMiddleware):
 
         return await call_next(request)
 
-# Initialize MCP server with authentication middleware (currently disabled for testing)
+# Initialize MCP server with both middlewares
+# AcceptHeaderFixMiddleware runs first to fix headers for OpenAI compatibility
+# AuthMiddleware runs second (currently disabled for testing)
 mcp = FastMCP(
     name="NAIAUniGuideMCPServer",
-    middleware=[Middleware(AuthMiddleware)]
+    middleware=[
+        Middleware(AcceptHeaderFixMiddleware),
+        Middleware(AuthMiddleware)
+    ]
 )
 
 @mcp.tool(
@@ -385,6 +410,7 @@ if __name__ == "__main__":
     print()
     print("MCP Protocol: http://localhost:9001/mcp/v1")
     
-    mcp.run(transport="http", 
-    host="0.0.0.0", 
+    # Using HTTP transport with AcceptHeaderFixMiddleware to handle OpenAI's missing headers
+    mcp.run(transport="http",
+    host="0.0.0.0",
     port=9001)
