@@ -1422,7 +1422,6 @@ class RealtimeUniGuideService:
     def __init__(self):
         load_dotenv()
         self.mcp_server = os.getenv('uni_mcp_server')
-        self.mcp_token = os.getenv('uni_mcp_token')
 
     def get_realtime_tools(self, user_id, memory):
 

@@ -4,19 +4,11 @@ import django
 from pathlib import Path
 from fastmcp import FastMCP, Client
 from starlette.responses import JSONResponse
-from starlette.middleware import Middleware
-from starlette.middleware.base import BaseHTTPMiddleware
-from starlette.requests import Request
 from typing import Annotated
 from pydantic import Field
-from dotenv import load_dotenv
-
 # Add the project root to Python path
 project_root = Path(__file__).parent.parent
 sys.path.insert(0, str(project_root))
-
-# Load environment variables first
-load_dotenv()
 
 # Configure Django BEFORE importing any functions
 print("Configuring Django...")
@@ -46,68 +38,9 @@ except ImportError as e:
     print(f"✗ Error importing functions: {e}")
     sys.exit(1)
 
-# Get MCP token from environment
-MCP_TOKEN = os.getenv('uni_mcp_token')
-if not MCP_TOKEN:
-    print("⚠ Warning: No MCP token configured. Authentication disabled.")
-
-# Fix Accept header middleware - OpenAI doesn't send text/event-stream
-class AcceptHeaderFixMiddleware(BaseHTTPMiddleware):
-    async def dispatch(self, request: Request, call_next):
-        # Fix the Accept header to include text/event-stream for MCP protocol
-        # OpenAI Realtime API doesn't send this header, but FastMCP requires it
-        accept_header = request.headers.get("accept", "")
-        if "text/event-stream" not in accept_header:
-            # Create new headers with the required Accept header
-            headers = dict(request.headers)
-            if accept_header:
-                headers["accept"] = f"{accept_header}, text/event-stream"
-            else:
-                headers["accept"] = "application/json, text/event-stream"
-
-            # Rebuild request with fixed headers
-            from starlette.datastructures import Headers
-            request._headers = Headers(headers)
-
-        return await call_next(request)
-
-# Authentication middleware - TEMPORARILY DISABLED FOR TESTING
-class AuthMiddleware(BaseHTTPMiddleware):
-    async def dispatch(self, request: Request, call_next):
-        # TEMPORARILY DISABLED - Allow all requests for testing OpenAI connection
-        return await call_next(request)
-
-        # Skip auth for health checks
-        if request.url.path == "/health":
-            return await call_next(request)
-
-        # Check Bearer token if configured
-        if MCP_TOKEN:
-            auth_header = request.headers.get("Authorization", "")
-            if not auth_header.startswith("Bearer "):
-                return JSONResponse(
-                    {"error": "Missing or invalid Authorization header"},
-                    status_code=401
-                )
-
-            token = auth_header.replace("Bearer ", "")
-            if token != MCP_TOKEN:
-                return JSONResponse(
-                    {"error": "Invalid authentication token"},
-                    status_code=403
-                )
-
-        return await call_next(request)
-
-# Initialize MCP server with both middlewares
-# AcceptHeaderFixMiddleware runs first to fix headers for OpenAI compatibility
-# AuthMiddleware runs second (currently disabled for testing)
+# Initialize MCP server
 mcp = FastMCP(
-    name="NAIAUniGuideMCPServer",
-    middleware=[
-        Middleware(AcceptHeaderFixMiddleware),
-        Middleware(AuthMiddleware)
-    ]
+    name="NAIAUniGuideMCPServer"
 )
 
 @mcp.tool(
@@ -409,8 +342,7 @@ if __name__ == "__main__":
     print("   - GET  /health (health check)")
     print()
     print("MCP Protocol: http://localhost:9001/mcp/v1")
-    
-    # Using HTTP transport with AcceptHeaderFixMiddleware to handle OpenAI's missing headers
+
     mcp.run(transport="http",
     host="0.0.0.0",
     port=9001)
