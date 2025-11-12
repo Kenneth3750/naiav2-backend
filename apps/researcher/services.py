@@ -1268,12 +1268,151 @@ class RealtimeResearchService:
 
         self.tools = [
             {
-                    "type": "mcp",
-                    "server_label": "ResearcherMCP",
-                    "server_url": self.mcp_server,
-                    "require_approval": "never"
+                "type": "function",
+                "name": "scholar_search",
+                "description": "EXCLUSIVELY for finding academic articles and research papers. Never use for general internet searches.",
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "query": {"type": "string", "description": "Search query optimized for Google Scholar"},
+                        "query_2": {"type": "string", "description": "Alternative search query in English"},
+                        "num_results": {"type": "integer", "description": "Number of results to return. Default is 3"},
+                        "status": {"type": "string", "description": "Status message for the search task"},
+                        "user_id": {"type": "integer", "description": "User ID for tracking"},
+                        "language1": {"type": "string", "description": "Language of first query. Default is 'en'"},
+                        "language2": {"type": "string", "description": "Language of second query. Default is 'en'"}
+                    },
+                    "required": ["query", "user_id", "status"]
+                }
+            },
+            {
+                "type": "function",
+                "name": "write_document",
+                "description": "Creates written documents of any length or complexity. Use for essays, objectives, reports, or any text content.",
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "query": {"type": "string", "description": "The content to write about"},
+                        "user_id": {"type": "integer", "description": "User ID"},
+                        "status": {"type": "string", "description": "Status message"},
+                        "document_type": {"type": "string", "description": "Type of document: 'academic', 'report', 'essay', 'brief', 'creative', 'notes', 'presentation'"},
+                        "use_internet": {"type": "boolean", "description": "Whether to search internet for current information"},
+                        "use_rag": {"type": "boolean", "description": "Whether to search user's personal documents"},
+                        "context": {"type": "string", "description": "Context or background information"},
+                        "query_for_references": {"type": "string", "description": "Query for academic references. Default 'None'"},
+                        "num_results": {"type": "integer", "description": "Number of references. Default 5"},
+                        "language_for_references": {"type": "string", "description": "Language for references. Default 'en'"},
+                        "specific_documents": {"type": "array", "items": {"type": "string"}, "description": "List of specific documents to search"}
+                    },
+                    "required": ["query", "user_id", "status", "document_type", "use_internet", "use_rag"]
+                }
+            },
+            {
+                "type": "function",
+                "name": "answer_from_user_rag",
+                "description": "Searches ONLY within user's uploaded PDF documents",
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "user_id": {"type": "integer", "description": "User ID"},
+                        "pregunta": {"type": "string", "description": "Question to search in documents"},
+                        "status": {"type": "string", "description": "Status message"},
+                        "k": {"type": "integer", "description": "Number of results. Default 3"},
+                        "specific_documents": {"type": "array", "items": {"type": "string"}, "description": "Specific documents to search"}
+                    },
+                    "required": ["user_id", "pregunta", "status"]
+                }
+            },
+            {
+                "type": "function",
+                "name": "factual_web_query",
+                "description": "For real-time information from the internet. DO NOT use for academic papers.",
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "query": {"type": "string", "description": "Natural search query for web"},
+                        "user_id": {"type": "integer", "description": "User ID"},
+                        "status": {"type": "string", "description": "Status message"}
+                    },
+                    "required": ["query", "user_id", "status"]
+                }
+            },
+            {
+                "type": "function",
+                "name": "create_graph",
+                "description": "Creates academic graphs and visualizations with built-in internet search capability",
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "user_query": {"type": "string", "description": "User's request for graph type"},
+                        "information_for_graph": {"type": "string", "description": "Data or query for visualization"},
+                        "user_id": {"type": "integer", "description": "User ID"},
+                        "status": {"type": "string", "description": "Status message"},
+                        "internet_is_required": {"type": "boolean", "description": "Whether data needs to be sourced from internet"}
+                    },
+                    "required": ["user_query", "information_for_graph", "user_id", "status", "internet_is_required"]
+                }
+            },
+            {
+                "type": "function",
+                "name": "send_email",
+                "description": "Send email to user or specified address",
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "to_email": {"type": "string", "description": "Recipient email or 'myself'"},
+                        "subject": {"type": "string", "description": "Email subject"},
+                        "body": {"type": "string", "description": "Email body"},
+                        "user_id": {"type": "integer", "description": "User ID"},
+                        "status": {"type": "string", "description": "Status message"}
+                    },
+                    "required": ["to_email", "subject", "body", "user_id", "status"]
+                }
+            },
+            {
+                "type": "function",
+                "name": "get_current_news",
+                "description": "Gets latest news from a specific location",
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "location": {"type": "string", "description": "Location for news"},
+                        "user_id": {"type": "integer", "description": "User ID"},
+                        "status": {"type": "string", "description": "Status message"},
+                        "query": {"type": "string", "description": "Specific news query"},
+                        "language": {"type": "string", "description": "Language code (e.g., 'es', 'en')"}
+                    },
+                    "required": ["location", "user_id", "status", "query", "language"]
+                }
+            },
+            {
+                "type": "function",
+                "name": "explain_naia_roles",
+                "description": "Explain NAIA roles and capabilities",
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "user_id": {"type": "integer", "description": "User ID"},
+                        "status": {"type": "string", "description": "Status message"}
+                    },
+                    "required": ["user_id", "status"]
+                }
+            },
+            {
+                "type": "function",
+                "name": "deep_content_analysis_for_specific_information",
+                "description": "Deep content analysis for specific information from URL",
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "url": {"type": "string", "description": "URL to analyze"},
+                        "user_query": {"type": "string", "description": "User's specific question about the content"},
+                        "user_id": {"type": "integer", "description": "User ID"},
+                        "status": {"type": "string", "description": "Status message"}
+                    },
+                    "required": ["url", "user_query", "user_id", "status"]
+                }
             }
-
         ]
         gmt_minus_5 = timezone(timedelta(hours=-5))
         current_bogota_time = datetime.datetime.now(gmt_minus_5)

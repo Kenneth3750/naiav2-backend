@@ -1034,12 +1034,237 @@ class RealtimePersonalAssistantService:
 
         self.tools = [
             {
-                    "type": "mcp",
-                    "server_label": "PersonalMCP",
-                    "server_url": self.mcp_server,
-                    "require_approval": "never"
+                "type": "function",
+                "name": "get_current_news",
+                "description": "Gets the latest news from a specific location with modern and attractive visualization.",
+                "parameters": {
+                "type": "object",
+                "properties": {
+                    "location": {
+                    "type": "string",
+                    "description": "The location to get news from (city, country, or region). Example: 'Barranquilla', 'Colombia', 'Atlántico'"
+                    },
+                    "user_id": {
+                    "type": "integer",
+                    "description": "The ID of the user requesting the news. Look in the first developer prompt to get the user_id"
+                    },
+                    "status": {
+                    "type": "string",
+                    "description": "A concise description of the task being performed, using conjugated verbs (e.g., 'Getting news from...', 'Searching news about...') in the same language as the user's question"
+                    },
+                    "query": {
+                    "type": "string",
+                    "description": "Specific query to search for news. Example: 'latest news from Barranquilla', 'breaking news Colombia', 'recent news Atlántico', written in the same language as the user's question"
+                    },
+                    "language": {
+                    "type": "string",
+                    "description": "The language in which the news should be retrieved. Example: 'es' for Spanish, 'en' for English, always use the two letter ISO 639-1 code",
+                    }
+                },
+                "required": ["location", "user_id", "status", "query", "language"]
+                }
+            },
+            {
+                "type": "function",
+                "name": "get_weather",
+                "description": "Gets weather information for a specific location with modern and attractive visualization.",
+                "parameters": {
+                "type": "object",
+                "properties": {
+                    "location": {
+                    "type": "string",
+                    "description": "The location to get weather for (city, country, or region). Example: 'Barranquilla', 'Bogotá', 'Medellín'"
+                    },
+                    "user_id": {
+                    "type": "integer",
+                    "description": "The ID of the user requesting the weather. Look in the first developer prompt to get the user_id"
+                    },
+                    "status": {
+                    "type": "string",
+                    "description": "A concise description of the task being performed, using conjugated verbs (e.g., 'Checking weather for...', 'Getting weather for...') in the same language as the user's question"
+                    }
+                },
+                "required": ["location", "user_id", "status"]
+                }
+            },
+            {
+                "type": "function",
+                "name": "send_email_on_behalf_of_user",
+                "description": "Sends an email on behalf of the user using their Microsoft Graph API token. Can accept either an email address or a contact name. If a name is provided and multiple contacts are found, it will show options for the user to choose from.",
+                "parameters": {
+                "type": "object",
+                "properties": {
+                    "to_email_or_name": {
+                    "type": "string",
+                    "description": "The recipient's email address OR the name of the contact. Examples: 'juan.perez@uninorte.edu.co' or 'Juan Pérez' or 'Dr. García'. When user selects from multiple options, use the specific email address of that contact. If the user wants to send the email to himself, put 'myself'."
+                    },
+                    "subject": {
+                    "type": "string",
+                    "description": "The subject of the email to send"
+                    },
+                    "body": {
+                    "type": "string",
+                    "description": "The body content of the email to send"
+                    },
+                    "user_id": {
+                    "type": "integer",
+                    "description": "The ID of the user requesting the email. Look at the first developer prompt to get the user_id"
+                    },
+                    "status": {
+                    "type": "string",
+                    "description": "A concise description of the email task being performed, using conjugated verbs (e.g., 'Enviando correo a...', 'Sending email to...') in the same language as the user's question"
+                    }
+                },
+                "required": ["to_email_or_name", "subject", "body", "user_id", "status"]
+                }
+            },
+            {
+                "type": "function",
+                "name": "search_contacts_by_name",
+                "description": "Searches for contacts by name using Microsoft Graph API. Useful when the user specifically wants to find someone's contact information without sending an email immediately.",
+                "parameters": {
+                "type": "object",
+                "properties": {
+                    "name": {
+                    "type": "string",
+                    "description": "The name to search for. Can be partial name, first name, last name, or full name. Example: 'Juan', 'Pérez', 'Dr. García'"
+                    },
+                    "user_id": {
+                    "type": "integer",
+                    "description": "The ID of the user making the search. Look at the first developer prompt to get the user_id"
+                    },
+                    "status": {
+                    "type": "string",
+                    "description": "A concise description of the search task being performed, using conjugated verbs (e.g., 'Buscando contacto...', 'Searching for contact...') in the same language as the user's question"
+                    }
+                },
+                "required": ["name", "user_id", "status"]
+                }
+            },
+            {
+                "type": "function",
+                "name": "read_calendar_events",
+                "description": "Reads and displays calendar events for a specified date range. Shows events in a visual format. Perfect for schedule management and planning.",
+                "parameters": {
+                "type": "object",
+                "properties": {
+                    "start_date": {
+                    "type": "string",
+                    "description": "Start date in YYYY-MM-DD format. Calculate this based on the user's request and current Bogotá date from the prompt."
+                    },
+                    "end_date": {
+                    "type": "string",
+                    "description": "End date in YYYY-MM-DD format. Calculate this based on the user's request and current Bogotá date from the prompt."
+                    },
+                    "user_id": {
+                    "type": "integer",
+                    "description": "The ID of the user requesting calendar information. Look at the first developer prompt to get the user_id"
+                    },
+                    "status": {
+                    "type": "string",
+                    "description": "A concise description of the task being performed, using conjugated verbs (e.g., 'Consultando calendario...', 'Checking calendar...') in the same language as the user's question"
+                    }
+                },
+                "required": ["start_date", "end_date", "user_id", "status"]
+                }
+            },
+            {
+                "type": "function",
+                "name": "create_calendar_event",
+                "description": "Creates a personal reminder or event in the user's calendar. Perfect for setting up personal appointments, deadlines, study sessions, or any personal reminders.",
+                "parameters": {
+                "type": "object",
+                "properties": {
+                    "title": {
+                    "type": "string",
+                    "description": "Title or subject of the reminder/event. Examples: 'Estudiar para examen', 'Recordatorio: entregar proyecto', 'Cita médica'"
+                    },
+                    "start_datetime": {
+                    "type": "string",
+                    "description": "Start date and time in YYYY-MM-DDTHH:MM format (Colombia time). Calculate based on user's request and current date/time from prompt."
+                    },
+                    "end_datetime": {
+                    "type": "string",
+                    "description": "End date and time in YYYY-MM-DDTHH:MM format (Colombia time). If not specified, default to 1 hour after start time."
+                    },
+                    "user_id": {
+                    "type": "integer",
+                    "description": "The ID of the user creating the event. Look at the first developer prompt to get the user_id"
+                    },
+                    "description": {
+                    "type": "string",
+                    "description": "Optional description or notes for the event. Can include additional details, location, or relevant information."
+                    },
+                    "status": {
+                    "type": "string",
+                    "description": "A concise description of the task being performed, using conjugated verbs (e.g., 'Creando recordatorio...', 'Creating reminder...') in the same language as the user's question"
+                    }
+                },
+                "required": ["title", "start_datetime", "end_datetime", "user_id", "status"]
+                }
+            },
+            {
+                "type": "function",
+                "name": "read_user_emails",
+                "description": "Reads user emails without marking them as read. Use specific_subject for optimal performance when user asks about a previously shown email.",
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "user_id": {
+                            "type": "integer",
+                            "description": "The ID of the user requesting email information"
+                        },
+                        "max_emails": {
+                            "type": "integer",
+                            "description": "Maximum number of emails to retrieve (default: 10, max: 50)"
+                        },
+                        "unread_only": {
+                            "type": "boolean",
+                            "description": "If true, only returns unread emails (default: false)"
+                        },
+                        "search_query": {
+                            "type": "string",
+                            "description": "Search query for subject, sender, or content (optional)"
+                        },
+                        "read_full_content": {
+                            "type": "boolean",
+                            "description": "Set to true when user asks specific questions about email content. Default: false"
+                        },
+                        "specific_subject": {
+                            "type": "string",
+                            "description": "OPTIMIZATION: Use when user asks about a specific email that was already shown. Put the exact or partial subject here."
+                        },
+                        "status": {
+                            "type": "string",
+                            "description": "Status message for tracking in user's language"
+                        }
+                    },
+                    "required": ["user_id", "status"]
+                }
+            },
+            {
+                "type": "function",
+                "name": "explain_naia_roles",
+                "description": "Generate a carousel with explanations of all five NAIA roles. ALWAYS use this function when users ask about what roles NAIA has or ask for an explanation of NAIA's capabilities.",
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "auto_slide_interval": {
+                            "type": "integer",
+                            "description": "The interval in milliseconds for auto-advancing the carousel slides. Default is 3000ms (3 seconds)."
+                        },
+                        "user_id": {
+                            "type": "integer",
+                            "description": "The ID of the user requesting the role explanation. Look at the first developer prompt to get the user_id"
+                        },
+                        "status": {
+                            "type": "string",
+                            "description": "A concise description of the role explanation task being performed, using conjugated verbs (e.g., 'Explicando los roles de NAIA...', 'Showing NAIA's capabilities...') in the same language as the user's question"
+                        }
+                    },
+                    "required": ["user_id", "status"]
+                }
             }
-
         ]
         gmt_minus_5 = timezone(timedelta(hours=-5))
         current_bogota_time = datetime.datetime.now(gmt_minus_5)

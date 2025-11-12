@@ -1,0 +1,1 @@
+# Recepcionist API endpoints

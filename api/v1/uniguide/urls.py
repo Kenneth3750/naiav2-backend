@@ -1,4 +1,4 @@
-from django.urls import path
+from django.urls import path, include
 from .views import (
     UniGuideAnalysisView,
     WhyUninorteTopView,
@@ -13,4 +13,6 @@ urlpatterns = [
     path('engineering-opportunities/', EngineeringOpportunitiesView.as_view(), name='engineering_opportunities'),
     path('electrical-engineering-future/', ElectricalEngineeringFutureView.as_view(), name='electrical_engineering_future'),
     path('inscription-process/', InscriptionProcessView.as_view(), name='inscription_process'),
+    # Function endpoints
+    path('functions/', include('apps.uniguide.urls')),
 ]

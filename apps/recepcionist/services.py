@@ -1216,12 +1216,204 @@ class RealtimeReceptionistService:
 
         self.tools = [
             {
-                    "type": "mcp",
-                    "server_label": "ReceptionistMCP",
-                    "server_url": self.mcp_server,
-                    "require_approval": "never"
+                "type": "function",
+                "name": "search_contacts_by_name",
+                "description": "Searches for contacts by name using Microsoft Graph API. Useful when the user specifically wants to find someone's contact information without sending an email immediately.",
+                "parameters": {
+                "type": "object",
+                "properties": {
+                    "name": {
+                    "type": "string",
+                    "description": "The name to search for. Can be partial name, first name, last name, or full name. Example: 'Juan', 'Pérez', 'Dr. García'"
+                    },
+                    "user_id": {
+                    "type": "integer",
+                    "description": "The ID of the user making the search. Look at the first developer prompt to get the user_id"
+                    },
+                    "status": {
+                    "type": "string",
+                    "description": "A concise description of the search task being performed, using conjugated verbs (e.g., 'Buscando contacto...', 'Searching for contact...') in the same language as the user's question"
+                    }
+                },
+                "required": ["name", "user_id", "status"]
+                }
+            },
+            {
+                "type": "function",
+                "name": "answer_question_of_uni_premises",
+                "description": "Answer questions about university premises, such as locations, facilities, and general information about the university campus.",
+                "parameters": {
+                "type": "object",
+                "properties": {
+                    "place": {
+                    "type": "string",
+                    "enum": ["Restaurante Bocas de Ceniza", "Restaurante du Nord Plaza", "Café du Nord", "Restaurante 1966", "du Nord Exprès", "du Nord Terrasse", "Le Petit", "La Esquina", "El Contenedor", "La Crepería", "du Nord H", "Vending Machines", "La Gelateria", "Hot Dogs", "Librería y Papelería KM5", "du Nord Store", "du Nord Graphique", "Almacen Mapuka", "Zonas Digitales", "Le Salón", "Gimnasio Uninorte", "Droguería", "Coliseo", "Centro Deportivo Roble Amarillo"],
+                    "description": "The specific place or facility within the university premises that the user is asking about."
+                    },
+                    "user_id": {
+                    "type": "integer",
+                    "description": "The ID of the user making the request, used for logging and tracking purposes. This id is provided in the prompt, so you must use it directly without asking the user for it."
+                    },
+                    "status": {
+                    "type": "string",
+                    "description": "A concise description of the question about university premises, using conjugated verbs (e.g., 'Buscando información sobre [lugar]')"
+                    }
+                },
+                "required": ["place", "user_id", "status"]
+                }
+            },
+            {
+                "type": "function",
+                "name": "query_recepcionist_rag",
+                "description": "Search for specific information about restaurant menus, prices, food options, and detailed information about du Nord dining establishments. This function has access to comprehensive menu data, pricing information, and specific details about food services on campus.",
+                "parameters": {
+                "type": "object",
+                "properties": {
+                    "question": {
+                        "type": "string",
+                        "description": "An optimized rag search query that helps to retrieve the info that is needed to answer the user question or to give the best advice according to what the user is saying. Always put this query in spanish cause all the menus are in spanish."
+                    },
+                    "user_id": {
+                        "type": "integer",
+                        "description": "The ID of the user making the request, used for logging and tracking purposes. This id is provided in the prompt, so you must use it directly without asking the user for it."
+                    },
+                    "status": {
+                        "type": "string",
+                        "description": "A concise description of the search task, using conjugated verbs (e.g., 'Consultando precios del menú', 'Buscando opciones de comida') in the same language as the user's question"
+                    },
+                    "k": {
+                        "type": "integer",
+                        "description": "Number of relevant documents to retrieve from the database. Default is 3 for most queries, use 5-7 for comprehensive menu searches.",
+                        "default": 3
+                    },
+                    "restaurant_menus": {
+                        "type": "array",
+                        "items": {"type": "string"},
+                        "description": "Optional list of restaurant names to show menu displays for. Available options: ['du nord plaza', 'cafe du nord', 'du nord terrasse', 'bocas de ceniza', 'du nord expres', 'restaurante 1966']. Use null/empty if no menu display needed.",
+                        "default": None
+                    }
+                },
+                "required": ["question", "user_id", "status"]
+                }
+            },
+            {
+                "type": "function",
+                "name": "get_location_events",
+                "description": "Get events happening in a specific location using Google Events. Returns both elegant display and interactive calendar for events discovery.",
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "location": {
+                            "type": "string",
+                            "description": "The location to search for events (city, neighborhood, or area). Examples: 'Barranquilla', 'Bogotá', 'New York'",
+                            "default": "Barranquilla"
+                        },
+                        "event_query": {
+                            "type": "string",
+                            "description": "Specific event or type of events to search for. Examples: 'concerts', 'art exhibitions', 'food festivals'",
+                            "default": "concerts"
+                        },
+                        "user_id": {
+                            "type": "integer",
+                            "description": "The ID of the user making the request, used for logging and tracking purposes. This id is provided in the prompt, so you must use it directly without asking the user for it."
+                        },
+                        "status": {
+                            "type": "string",
+                            "description": "A concise description of the search task, using conjugated verbs (e.g., 'Buscando eventos en [ubicación]') in the same language as the user's question"
+                        }
+                    },
+                    "required": ["user_id", "status", "location", "event_query"]
+                }
+            },
+            {
+                "type": "function",
+                "name": "get_restaurants",
+                "description": "Find restaurants and dining options in a specific location using Google Local search. Returns both elegant display and interactive map for restaurant discovery.",
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "location": {
+                            "type": "string",
+                            "description": "The location to search for restaurants (city, neighborhood, or area). Examples: 'Barranquilla', 'Centro Histórico Cartagena', 'Zona Rosa Bogotá'",
+                            "default": "Barranquilla"
+                        },
+                        "food_query": {
+                            "type": "string",
+                            "description": "Specific type of food or restaurant to search for. Examples: 'restaurants', 'pizza', 'seafood', 'italian food', 'coffee shops', 'fast food'",
+                            "default": "restaurants"
+                        },
+                        "user_id": {
+                            "type": "integer",
+                            "description": "The ID of the user making the request, used for logging and tracking purposes. This id is provided in the prompt, so you must use it directly without asking the user for it."
+                        },
+                        "status": {
+                            "type": "string",
+                            "description": "A concise description of the search task, using conjugated verbs (e.g., 'Buscando restaurantes de [tipo] en [ubicación]') in the same language as the user's question"
+                        }
+                    },
+                    "required": ["user_id", "status", "location", "food_query"]
+                }
+            },
+            {
+                "type": "function",
+                "name": "get_location_places",
+                "description": "Discover places to visit and tourist attractions in a specific location using Google Local search. Returns both elegant display and interactive guide for place discovery.",
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "location": {
+                            "type": "string",
+                            "description": "The location to search for places to visit (city, neighborhood, or area). Examples: 'Barranquilla', 'Santa Marta', 'Cartagena Centro'",
+                            "default": "Barranquilla"
+                        },
+                        "user_id": {
+                            "type": "integer",
+                            "description": "The ID of the user making the request, used for logging and tracking purposes. This id is provided in the prompt, so you must use it directly without asking the user for it."
+                        },
+                        "status": {
+                            "type": "string",
+                            "description": "A concise description of the search task, using conjugated verbs (e.g., 'Buscando lugares para visitar en [ubicación]') in the same language as the user's question"
+                        },
+                        "location_query": {
+                            "type": "string",
+                            "description": "Optional query to refine the search for places to visit. If empty, defaults to 'places to visit'. Examples: 'tourist attractions', 'things to do', 'sightseeing spots'",
+                            "default": ""
+                        }
+                    },
+                    "required": ["user_id", "status", "location", "location_query"]
+                }
+            },
+            {
+                "type": "function",
+                "name": "send_email",
+                "description": "Send an email to the user. This function is used to send an email to the user with the information provided by the user.",
+                "parameters": {
+                "type": "object",
+                "properties": {
+                    "to_email": {
+                    "type": "string",
+                    "description": "The email of the user to send the email to. If the user wants to send the email to himself, put on this field the word 'myself' the function manages it internally."
+                    },
+                    "subject": {
+                    "type": "string",
+                    "description": "The subject of the email to send."
+                    },
+                    "body": {
+                    "type": "string",
+                    "description": "The body of the email to send."
+                    },
+                    "user_id": {
+                    "type": "integer",
+                    "description": "The ID of the user requesting the email. Look at the first developer prompt to get the user_id"
+                    },
+                    "status": {
+                    "type": "string",
+                    "description": "A concise description of the email task being performed, using conjugated verbs (e.g., 'Enviando correo a...', 'Sending email about...') in the same language as the user's question"
+                    }
+                },
+                "required": ["to_email", "subject", "body", "user_id", "status"]
+                }
             }
-
         ]
         gmt_minus_5 = timezone(timedelta(hours=-5))
         current_bogota_time = datetime.datetime.now(gmt_minus_5)

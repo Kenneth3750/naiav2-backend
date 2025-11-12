@@ -1421,18 +1421,239 @@ class UniGuideService:
 class RealtimeUniGuideService:
     def __init__(self):
         load_dotenv()
-        self.mcp_server = os.getenv('uni_mcp_server')
 
     def get_realtime_tools(self, user_id, memory):
 
         self.tools = [
-            {
-                    "type": "mcp",
-                    "server_label": "UniGuideMCP",
-                    "server_url": self.mcp_server,
-                    "require_approval": "never"
-            }
+                {
+                    "type": "function",
+                    "name": "send_email",
+                    "description": "Send an email to the user. This function is used to send an email to the user with the information provided by the user.",
+                    "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "to_email": {
+                        "type": "string",
+                        "description": """The email of the user to send the email to. If the user wants to send the email to himself, put on this field the word 'myself' the function manages it internally. If the user wants to send the email to another person, put the email of that person here."""
+                        },
+                        "subject": {
+                        "type": "string",
+                        "description": """The subject of the email to send."""
+                        },
+                        "body": {
+                        "type": "string",
+                        "description": """The body of the email to send."""
+                        },
+                        "user_id": {
+                        "type": "integer",
+                        "description": "The ID of the user requesting the email. Look at the first developer prompt to get the user_id"
+                        },
+                        "status": {
+                        "type": "string",
+                        "description": "A concise description of the email task being performed, using conjugated verbs (e.g., 'Enviando correo a...', 'Sending email about...') in the same language as the user's question"
+                        }
 
+                    },
+                    "required": [
+                        "to_email",
+                        "subject",
+                        "body",
+                        "user_id",
+                        "status"
+                    ]
+                    }
+                },
+                {
+                    "type": "function",
+                    "name": "query_university_rag",
+                    "description": "Query the RAG database for information about the university.",
+                    "parameters": {
+                        "type": "object",
+                        "properties": {
+                            "question": {"type": "string", "description": "The question to query the RAG database with."},
+                            "user_id": {
+                                "type": "integer",
+                                "description": "The ID of the user requesting the information. Look at the first developer prompt to get the user_id"
+                            },
+                            "status": {
+                                "type": "string",
+                                "description": "A concise description of the query task being performed, using conjugated verbs (e.g., 'Consultando información...', 'Querying information...') in the same language as the user's question"
+                            }
+                        }
+                    },
+                    "required": ["question", "user_id", "status"]
+                },
+                {
+                    "type": "function",
+                    "name": "get_university_calendar_multi_month",
+                    "description": "Get university calendar events for multiple months to find specific dates and events",
+                    "parameters": {
+                        "type": "object",
+                        "properties": {
+                            "months_to_search": {
+                                "type": "array",
+                                "items": {
+                                    "type": "integer",
+                                    "minimum": 1,
+                                    "maximum": 12
+                                },
+                                "description": "List of months to search (1-12). Example: [7, 8, 9] for July-September. If not specified, searches current and next 2 months"
+                            },
+                            "user_id": {
+                                "type": "integer",
+                                "description": "The ID of the user requesting the calendar information"
+                            },
+                            "status": {
+                                "type": "string",
+                                "description": "A concise description of the calendar search task being performed, using conjugated verbs (e.g., 'Buscando fechas de eventos...', 'Searching event dates...') in the same language as the user's question"
+                            }
+                        },
+                        "required": ["user_id", "status"]
+                    }
+                },
+                                {
+                    "type": "function",
+                    "name": "get_virtual_campus_tour",
+                    "description": "Generate an interactive virtual campus tour with images and detailed information about university facilities. Perfect for showcasing campus locations, providing facility details, and helping users explore the university virtually.",
+                    "parameters": {
+                        "type": "object",
+                        "properties": {
+                            "area_filter": {
+                                "type": "string",
+                                "description": "Filter by category of places to show. Options: 'academic' for academic facilities, 'recreational' for sports and recreation areas, 'services' for support services, or null/empty to show all categories. Use null when user wants a complete tour."
+                            },
+                            "place_name": {
+                                "type": "string",
+                                "description": "Specific place name to show detailed view of a single location. Examples: 'biblioteca', 'polideportivo', 'cafeteria'. Use when user asks about a specific facility. Leave null to show category overview."
+                            },
+                            "language": {
+                                "type": "string",
+                                "description": "Language for the tour interface and content. Use 'Spanish' for Spanish interface or 'English' for English interface. Match the user's question language."
+                            },
+                            "user_id": {
+                                "type": "integer",
+                                "description": "The ID of the user requesting the virtual tour. Look at the first developer prompt to get the user_id"
+                            },
+                            "status": {
+                                "type": "string",
+                                "description": "A concise description of the tour task being performed, using conjugated verbs (e.g., 'Generando tour virtual...', 'Creating virtual campus tour...') in the same language as the user's question"
+                            }
+                        },
+                        "required": ["language", "user_id", "status"]
+                    }
+                },
+                {
+                    "type": "function",
+                    "name": "search_internet_for_uni_answers",
+                    "description": "Search the internet for very specific information about Universidad del Norte that is not available in official administrative documents. Use ONLY for highly specific questions about campus facilities, architectural details, or very detailed information that requires direct observation. Do NOT use for academic policies, procedures, scholarships, or administrative processes (use query_university_rag for those).",
+                    "parameters": {
+                        "type": "object",
+                        "properties": {
+                            "query": {
+                                "type": "string",
+                                "description": "The specific question about Universidad del Norte that needs internet search"
+                            },
+                            "status": {
+                                "type": "string",
+                                "description": "A concise description of the search task being performed, using conjugated verbs (e.g., 'Buscando información específica...', 'Searching for specific details...') in the same language as the user's question"
+                            },
+                            "user_id": {
+                                "type": "integer",
+                                "description": "The ID of the user requesting the search. Look at the first developer prompt to get the user_id"
+                            },
+                            "image_query": {
+                                "type": "string",
+                                "description": "A specific query to search for images related to the question. This is useful to give a visual support for the questions or user inputs that trigger this function. Use an very specific query in order to retrieve the most relevant images. Write it in the same language as the user's question."
+                            },
+                        },
+                        "required": ["query", "status", "user_id", "image_query"]
+                    }
+                },
+                {
+                    "type": "function",
+                    "name": "create_calendar_event",
+                    "description": "Create a personal calendar reminder for university events. Perfect for helping users save important university events to their personal calendar so they don't miss them.",
+                    "parameters": {
+                        "type": "object",
+                        "properties": {
+                            "title": {
+                                "type": "string",
+                                "description": "Title of the event to create in user's calendar"
+                            },
+                            "start_datetime": {
+                                "type": "string",
+                                "description": "Start date and time in ISO format (YYYY-MM-DDTHH:MM:SS)"
+                            },
+                            "end_datetime": {
+                                "type": "string",
+                                "description": "End date and time in ISO format (YYYY-MM-DDTHH:MM:SS)"
+                            },
+                            "description": {
+                                "type": "string",
+                                "description": "Description of the university event with relevant details"
+                            },
+                            "user_id": {
+                                "type": "integer",
+                                "description": "The ID of the user creating the calendar event"
+                            },
+                            "status": {
+                                "type": "string",
+                                "description": "A concise description of the calendar creation task, using conjugated verbs (e.g., 'Agregando evento al calendario...', 'Adding event to calendar...') in the same language as the user's question"
+                            }
+                        },
+                        "required": ["title", "start_datetime", "end_datetime", "user_id", "status"]
+                    }
+                },
+                {
+                    "type": "function",
+                    "name": "explain_naia_roles",
+                    "description": "Generate a carousel with explanations of all five NAIA roles. ALWAYS use this function when users ask about what roles NAIA has or ask for an explanation of NAIA's capabilities.",
+                    "parameters": {
+                        "type": "object",
+                        "properties": {
+                            "auto_slide_interval": {
+                                "type": "integer",
+                                "description": "The interval in milliseconds for auto-advancing the carousel slides. Default is 3000ms (3 seconds)."
+                            },
+                            "user_id": {
+                                "type": "integer",
+                                "description": "The ID of the user requesting the role explanation. Look at the first developer prompt to get the user_id"
+                            },
+                            "status": {
+                                "type": "string",
+                                "description": "A concise description of the role explanation task being performed, using conjugated verbs (e.g., 'Explicando los roles de NAIA...', 'Showing NAIA's capabilities...') in the same language as the user's question"
+                            }
+                        },
+                        "required": ["user_id", "status"],
+                    }
+                },
+                {
+                    "type": "function",
+                    "name": "search_contacts_by_name",
+                    "description": "Searches for contacts by name using Microsoft Graph API. Useful when the user specifically wants to find someone's contact information without sending an email immediately.",
+                    "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "name": {
+                        "type": "string",
+                        "description": "The name to search for. Can be partial name, first name, last name, or full name. Example: 'Juan', 'Pérez', 'Dr. García'"
+                        },
+                        "user_id": {
+                        "type": "integer",
+                        "description": "The ID of the user making the search. Look at the first developer prompt to get the user_id"
+                        },
+                        "status": {
+                        "type": "string",
+                        "description": "A concise description of the search task being performed, using conjugated verbs (e.g., 'Buscando contacto...', 'Searching for contact...') in the same language as the user's question"
+                        }
+                    },
+                    "required": [
+                        "name",
+                        "user_id",
+                        "status"
+                    ]
+                    }
+                }
         ]
         gmt_minus_5 = timezone(timedelta(hours=-5))
         current_bogota_time = datetime.datetime.now(gmt_minus_5)

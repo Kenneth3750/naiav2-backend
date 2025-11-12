@@ -1331,12 +1331,105 @@ class RealtimeSkillsTrainerService():
 
         self.tools = [
             {
-                    "type": "mcp",
-                    "server_label": "SkillsMCP",
-                    "server_url": self.mcp_server,
-                    "require_approval": "never"
+                "type": "function",
+                "name": "simulate_job_interview",
+                "description": "Creates a conversational job interview simulation where NAIA acts as a professional interviewer",
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "job_position": {"type": "string", "description": "The job position or role for the interview simulation"},
+                        "company_type": {"type": "string", "description": "Type of company or organization"},
+                        "user_instructions": {"type": "string", "description": "Specific user preferences and customizations for the interview"},
+                        "user_id": {"type": "integer", "description": "The ID of the user requesting the interview simulation"},
+                        "status": {"type": "string", "description": "Status message for task tracking"},
+                        "language": {"type": "string", "description": "Language for the simulation guide and interface"}
+                    },
+                    "required": ["job_position", "company_type", "user_instructions", "user_id", "status", "language"]
+                }
+            },
+            {
+                "type": "function",
+                "name": "generate_training_report",
+                "description": "Generates a comprehensive training report in HTML format with visual elements",
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "training_type": {"type": "string", "enum": ["job_interview_simulation", "professional_appearance_analysis"]},
+                        "user_id": {"type": "integer", "description": "The ID of the user"},
+                        "status": {"type": "string", "description": "Status message"},
+                        "use_synthetic_data": {"type": "boolean", "default": False},
+                        "special_instructions": {"type": "string", "default": ""},
+                        "session_duration": {"type": "string", "default": ""},
+                        "difficulty_level": {"type": "string", "enum": ["beginner", "intermediate", "advanced"], "default": ""},
+                        "key_topics_covered": {"type": "string", "default": ""}
+                    },
+                    "required": ["training_type", "user_id", "status"]
+                }
+            },
+            {
+                "type": "function",
+                "name": "list_recent_training_reports",
+                "description": "Lists the most recent training reports for a user",
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "user_id": {"type": "integer"},
+                        "limit": {"type": "integer", "default": 10},
+                        "status": {"type": "string"}
+                    },
+                    "required": ["user_id", "status"]
+                }
+            },
+            {
+                "type": "function",
+                "name": "get_training_report_html",
+                "description": "Retrieves the HTML content of a specific training report",
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "report_id": {"type": "integer"},
+                        "user_id": {"type": "integer"},
+                        "status": {"type": "string"}
+                    },
+                    "required": ["report_id", "user_id", "status"]
+                }
+            },
+            {
+                "type": "function",
+                "name": "analyze_professional_appearance",
+                "description": "Analyzes user's professional appearance using AI vision and provides intelligent clothing suggestions",
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "context": {"type": "string", "description": "The specific context or event for appearance analysis"},
+                        "user_id": {"type": "integer"},
+                        "status": {"type": "string"}
+                    },
+                    "required": ["context", "user_id", "status"]
+                }
+            },
+            {
+                "type": "function",
+                "name": "cv_builder",
+                "description": "Build a personalized CV/resume in markdown format",
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "personal_info": {"type": "object", "description": "Basic personal information"},
+                        "cv_type": {"type": "string"},
+                        "experience_level": {"type": "string"},
+                        "target_industry": {"type": "string"},
+                        "design_style": {"type": "string"},
+                        "sections_to_include": {"type": "array", "items": {"type": "string"}},
+                        "primary_focus": {"type": "string"},
+                        "desired_length": {"type": "string"},
+                        "language": {"type": "string"},
+                        "user_id": {"type": "integer"},
+                        "status": {"type": "string"}
+                    },
+                    "required": ["personal_info", "cv_type", "experience_level", "target_industry", "design_style", "sections_to_include", "primary_focus", "desired_length", "language", "user_id", "status"]
+                }
             }
-
         ]
         gmt_minus_5 = timezone(timedelta(hours=-5))
         current_bogota_time = datetime.datetime.now(gmt_minus_5)
