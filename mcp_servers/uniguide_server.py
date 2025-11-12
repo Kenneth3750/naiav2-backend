@@ -343,4 +343,6 @@ if __name__ == "__main__":
     print()
     print("MCP Protocol: http://localhost:9001/mcp/v1")
 
-    mcp.run(transport="sse", host="0.0.0.0", port=9001, path="/mcp")
+    mcp.run(transport="http",
+    host="0.0.0.0",
+    port=9001)
