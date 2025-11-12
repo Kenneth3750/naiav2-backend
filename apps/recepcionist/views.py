@@ -2,7 +2,7 @@ from rest_framework.decorators import api_view
 from rest_framework.response import Response
 from rest_framework import status
 from .functions import (
-    search_contacts_by_name,
+    search_university_staff,
     answer_question_of_uni_premises,
     query_recepcionist_rag,
     get_location_events,
@@ -23,7 +23,7 @@ def search_contacts(request):
         if not name:
             return Response({'error': 'name is required'}, status=status.HTTP_400_BAD_REQUEST)
 
-        result = search_contacts_by_name(name, user_id, status_msg)
+        result = search_university_staff(name, user_id, status_msg)
         return Response(result)
     except Exception as e:
         return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)

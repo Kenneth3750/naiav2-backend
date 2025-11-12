@@ -8,9 +8,9 @@ from .functions import (
     search_contacts_by_name,
     read_calendar_events,
     create_calendar_event,
-    read_user_emails,
-    explain_naia_roles
+    read_user_emails
 )
+from apps.researcher.functions import explain_naia_roles
 
 
 @api_view(['POST'])
