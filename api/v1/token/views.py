@@ -75,6 +75,12 @@ class OpenAIRealtimeTokenView(APIView):
                     status=status.HTTP_500_INTERNAL_SERVER_ERROR
                 )
 
+            # Debug: imprimir la configuración que se envía a OpenAI
+            print("=" * 80)
+            print("SESSION CONFIG BEING SENT TO OPENAI:")
+            print(json.dumps(session_config, indent=2))
+            print("=" * 80)
+
             # Hacer la petición a OpenAI
             response = requests.post(
                 "https://api.openai.com/v1/realtime/client_secrets",

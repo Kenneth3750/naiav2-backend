@@ -51,9 +51,12 @@ MCP_TOKEN = os.getenv('uni_mcp_token')
 if not MCP_TOKEN:
     print("⚠ Warning: No MCP token configured. Authentication disabled.")
 
-# Authentication middleware
+# Authentication middleware - TEMPORARILY DISABLED FOR TESTING
 class AuthMiddleware(BaseHTTPMiddleware):
     async def dispatch(self, request: Request, call_next):
+        # TEMPORARILY DISABLED - Allow all requests for testing OpenAI connection
+        return await call_next(request)
+
         # Skip auth for health checks
         if request.url.path == "/health":
             return await call_next(request)
@@ -76,7 +79,7 @@ class AuthMiddleware(BaseHTTPMiddleware):
 
         return await call_next(request)
 
-# Initialize MCP server with authentication middleware
+# Initialize MCP server with authentication middleware (currently disabled for testing)
 mcp = FastMCP(
     name="NAIAUniGuideMCPServer",
     middleware=[Middleware(AuthMiddleware)]

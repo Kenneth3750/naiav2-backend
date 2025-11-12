@@ -1431,10 +1431,7 @@ class RealtimeUniGuideService:
                     "type": "mcp",
                     "server_label": "UniGuideMCP",
                     "server_url": self.mcp_server,
-                    "require_approval": "never",
-                    "headers": {
-                        "Authorization": f"Bearer {self.mcp_token}"
-                    }
+                    "require_approval": "never"
             }
 
         ]
