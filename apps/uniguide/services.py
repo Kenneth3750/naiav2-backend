@@ -1479,9 +1479,9 @@ class RealtimeUniGuideService:
                                 "type": "string",
                                 "description": "A concise description of the query task being performed, using conjugated verbs (e.g., 'Consultando información...', 'Querying information...') in the same language as the user's question"
                             }
-                        }
-                    },
-                    "required": ["question", "user_id", "status"]
+                        },
+                        "required": ["question", "user_id", "status"]
+                    }
                 },
                 {
                     "type": "function",
