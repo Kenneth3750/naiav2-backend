@@ -1422,6 +1422,7 @@ class RealtimeUniGuideService:
     def __init__(self):
         load_dotenv()
         self.mcp_server = os.getenv('uni_mcp_server')
+        self.mcp_token = os.getenv('uni_mcp_token')
 
     def get_realtime_tools(self, user_id, memory):
 
@@ -1430,7 +1431,10 @@ class RealtimeUniGuideService:
                     "type": "mcp",
                     "server_label": "UniGuideMCP",
                     "server_url": self.mcp_server,
-                    "require_approval": "never"
+                    "require_approval": "never",
+                    "headers": {
+                        "Authorization": f"Bearer {self.mcp_token}"
+                    }
             }
 
         ]

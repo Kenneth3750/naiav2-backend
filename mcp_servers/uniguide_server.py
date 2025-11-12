@@ -4,11 +4,19 @@ import django
 from pathlib import Path
 from fastmcp import FastMCP, Client
 from starlette.responses import JSONResponse
+from starlette.middleware import Middleware
+from starlette.middleware.base import BaseHTTPMiddleware
+from starlette.requests import Request
 from typing import Annotated
 from pydantic import Field
+from dotenv import load_dotenv
+
 # Add the project root to Python path
 project_root = Path(__file__).parent.parent
 sys.path.insert(0, str(project_root))
+
+# Load environment variables first
+load_dotenv()
 
 # Configure Django BEFORE importing any functions
 print("Configuring Django...")
@@ -37,10 +45,41 @@ try:
 except ImportError as e:
     print(f"✗ Error importing functions: {e}")
     sys.exit(1)
-    
-# Initialize MCP server
+
+# Get MCP token from environment
+MCP_TOKEN = os.getenv('uni_mcp_token')
+if not MCP_TOKEN:
+    print("⚠ Warning: No MCP token configured. Authentication disabled.")
+
+# Authentication middleware
+class AuthMiddleware(BaseHTTPMiddleware):
+    async def dispatch(self, request: Request, call_next):
+        # Skip auth for health checks
+        if request.url.path == "/health":
+            return await call_next(request)
+
+        # Check Bearer token if configured
+        if MCP_TOKEN:
+            auth_header = request.headers.get("Authorization", "")
+            if not auth_header.startswith("Bearer "):
+                return JSONResponse(
+                    {"error": "Missing or invalid Authorization header"},
+                    status_code=401
+                )
+
+            token = auth_header.replace("Bearer ", "")
+            if token != MCP_TOKEN:
+                return JSONResponse(
+                    {"error": "Invalid authentication token"},
+                    status_code=403
+                )
+
+        return await call_next(request)
+
+# Initialize MCP server with authentication middleware
 mcp = FastMCP(
-    name="NAIAUniGuideMCPServer"
+    name="NAIAUniGuideMCPServer",
+    middleware=[Middleware(AuthMiddleware)]
 )
 
 @mcp.tool(
