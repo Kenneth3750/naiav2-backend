@@ -1652,8 +1652,8 @@ class RealtimeUniGuideService:
                         "user_id",
                         "status"
                     ]
-                    }
                 }
+            }
         ]
         gmt_minus_5 = timezone(timedelta(hours=-5))
         current_bogota_time = datetime.datetime.now(gmt_minus_5)
