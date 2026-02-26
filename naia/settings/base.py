@@ -45,6 +45,7 @@ INSTALLED_APPS = [
     'apps.personal',
     'apps.recepcionist',
     'apps.gobernacion',
+    'apps.mompox',
 ]
 
 

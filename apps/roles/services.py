@@ -5,6 +5,7 @@ from apps.personal.services import PersonalAssistantService, RealtimePersonalAss
 from apps.skills.services import SkillsTrainerService, RealtimeSkillsTrainerService
 from apps.recepcionist.services import RecepcionistService, RealtimeReceptionistService
 from apps.gobernacion.services import GobernacionService, RealtimeGobernacionService
+from apps.mompox.services import RealtimeMompoxService
 from .funcs import ToeflRealtime
 
 class RoleService:
@@ -53,6 +54,8 @@ class RealtimeRoleService:
             self.role = RealtimeSkillsTrainerService()
         elif role_id == 5:
             self.role = RealtimeReceptionistService()
+        elif role_id == "mompox" or role_id == 8:
+            self.role = RealtimeMompoxService()
 
         elif role_id == 123:
             self.role = ToeflRealtime()
