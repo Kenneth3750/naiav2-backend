@@ -48,6 +48,44 @@ class RealtimeMompoxService:
                     "required": ["user_id", "status"]
                 }
             },
+            {
+                "type": "function",
+                "name": "get_mompox_restaurants",
+                "description": "Muestra los mejores restaurantes de Mompox con fotos, tipo de cocina, precios y descripción. Usar cuando el usuario pregunte por restaurantes, dónde comer, comida, gastronomía, o cualquier consulta sobre alimentación en Mompox.",
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "user_id": {
+                            "type": "integer",
+                            "description": "ID del usuario. Obtener del primer prompt de desarrollador"
+                        },
+                        "status": {
+                            "type": "string",
+                            "description": "Descripción concisa de la tarea (ej: 'Buscando los mejores restaurantes...') en el idioma del usuario"
+                        }
+                    },
+                    "required": ["user_id", "status"]
+                }
+            },
+            {
+                "type": "function",
+                "name": "get_mompox_tourism",
+                "description": "Muestra los principales sitios turísticos de Mompox con fotos, descripciones e información destacada. Usar cuando el usuario pregunte por turismo, lugares para visitar, sitios turísticos, qué ver, qué hacer, atracciones, iglesias, monumentos, o cualquier consulta sobre visitar Mompox.",
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "user_id": {
+                            "type": "integer",
+                            "description": "ID del usuario. Obtener del primer prompt de desarrollador"
+                        },
+                        "status": {
+                            "type": "string",
+                            "description": "Descripción concisa de la tarea (ej: 'Mostrando sitios turísticos...') en el idioma del usuario"
+                        }
+                    },
+                    "required": ["user_id", "status"]
+                }
+            },
         ]
 
         gmt_minus_5 = timezone(timedelta(hours=-5))
@@ -155,6 +193,14 @@ Mompox Inteligente is a strategy by the Gobernación de Bolívar and the Ministe
 
 # Tools & Preambles
 
+**CRITICAL TOOL CALLING BEHAVIOR:**
+- **ALWAYS call the function in the SAME turn as your spoken preamble. NEVER say you will do something without calling the function right then.**
+- **If the user asks for news, call get_mompox_news IMMEDIATELY. Do NOT wait for a second message.**
+- **If the user asks about the project, call about_mompox_inteligente IMMEDIATELY. Do NOT wait for a second message.**
+- **If the user asks about tourism, places to visit, or things to do, call get_mompox_tourism IMMEDIATELY. Do NOT wait for a second message.**
+- **If the user asks about restaurants, where to eat, or food, call get_mompox_restaurants IMMEDIATELY. Do NOT wait for a second message.**
+- **The pattern is: say a short preamble phrase + call the function. Both happen in the SAME response. NEVER split them into separate turns.**
+
 **BEFORE any tool call, use ONE varied phrase then call immediately:**
 
 ## Tool Usage Preambles (ALWAYS VARY)
@@ -165,6 +211,20 @@ Mompox Inteligente is a strategy by the Gobernación de Bolívar and the Ministe
 - "Te presento Mompox Inteligente, un momento"
 - "Voy a mostrarte toda la información del proyecto"
 - "Preparando la información de Mompox Inteligente"
+
+### Restaurantes:
+- "Te muestro los mejores restaurantes de Mompox"
+- "Déjame buscarte dónde comer bien en Mompox"
+- "Preparando la guía gastronómica de Mompox"
+- "Voy a mostrarte los restaurantes recomendados"
+- "Un momento, te traigo las mejores opciones para comer"
+
+### Sitios Turísticos:
+- "Te muestro los mejores sitios turísticos de Mompox"
+- "Déjame enseñarte los lugares más bonitos de Mompox"
+- "Preparando la guía turística de Mompox"
+- "Voy a mostrarte qué visitar en Mompox"
+- "Un momento, te traigo los sitios imperdibles de Mompox"
 
 ### Noticias:
 - "Buscando las últimas noticias para ti"
@@ -196,7 +256,41 @@ Mompox Inteligente is a strategy by the Gobernación de Bolívar and the Ministe
 - Highlight key facts: UNESCO heritage, Smart City Expo 2025 award, the allies
 - Invite the user to watch the video that's playing on screen
 
-### 2. get_mompox_news
+### 2. get_mompox_restaurants
+**WHEN TO USE:**
+- User asks about restaurants, where to eat, food, gastronomy in Mompox
+- User says "restaurantes", "dónde comer", "comida", "gastronomía", "almorzar", "cenar", "desayunar"
+- User wants food recommendations or is hungry
+- **ANY question about eating or dining in Mompox**
+
+**REQUIRED PARAMETERS:**
+- user_id: {user_id}
+- status: "Buscando los mejores restaurantes..." or similar
+
+**RESULT HANDLING:**
+- The function returns a "display" key with visual cards showing photo, name, cuisine type, description, highlight and price range
+- Mention 2-3 restaurants with their specialties (Ambrosía for Caribbean, El Fuerte for pizza, Comedor Costeño for Lomo Momposino)
+- Invite the user to scroll through the cards to see all options
+
+### 3. get_mompox_tourism
+**WHEN TO USE:**
+- User asks about tourism, places to visit, tourist sites, what to see or do in Mompox
+- User says "turismo", "sitios turísticos", "lugares", "qué visitar", "qué ver", "qué hacer", "atracciones", "iglesias", "monumentos"
+- User asks about churches, historic buildings, or landmarks in Mompox
+- User is a visitor wanting recommendations of what to see
+- **ANY question about visiting or touring Mompox**
+
+**REQUIRED PARAMETERS:**
+- user_id: {user_id}
+- status: "Mostrando sitios turísticos..." or similar
+
+**RESULT HANDLING:**
+- The function returns a "display" key with visual cards showing photo, name, description and highlight of each site
+- Mention 2-3 of the most iconic places (Centro Histórico, Santa Bárbara, La Piedra de Bolívar)
+- Invite the user to scroll through the cards to discover all the sites
+- If the user asks about a specific place, provide more detail from your knowledge
+
+### 4. get_mompox_news
 **WHEN TO USE:**
 - User asks about news, latest updates, or what's happening in Mompox Inteligente
 - User says "noticias", "novedades", "últimas noticias", "qué ha pasado", "actualizaciones"
@@ -228,6 +322,8 @@ Mompox Inteligente is a strategy by the Gobernación de Bolívar and the Ministe
 
 **FUNCTIONS that generate visual displays:**
 - about_mompox_inteligente → Video + info cards about the project
+- get_mompox_restaurants → Restaurant cards with photos, cuisine and prices
+- get_mompox_tourism → Tourist sites cards with photos and descriptions
 - get_mompox_news → News cards with images and headlines
 
 **RESPONSE PATTERN:**
@@ -238,7 +334,7 @@ Mompox Inteligente is a strategy by the Gobernación de Bolívar and the Ministe
 # CRITICAL RULES
 
 ## MUST DO:
-- **EXECUTE functions immediately** when appropriate - NO confirmation needed
+- **EXECUTE functions immediately in the SAME turn** - say a preamble and call the tool in ONE response. NEVER say "I will show you" and then wait for the user to respond. The function call MUST happen together with the preamble, not in a follow-up turn.
 - **PRONOUNCE LARGE NUMBERS CORRECTLY** - use "millón/millones" not "mil mil"
 - **PRIORITIZE USER INPUT** over wait-time content during processing
 - **PROMOTE MOMPOX INTELIGENTE** - always be ready to explain the project

@@ -2,7 +2,7 @@ from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status
 from rest_framework.decorators import api_view
-from apps.mompox.functions import about_mompox_inteligente, get_mompox_news
+from apps.mompox.functions import about_mompox_inteligente, get_mompox_news, get_mompox_tourism, get_mompox_restaurants
 import time
 import logging
 
@@ -90,6 +90,86 @@ class GetMompoxNewsView(APIView):
             }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
+class GetMompoxRestaurantsView(APIView):
+    """
+    Endpoint to get restaurants in Mompox
+    """
+
+    def post(self, request):
+        try:
+            user_id = request.data.get('user_id')
+            status_msg = request.data.get('status')
+
+            if not user_id or not status_msg:
+                return Response({
+                    "error": "Parameters 'user_id' and 'status' are required"
+                }, status=status.HTTP_400_BAD_REQUEST)
+
+            if not isinstance(user_id, int):
+                return Response({
+                    "error": "'user_id' must be an integer"
+                }, status=status.HTTP_400_BAD_REQUEST)
+
+            start_time = time.time()
+
+            result = get_mompox_restaurants(
+                user_id=user_id,
+                status=status_msg
+            )
+
+            end_time = time.time()
+            result["execution_time"] = end_time - start_time
+
+            return Response(result, status=status.HTTP_200_OK)
+
+        except Exception as e:
+            logging.error(f"Error in GetMompoxRestaurantsView: {str(e)}")
+            return Response({
+                "error": "Internal server error",
+                "detail": str(e)
+            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+class GetMompoxTourismView(APIView):
+    """
+    Endpoint to get tourist sites of Mompox
+    """
+
+    def post(self, request):
+        try:
+            user_id = request.data.get('user_id')
+            status_msg = request.data.get('status')
+
+            if not user_id or not status_msg:
+                return Response({
+                    "error": "Parameters 'user_id' and 'status' are required"
+                }, status=status.HTTP_400_BAD_REQUEST)
+
+            if not isinstance(user_id, int):
+                return Response({
+                    "error": "'user_id' must be an integer"
+                }, status=status.HTTP_400_BAD_REQUEST)
+
+            start_time = time.time()
+
+            result = get_mompox_tourism(
+                user_id=user_id,
+                status=status_msg
+            )
+
+            end_time = time.time()
+            result["execution_time"] = end_time - start_time
+
+            return Response(result, status=status.HTTP_200_OK)
+
+        except Exception as e:
+            logging.error(f"Error in GetMompoxTourismView: {str(e)}")
+            return Response({
+                "error": "Internal server error",
+                "detail": str(e)
+            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
 @api_view(['GET'])
 def health_check(request):
     """
@@ -112,6 +192,20 @@ def get_available_functions(request):
             "name": "about_mompox_inteligente",
             "description": "Explain what Mompox Inteligente is with video and visual content",
             "endpoint": "/api/v1/mompox/about/",
+            "method": "POST",
+            "required_params": ["user_id", "status"]
+        },
+        {
+            "name": "get_mompox_restaurants",
+            "description": "Get best restaurants in Mompox with photos, cuisine and prices",
+            "endpoint": "/api/v1/mompox/restaurants/",
+            "method": "POST",
+            "required_params": ["user_id", "status"]
+        },
+        {
+            "name": "get_mompox_tourism",
+            "description": "Get tourist sites of Mompox with photos and descriptions",
+            "endpoint": "/api/v1/mompox/tourism/",
             "method": "POST",
             "required_params": ["user_id", "status"]
         },
