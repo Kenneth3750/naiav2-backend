@@ -32,3 +32,13 @@ apps/uniguide/rag_test.py
 .claude
 
 rag_comparison.py
+
+# Keep virtual campus assets versioned
+!lugares_universidad/
+!lugares_universidad/tour_info.json
+!lugares_universidad/*.jpg
+!lugares_universidad/*.jpeg
+!lugares_universidad/*.png
+!lugares_universidad/*.JPG
+!lugares_universidad/*.JPEG
+!lugares_universidad/*.PNG

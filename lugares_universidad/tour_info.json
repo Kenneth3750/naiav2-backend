@@ -1,0 +1,781 @@
+{
+  "categories": {
+    "academic": {
+      "name": "Instalaciones Académicas",
+      "description": "Espacios dedicados al aprendizaje y la investigación",
+      "places": {
+        "biblioteca": {
+          "name": "Biblioteca Karl C. Parrish Jr.",
+          "description": "Principal centro de recursos académicos de la Universidad del Norte, ofreciendo servicios especializados de consulta y apoyo investigativo.",
+          "images": ["biblioteca_1.jpg", "biblioteca_2.jpg", "biblioteca_3.jpg"],
+          "services": [
+            "Consulta y referencia especializada",
+            "Apoyo en investigación",
+            "Acceso a recursos digitales",
+            "Préstamo de material bibliográfico"
+          ],
+          "contact": {
+            "email": "bkcp@uninorte.edu.co",
+            "phone": "+57 605 3509509 Ext: 4040 - 4180",
+            "website": "https://www.uninorte.edu.co/web/biblioteca"
+          },
+          "hours": {
+            "presencial": "Lunes a viernes: 7:00 a.m. - 5:30 p.m.",
+            "telefono": "Lunes a viernes: 8:00 a.m. - 5:00 p.m.",
+            "chat": "Lunes a viernes: 8:00 a.m. - 12:00 p.m. y 2:00 p.m. - 5:00 p.m."
+          },
+          "highlights": [
+            "Respuesta por correo en menos de 48 horas hábiles",
+            "Atención personalizada con referencistas especializados",
+            "Múltiples canales de consulta disponibles"
+          ]
+        },"casa_estudio_alfredo_correa": {
+          "name": "Casa de Estudio Alfredo Correa De Andreis",
+          "description": "Moderno centro de estudio con certificación LEED y capacidad para 450 personas. Diseñado por la Escuela de Arquitectura, Urbanismo y Diseño como respuesta a la creciente demanda de espacios de estudio. Cuenta con tecnología sostenible incluyendo 82 módulos solares que generan el 13% de la energía requerida, sistema de aire acondicionado programable, iluminación automática y reutilización de agua de condensación. El edificio está construido con materiales regionales y cuenta con paneles acústicos en las áreas de estudio.",
+          "images": ["casa_estudio_1.jpg", "casa_estudio_2.jpg", "casa_estudio_3.jpg"],
+          "services": [
+            "Puestos de estudio individual",
+            "Salas de estudio grupales",
+            "Sala Biblab especializada",
+            "Puesto adaptado para discapacidad visual",
+            "Préstamo de portátiles",
+            "Préstamo de tableros móviles",
+            "Asesoría para recursos bibliográficos digitales",
+            "Sistema de reservas en línea",
+            "WiFi de alta velocidad",
+            "Aire acondicionado automatizado",
+            "Iluminación LED automática"
+          ],
+          "contact": {
+            "email": "biblioteca@uninorte.edu.co",
+            "phone": "+57 605 3509509",
+            "website": "https://www.uninorte.edu.co/web/biblioteca/casa-de-estudio",
+            "reservations": "https://www.uninorte.edu.co/web/biblioteca/reservar-espacios"
+          },
+          "hours": {
+            "regular": "Lunes a viernes: 7:00 a.m. - 8:00 p.m. (jornada continua)",
+            "weekend": "Sábados: 7:00 a.m. - 1:00 p.m.",
+            "reservations": "Sistema de reservas disponible en línea las 24 horas"
+          },
+          "highlights": [
+            "Certificación LEED para sostenibilidad ambiental",
+            "82 módulos solares que generan 13% de la energía diurna",
+            "42 espacios de estudio (24 individuales + 18 grupales)",
+            "Capacidad total para 450 personas",
+            "Construcción de 1,873 m² con diseño arquitectónico innovador",
+            "Reducción del 43% en consumo de agua vs edificaciones convencionales",
+            "Ahorro energético del 31% comparado con construcciones tradicionales",
+            "Materiales regionales y reciclables en su construcción",
+            "Paneles acústicos especializados para ambientes de estudio",
+            "Sistema de ventilación natural y fachada ventilada",
+            "Mobiliario con infraestructura eléctrica integrada",
+            "Homenaje al sociólogo y docente Alfredo Correa De Andreis"
+          ]
+        },
+        "bloque_k": {
+        "name": "Edificio de Ingenierías - Bloque K",
+        "description": "El Edificio de Ingenierías de la Universidad del Norte, también conocido como Bloque K, es un referente de innovación arquitectónica y sostenibilidad. Galardonado con el Premio a la Excelencia Inmobiliaria FIABCI en 2014, esta edificación de 9 pisos y más de 10.000 m² integra actividades de docencia, investigación y gestión universitaria. Alberga aulas de pregrado, maestría y doctorado, laboratorios de ingeniería e informática, un museo arqueológico, auditorios y oficinas. Fue diseñado bajo criterios LEED, implementando tecnologías sostenibles para optimización energética, ahorro de agua, ventilación natural y confort térmico, convirtiéndose en un hito dentro del campus.",
+        "images": ["bloque_k_1.jpg", "bloque_k_2.jpg", "bloque_k_3.jpg"],
+        "services": [
+            "Aulas de clase de Pregrado, Maestría y Doctorado",
+            "Laboratorios especializados en ingeniería e informática",
+            "Museo de Arqueología",
+            "Auditorios y salas magistrales",
+            "Oficinas de profesores y decanatura",
+            "Espacios para estudiantes de Doctorado",
+            "Climatización y ventilación automatizada",
+            "Sistema de fachada de doble piel para control térmico",
+            "Reducción en consumo de energía y agua",
+            "Uso de materiales regionales y sostenibles"
+        ],
+        "contact": {
+            "website": "https://www.uninorte.edu.co"
+        },
+        "hours": {
+            "presencial": "Lunes a viernes: 7:00 a.m. - 6:00 p.m.",
+            "telefono": "Lunes a viernes: 8:00 a.m. - 5:00 p.m."
+        },
+        "highlights": [
+            "Premio FIABCI a la Excelencia Inmobiliaria (2014)",
+            "Certificación LEED por diseño sostenible",
+            "Fachada termoacústica de doble piel",
+            "Renovación de aire mediante ruedas entálpicas",
+            "Cubierta verde y jardines perimetrales",
+            "Uso de aguas tratadas para riego y servicios",
+            "Aprovechamiento de luz natural",
+            "Diseño contemporáneo con concreto, vidrio y aluminio",
+            "Alturas especiales piso-techo para confort térmico",
+            "Integración de docencia, investigación y extensión"
+          ]
+        },
+        "bloque_j": {
+        "name": "Edificio Mario Santo Domingo - Bloque J",
+        "description": "El Edificio Mario Santo Domingo, conocido como Bloque J, es la construcción más reciente de la Universidad del Norte. Diseñado con criterios de sostenibilidad y arquitectura bioclimática, alberga aulas para pregrado, laboratorios de ciencias básicas, idiomas, geología, arqueología, educación y comunicación social, así como oficinas docentes, salas de informática, espacios para el CREE y una sala para eventos académicos con experiencias gastronómicas. Es un homenaje al empresario y líder cívico Mario Santo Domingo, uno de los fundadores de Uninorte.",
+        "images": ["bloque_j_1.png", "bloque_j_2.png", "bloque_j_3.png", "bloque_j_4.png"],
+        "services": [
+            "Aulas de clase para pregrado",
+            "Laboratorios de ciencias básicas, geología, arqueología y comunicación social",
+            "Laboratorios de idiomas y educación",
+            "Sala para el Centro de Recursos del Éxito Estudiantil (CREE)",
+            "Sala Peter Konder (CREE)",
+            "Cuatro infosalas y salas de informática",
+            "Oficinas para profesores y decanaturas",
+            "Sala para profesores catedráticos",
+            "Espacio para restaurante y aula de experiencias gastronómicas",
+            "Salón de eventos académicos"
+        ],
+        "contact": {
+            "website": "https://www.uninorte.edu.co"
+        },
+        "hours": {
+            "presencial": "Lunes a viernes: 7:00 a.m. - 6:00 p.m.",
+            "telefono": "Lunes a viernes: 8:00 a.m. - 5:00 p.m."
+        },
+        "highlights": [
+            "Arquitectura bioclimática y sostenible",
+            "Laboratorios especializados en múltiples disciplinas",
+            "Infraestructura moderna y adaptada a nuevas demandas académicas",
+            "Reconocimiento a Mario Santo Domingo, fundador de Uninorte",
+            "Espacios diseñados durante la pandemia con criterios de resiliencia",
+            "Sala Peter Konder como parte del CREE",
+            "Futuro restaurante académico en el último piso",
+            "86 oficinas para profesores en los pisos 6, 7 y 8",
+            "Apoyo continuo de la Fundación Santo Domingo a la Universidad",
+            "Cátedra Julio Mario Santo Domingo como homenaje al legado familiar"
+         ]
+        },
+        "auditorio_marvel_moreno": {
+        "name": "Auditorio Marvel Moreno",
+        "description": "Espacio insigne del campus universitario dedicado a la exposición del conocimiento y el debate de ideas. Nombrado en honor a la destacada escritora barranquillera Marvel Moreno, reconocida por su obra que visibiliza la condición de la mujer en la vida social, histórica y cultural del Caribe colombiano. Es el principal centro de eventos académicos, culturales y institucionales de la Universidad del Norte.",
+        "images": ["auditorio_1.jpg", "auditorio_2.jpg", "auditorio_3.jpg", "auditorio_4.jpg" ],
+        "services": [
+          "Conferencias y eventos académicos",
+          "Presentaciones institucionales",
+          "Graduaciones y ceremonias",
+          "Congresos y seminarios",
+          "Eventos culturales y artísticos",
+          "Debates y foros académicos",
+          "Recitales y presentaciones musicales",
+          "Equipos audiovisuales profesionales",
+          "Sistema de sonido e iluminación",
+          "Acceso para personas con discapacidad",
+          "Camerinos y áreas de apoyo"
+        ],
+        "contact": {
+          "location": "Primer piso del Bloque F, al lado de Du Nord Plaza",
+          "phone": "+57 605 3509509",
+          "website": "https://www.uninorte.edu.co/web/eventos"
+        },
+        "hours": {
+          "eventos": "Horarios variables según programación institucional",
+          "reservas": "Contactar coordinación de eventos",
+          "informacion": "Lunes a viernes: 8:00 a.m. - 5:00 p.m."
+        },
+        "highlights": [
+          "Espacio insigne del campus universitario",
+          "Homenaje a la escritora Marvel Moreno",
+          "Principal sede de eventos académicos e institucionales",
+          "Ubicación estratégica en el corazón del campus",
+          "Equipamiento audiovisual de última tecnología",
+          "Escenario de graduaciones y ceremonias importantes",
+          "Centro de intercambio académico y cultural",
+          "Símbolo de la identidad caribeña de Uninorte",
+          "Tradición en debate de ideas y exposición del conocimiento",
+          "Conexión directa con Du Nord Plaza"
+        ]
+      },
+      "bloque_l_julio_muvdi": {
+  "name": "Edificio Julio Muvdi - Bloque L",
+  "description": "Moderno edificio académico de 4.000 metros cuadrados que lleva el nombre del primer rector de la Universidad del Norte, Julio Muvdi Abufhele (1966-1970). Este emblemático ingeniero barranquillero fue uno de los miembros fundadores de la institución y lideró los inicios de las labores académicas cuando las clases comenzaron el 11 de julio de 1966. El edificio, inaugurado en su segunda etapa en 2011 con una inversión de $7.500 millones, alberga la Escuela de Arquitectura, Urbanismo y Diseño, siendo un espacio donde se respira investigación, creatividad e innovación. Diseñado bajo principios sostenibles y con los más altos estándares de calidad tecnológica.",
+  "images": ["bloque_l_1.png", "bloque_l_2.jpg", "bloque_l_3.jpg"],
+  "services": [
+    "Escuela de Arquitectura, Urbanismo y Diseño",
+    "Programa de Arquitectura",
+    "Programa de Diseño Gráfico", 
+    "Programa de Diseño Industrial",
+    "Departamento de Física",
+    "Aulas de Ingeniería Electrónica",
+    "Aulas de Ingeniería Eléctrica",
+    "Tres salas digitales especializadas",
+    "Laboratorio de investigación en física",
+    "60 oficinas para profesores",
+    "Aulas con equipos de alta tecnología",
+    "Tablas digitalizadoras profesionales",
+    "Espacios de investigación y creatividad",
+    "Talleres de diseño y arquitectura"
+  ],
+  "contact": {
+    "email": "arquitectura@uninorte.edu.co",
+    "phone": "+57 605 3509509",
+    "website": "https://www.uninorte.edu.co/web/arquitectura-urbanismo-diseno",
+    "address": "Campus Universidad del Norte, Puerto Colombia, Atlántico"
+  },
+  "hours": {
+    "presencial": "Lunes a viernes: 7:00 a.m. - 6:00 p.m.",
+    "laboratorios": "Horarios según programación académica",
+    "profesores": "Lunes a viernes: 8:00 a.m. - 5:00 p.m.",
+    "sabados": "Según actividades académicas programadas"
+  },
+  "highlights": [
+    "Homenaje a Julio Muvdi Abufhele, primer rector de Uninorte (1966-1970)",
+    "Inversión de $7.500 millones en construcción moderna",
+    "Construcción en dos etapas: 2006 (primera) y 2011 (segunda)",
+    "4.000 metros cuadrados de espacios académicos especializados",
+    "Sede de la Escuela de Arquitectura, Urbanismo y Diseño",
+    "Edificio sostenible con altos estándares de calidad",
+    "Tecnología de alta gama con tablas digitalizadoras",
+    "Tres salas digitales especializadas",
+    "Laboratorio de investigación en física",
+    "60 oficinas modernas para profesores",
+    "Espacio donde 'se respira investigación y creatividad'",
+    "Integración de arquitectura, diseño y física en un solo edificio",
+    "Recordatorio del legado del fundador ingeniero barranquillero",
+    "Conexión histórica con los inicios de Uninorte en 1966",
+    "Julio Muvdi: egresado y máster de Universidad de Harvard",
+    "Centro de formación en diseño gráfico e industrial",
+    "Espacios pedagógicos de última generación",
+    "Símbolo de continuidad entre tradición e innovación"
+  ]
+},
+"bloque_i_instituto_idiomas": {
+  "name": "Bloque I - Instituto de Idiomas",
+  "description": "Sede oficial del reconocido Instituto de Idiomas de la Universidad del Norte, inaugurada el 21 de agosto de 1997. Este moderno complejo de 2,914 m² conformado por tres bloques de dos pisos cada uno, es el epicentro de la formación en lenguas extranjeras y cultura en la región Caribe. Con 25 años de trayectoria (1994-2019), el instituto se destaca por su excelencia académica, acreditaciones internacionales y su papel pionero en la implementación del Programa Nacional de Bilingüismo. Un espacio donde 'se respira un aire diferente' y se vive la cultura mientras se aprende el idioma, siendo referente nacional e internacional en la enseñanza de lenguas.",
+  "images": ["bloque_i_1.jpg", "bloque_i_2.jpg"],
+  "services": [
+    "Enseñanza de inglés en todos los niveles (Marco Común Europeo)",
+    "Programa de Español para Extranjeros",
+    "Enseñanza de alemán, francés, portugués e italiano",
+    "Programa de chino mandarín (Aula Confucio desde 2019)",
+    "Pregrado en Lenguas Modernas y Cultura (desde 2018)",
+    "Especialización en la Enseñanza del Inglés",
+    "Maestría en la Enseñanza del Inglés",
+    "Centro de Escritura Eficacia Comunicativa (ECO)",
+    "Aplicación de exámenes oficiales internacionales",
+    "Certificaciones del Instituto Cervantes (español)",
+    "Certificaciones del Instituto Goethe (alemán)",
+    "English For Schools - apoyo a colegios",
+    "Programas corporativos y empresariales",
+    "Cursos especializados (inglés para negocios, relaciones internacionales)"
+  ],
+  "contact": {
+    "email": "idiomas@uninorte.edu.co",
+    "phone": "+57 605 3509509",
+    "website": "https://www.uninorte.edu.co/web/instituto-de-idiomas",
+    "address": "Bloque I, Campus Universidad del Norte, Puerto Colombia, Atlántico",
+    "decana": "Pía Osorio (desde 1999)"
+  },
+  "hours": {
+    "presencial": "Lunes a viernes: 7:00 a.m. - 6:00 p.m.",
+    "sabados": "Sábados: 8:00 a.m. - 12:00 p.m.",
+    "centro_escritura": "Según citas programadas",
+    "examenes": "Horarios específicos según calendario internacional"
+  },
+  "highlights": [
+    "Inaugurado el 21 de agosto de 1997 con inversión en infraestructura moderna",
+    "Conformado por tres bloques de dos pisos (2,914 m² total)",
+    "25 años de trayectoria en enseñanza de idiomas (1994-2019)",
+    "Acreditación CEA (Commission on English Language Program Accreditation)",
+    "Pionero en Latinoamérica con acreditación CEA de EE.UU.",
+    "Centro autorizado del Instituto Cervantes para español",
+    "Sede aplicadora de exámenes del Instituto Goethe (alemán)",
+    "Aula Confucio para enseñanza de chino mandarín (desde 2019)",
+    "Apoyo fundamental al Programa Nacional de Bilingüismo",
+    "Creador de las primeras escuelas normales bilingües (Baranoa, Sabanagrande, Manatí)",
+    "División académica adscrita a Vicerrectoría Académica (desde 2015)",
+    "Dos departamentos: Español y Lenguas Extranjeras",
+    "Extensión en Santa Marta (desde 2009)",
+    "Convenio con Universidad de Liverpool para especialización",
+    "Centro de Escritura ECO (desde 2018)",
+    "Formación bajo Marco Común Europeo de referencia",
+    "Ambiente multicultural único en el campus",
+    "Profesores nacionales e internacionales especializados",
+    "Contribución a políticas nacionales de bilingüismo",
+    "Referente regional en formación intercultural",
+    "Pregrado en Lenguas Modernas y Cultura desde 2018",
+    "Desarrollo de ciudadanía crítica a través del lenguaje"
+  ]
+},
+"bloque_g_alvaro_jaramillo": {
+  "name": "Bloque G - Edificio Álvaro Jaramillo Vengoechea",
+  "description": "Moderno edificio de seis niveles y 8,459 m² que alberga la prestigiosa Escuela de Negocios de la Universidad del Norte. Lleva el nombre de Álvaro Jaramillo Vengoechea, destacado líder empresarial y cívico que en la década de 1960 fue uno de los visionarios fundadores de Uninorte. Como economista consciente del papel de la educación para el avance de la región Caribe, se distinguió por su talante como formador y guía de jóvenes emprendedores. El edificio representa el compromiso institucional con la excelencia en formación empresarial, albergando programas acreditados en alta calidad que posicionan a la Escuela entre las mejores del país según las pruebas Saber Pro.",
+  "images": ["bloque_g_1.png", "bloque_g_2.jpeg", "bloque_g_3.jpg"],
+  "services": [
+    "Programa de Administración de Empresas (acreditado en alta calidad)",
+    "Programa de Negocios Internacionales (acreditado en alta calidad)",
+    "Programa de Contaduría Pública (acreditado en alta calidad)",
+    "Programas de posgrado con profesores internacionales",
+    "Maestrías y especializaciones en negocios",
+    "Centro de Emprendimiento Uninorte",
+    "Centro de Innovación y Desarrollo Sostenible del Gran Caribe",
+    "Laboratorio Financiero especializado",
+    "Laboratorio de Mercadeo",
+    "Aulas magistrales y salones de clase",
+    "Aulas digitales y de informática",
+    "Zonas de estudio para estudiantes",
+    "Salas para profesores y estudiantes",
+    "Oficinas administrativas de la Escuela",
+    "Oficina de Admisiones (primer piso)"
+  ],
+  "contact": {
+    "email": "escuelanegocios@uninorte.edu.co",
+    "phone": "+57 605 3509509",
+    "website": "https://www.uninorte.edu.co/web/escuela-de-negocios",
+    "address": "Bloque G, Campus Universidad del Norte, Puerto Colombia, Atlántico",
+    "decana": "María Clemencia Sierra"
+  },
+  "hours": {
+    "presencial": "Lunes a viernes: 7:00 a.m. - 6:00 p.m.",
+    "admisiones": "Lunes a viernes: 8:00 a.m. - 5:00 p.m.",
+    "laboratorios": "Horarios según programación académica",
+    "sabados": "Según actividades académicas programadas"
+  },
+  "highlights": [
+    "Homenaje a Álvaro Jaramillo Vengoechea, visionario fundador de Uninorte",
+    "Edificio moderno de seis niveles con 8,459 m² de área construida",
+    "Sede de la Escuela de Negocios con programas acreditados en alta calidad",
+    "Programas posicionados entre los 10 mejores del país según Saber Pro",
+    "Plazoleta propia del edificio para eventos y reuniones",
+    "Pasillo cubierto que conecta con Bloque F y plazoleta central",
+    "Centro de Emprendimiento para fomento del espíritu empresarial",
+    "Centro de Innovación y Desarrollo Sostenible del Gran Caribe",
+    "Laboratorio Financiero para práctica especializada",
+    "Laboratorio de Mercadeo con tecnología avanzada",
+    "Más de 120 empleadores con operación nacional e internacional",
+    "Cátedra Julio Mario Santo Domingo para liderazgo empresarial",
+    "Diálogos 'Historias sin Contar' con líderes regionales",
+    "Alianzas y membresías internacionales de prestigio",
+    "Aula magistral 13G2 dedicada a Alejandro Obregón",
+    "Formación con proyección global incorporada",
+    "Ubicación estratégica con fácil acceso desde entrada principal",
+    "Álvaro Jaramillo Vengoechea: economista visionario de los años 60",
+    "Legado de apoyo a jóvenes sin recursos económicos",
+    "Conexión histórica con los fundadores empresariales de Uninorte",
+    "Filosofía institucional: 'La misión debe estar por encima de intereses particulares'",
+    "Formador de generaciones de líderes empresariales del Caribe"
+  ]
+}
+      }
+    },
+    "recreational": {
+  "name": "Espacios Recreativos",
+  "description": "Zonas diseñadas para el esparcimiento, la actividad física y el bienestar de la comunidad universitaria.",
+  "places": {
+    "centro_deportivo_roble_amarillo": {
+      "name": "Centro Deportivo Roble Amarillo",
+      "description": "Complejo deportivo moderno que incluye una piscina semiolímpica de 8 carriles, gimnasio, sala de meditación, danzas, aeróbicos, enfermería, lockers y área administrativa, diseñado para promover la salud y bienestar de la comunidad universitaria.",
+      "images": ["piscina_1.jpeg", "piscina_2.jpeg"],
+      "services": [
+        "Piscina semiolímpica (8 carriles, 25 m x 21 m, profundidad 1,5 m)",
+        "Gimnasio",
+        "Sala de meditación",
+        "Salas de aeróbicos, pilates, danza y música",
+        "Vestidores y zona de lockers",
+        "Enfermería",
+        "Recepción y oficinas administrativas",
+        "Cafetería du Nord"
+      ],
+      "contact": {
+        "email": "Apmartin@uninorte.edu.co",
+        "phone": "+57 312 3432233",
+        "website": "https://www.uninorte.edu.co/web/dunord/centro-deportivo-roble-amarillo"
+      },
+      "hours": {
+        "presencial": "Lunes a viernes: 6:30 a.m. – 5:30 p.m.; Sábados: 6:30 a.m. – 12:30 p.m.",
+        "telefono": "Lunes a viernes: 6:30 a.m. – 5:30 p.m.; Sábados: 6:30 a.m. – 12:30 p.m."
+      },
+      "highlights": [
+        "Piscina techada semiolímpica avalada por FINA y FNC",
+        "Tecnología Myrtha Pools: paneles modulares de acero inoxidable",
+        "Sistema de filtración y monitoreo de agua automatizado",
+        "Dimensiones oficiales: 25,02 m x 21 m, 1,5 m de profundidad",
+        "Espacios adicionales: Lobby, recepción, baños, vestidores, sala de meditación, servicio du Nord, enfermería, cuartos técnicos y cocina",
+        "Acceso mediante reserva por WhatsApp al +57 321 5403648"
+      ]
+    },
+    "coliseo": {
+    "name": "Coliseo Universidad del Norte",
+    "description": "Moderno coliseo multiusos diseñado para eventos deportivos, académicos, culturales y corporativos. Con capacidad variable según el tipo de evento, cuenta con instalaciones completas que incluyen espacios deportivos, salas especializadas y áreas de apoyo, convirtiéndose en el epicentro de grandes eventos de la universidad.",
+    "images": ["coliseo_1.jpeg", "coliseo_2.jpg", "coliseo_3.png", "coliseo_4.jpg", "coliseo_5.jpg"],
+    "services": [
+      "Eventos deportivos y competencias",
+      "Conferencias y eventos académicos",
+      "Eventos corporativos y graduaciones",
+      "Cócteles y eventos sociales",
+      "Gimnasio y entrenamiento deportivo",
+      "Cancha de tenis",
+      "Cancha de racketball",
+      "Sala de música y danzas",
+      "Sala de reuniones y conferencias",
+      "Zona de exposiciones de arte",
+      "Cafetería y servicios de alimentación",
+      "Vestieres y lockers",
+      "Taquillas y boletería",
+      "Acceso para personas con discapacidad",
+      "Parqueadero (300 cupos)"
+    ],
+    "contact": {
+      "coordinator": "apmartin@uninorte.edu.co",
+      "coliseum": "coliseo@uninorte.edu.co",
+      "administrative": "correo@uninorte.edu.co",
+      "phone": "+57 605 3509509",
+      "extensions": "Ext. 3090 (Coordinadora), Ext. 4526 (Auxiliar)",
+      "mobile": "+57 312 3432233",
+      "website": "https://www.uninorte.edu.co/web/dunord/coliseo"
+    },
+    "hours": {
+      "presencial": "Lunes a viernes: 6:00 a.m. - 10:00 p.m.",
+      "eventos": "Horarios variables según programación de eventos",
+      "reservas": "Contactar coordinación para disponibilidad"
+    },
+    "highlights": [
+      "Capacidad para eventos deportivos: 2,100 personas",
+      "Capacidad para conferencias: 3,000 personas", 
+      "Capacidad con mesas: 1,200 personas",
+      "Capacidad para cócteles: 2,500 personas",
+      "Parqueadero con 300 cupos disponibles",
+      "Instalaciones deportivas especializadas (tenis, racketball)",
+      "Accesibilidad completa en primer y segundo nivel",
+      "Espacios culturales (música, danzas, exposiciones)",
+      "Infraestructura completa para eventos corporativos",
+      "Ubicación central en el campus universitario"
+    ]
+    },
+      "gimnasio_uninorte": {
+  "name": "Gimnasio Uninorte",
+  "description": "Moderno gimnasio universitario equipado con máquinas de entrenamiento completo para toda la comunidad universitaria. Ofrece asesoría especializada de entrenadores profesionales y clases grupales dinámicas para hacer del ejercicio una experiencia divertida y social. Un espacio diseñado para promover el bienestar físico y la vida saludable en el campus.",
+  "images": ["gimnasio_1.png", "gimnasio_2.jpg", "gimnasio_3.png", "gimnasio_4.jpg", "gimnasio_5.jpg"],
+  "services": [
+    "Entrenamiento con máquinas de ejercicio completo",
+    "Asesoría personalizada de entrenadores profesionales",
+    "Clases grupales dinámicas y divertidas",
+    "Programas de ejercicios personalizados",
+    "Entrenamiento cardiovascular",
+    "Entrenamiento de fuerza y resistencia",
+    "Área de ejercicios funcionales",
+    "Sesiones de entrenamiento en grupo",
+    "Orientación en técnicas de ejercicio",
+    "Rutinas adaptadas a diferentes niveles"
+  ],
+  "contact": {
+    "email": "gimnasio@uninorte.edu.co",
+    "phone": "+57 605 3509509",
+    "website": "https://www.uninorte.edu.co/web/dunord/gimnasio-uninorte"
+  },
+  "hours": {
+    "presencial": "Lunes a viernes: 6:00 a.m. - 8:00 p.m.",
+    "sabados": "Sábados: 7:00 a.m. - 1:00 p.m.",
+    "domingos": "Cerrado"
+  },
+  "highlights": [
+    "Máquinas de entrenamiento de última tecnología",
+    "Asesoría profesional de entrenadores especializados",
+    "Clases grupales de lunes a viernes",
+    "Programas de ejercicios personalizados según objetivos",
+    "Ambiente motivador para entrenar en compañía",
+    "Horarios extendidos para mayor flexibilidad",
+    "Espacio diseñado para promover la vida saludable",
+    "Entrenamientos adaptados a todos los niveles",
+    "Técnicas de movimiento muscular adecuado",
+    "Comunidad fitness universitaria activa"
+  ]
+}
+  }
+},
+"services": {
+  "name": "Servicios Estudiantiles",
+  "description": "Servicios de apoyo, alimentación y bienestar para la comunidad universitaria",
+  "places": {
+    "du_nord_terrasse": {
+      "name": "Du Nord Terrasse",
+      "description": "Innovador espacio gastronómico ubicado en el campus que combina la tradición culinaria árabe con sabores internacionales. Ofrece un ambiente relajado donde la comunidad universitaria puede disfrutar de asados, parrilladas, comida árabe, waffles, helados y una barra de sándwiches personalizable en un entorno moderno y acogedor.",
+      "images": ["du_nord_terrasse_1.jpg", "du_nord_terrasse_2.JPG", "du_nord_terrasse_3.jpg"],
+      "services": [
+        "Asados y parrilladas",
+        "Comida árabe tradicional",
+        "Waffles y postres",
+        "Helados y bebidas frías",
+        "Barra de sándwiches personalizable",
+        "Ambiente climatizado",
+        "Área de terraza",
+        "Servicio de mesa",
+        "Opciones vegetarianas",
+        "Menú variado internacional",
+        "Espacio para grupos",
+        "WiFi disponible"
+      ],
+      "contact": {
+        "coordinator": "Npulgar@uninorte.edu.co", 
+        "administrative": "correo@uninorte.edu.co",
+        "phone": "+57 312 3432233",
+        "website": "https://www.uninorte.edu.co/web/dunord/du-nord-terrasse"
+      },
+      "hours": {
+        "cocina": "Lunes a viernes: 8:00 a.m. - 6:00 p.m.; Sábados: 8:30 a.m. - 1:30 p.m.",
+        "barra_sandwich": "Lunes a viernes: 8:30 a.m. - 7:00 p.m.; Sábados: 8:30 a.m. - 1:30 p.m.",
+        "vacaciones": "Lunes a viernes: 9:00 a.m. - 5:30 p.m.; Sábados: Cerrado"
+      },
+      "highlights": [
+        "Fusión de cocina árabe e internacional",
+        "Barra de sándwiches con ingredientes personalizables",
+        "Ambiente tipo terraza para relajarse",
+        "Horarios extendidos hasta las 7:00 p.m.",
+        "Variedad gastronómica en un solo lugar",
+        "Espacio ideal para encuentros estudiantiles",
+        "Ubicación estratégica en el campus",
+        "Opciones dulces y saladas",
+        "Ambiente moderno y acogedor",
+        "Perfecto para desayunos, almuerzos y meriendas"
+      ]
+    },
+        "du_nord_plaza": {
+    "name": "Du Nord Plaza",
+    "description": "Centro gastronómico principal del campus que reúne múltiples conceptos culinarios en un solo espacio. Desde opciones saludables hasta comida casera tradicional, comida mexicana-americana y una completa oferta de postres y café. Es el corazón gastronómico donde la comunidad universitaria encuentra variedad, calidad y el ambiente perfecto para compartir.",
+    "images": ["du_nord_plaza_1.jpg", "du_nord_plaza_2.jpg", "du_nord_plaza_3.png"],
+    "services": [
+      "Punto Light: smoothies, ensaladas y almuerzos integrales",
+      "Comida tradicional casera: almuerzos y fritos",
+      "Comida mexicana y americana: nachos, burritos, crispy chicken",
+      "Postres y repostería artesanal",
+      "Cafetería especializada",
+      "Pastelería horneada diariamente",
+      "Bebidas frías y calientes",
+      "Opciones vegetarianas y veganas",
+      "Menús ejecutivos",
+      "Área de comensales amplia",
+      "Servicio de mesa y autoservicio",
+      "WiFi disponible",
+      "Ambiente climatizado"
+    ],
+    "contact": {
+      "coordinator": "dunordplaza@uninorte.edu.co",
+      "phone": "+57 321 5403648",
+      "administrative": "correo@uninorte.edu.co",
+      "mobile": "+57 312 3432233",
+      "website": "https://www.uninorte.edu.co/web/dunord/du-nord-plaza"
+    },
+    "hours": {
+      "general": "Lunes a viernes: 7:00 a.m. - 7:00 p.m.",
+      "sabados": "Sábados: 8:00 a.m. - 2:00 p.m.",
+      "vacaciones": "Horarios especiales durante períodos vacacionales"
+    },
+    "highlights": [
+      "Centro gastronómico principal del campus",
+      "Múltiples conceptos culinarios en un solo lugar",
+      "Ubicación estratégica al lado del Auditorio Marvel Moreno",
+      "Opciones para todos los gustos y presupuestos",
+      "Punto Light para alimentación saludable",
+      "Comida casera tradicional colombiana",
+      "Fusión mexicana-americana",
+      "Repostería y café de especialidad",
+      "Ambiente social y de encuentro estudiantil",
+      "Amplia capacidad de comensales",
+      "Horarios extendidos para la comunidad universitaria",
+      "Variedad desde desayuno hasta cena"
+    ]
+  },
+  "casa_blanca": {
+  "name": "Casa Blanca - Edificio Administrativo",
+  "description": "Emblemático edificio administrativo de la Universidad del Norte que alberga las principales oficinas directivas de la institución, incluyendo la Rectoría. Ubicado en una zona central del campus, frente a este edificio se encuentra la plazoleta donde se erige la escultura de Karl C. Parrish Jr., uno de los fundadores visionarios de la universidad. Casa Blanca representa el corazón administrativo y simbólico de Uninorte, siendo testigo de las decisiones más importantes que han moldeado la historia y el futuro de la institución.",
+  "images": ["casa_blanca_1.png", "casa_blanca_2.jpeg", "casa_blanca_3.jpg"],
+  "services": [
+    "Oficina de Rectoría",
+    "Oficinas de Vicerrectorías",
+    "Secretaría General",
+    "Oficinas de Dirección Ejecutiva",
+    "Oficinas de Planeación Institucional",
+    "Atención a la comunidad universitaria",
+    "Gestión de trámites administrativos",
+    "Reuniones del Consejo Directivo",
+    "Oficinas de Relaciones Internacionales",
+    "Oficinas de Comunicaciones Institucionales",
+    "Salas de reuniones ejecutivas",
+    "Atención de visitantes institucionales"
+  ],
+  "contact": {
+    "email": "rectoria@uninorte.edu.co",
+    "phone": "+57 605 3509509",
+    "website": "https://www.uninorte.edu.co",
+    "address": "Campus Universidad del Norte, Puerto Colombia, Atlántico"
+  },
+  "hours": {
+    "presencial": "Lunes a viernes: 8:00 a.m. - 5:00 p.m.",
+    "telefono": "Lunes a viernes: 8:00 a.m. - 5:00 p.m.",
+    "sabados": "Cerrado - Solo eventos especiales",
+    "festivos": "Cerrado - Solo actividades programadas"
+  },
+  "highlights": [
+    "Sede de la Rectoría de la Universidad del Norte",
+    "Edificio emblemático del campus universitario",
+    "Ubicación frente a la plazoleta de Karl C. Parrish Jr.",
+    "Centro administrativo y directivo de la institución",
+    "Lugar de encuentro para decisiones institucionales importantes",
+    "Arquitectura representativa del campus Uninorte",
+    "Punto de referencia histórico en el campus",
+    "Escenario de ceremonias y actos institucionales",
+    "Símbolo del liderazgo y gobierno universitario",
+    "Conexión directa con la historia y fundación de Uninorte",
+    "Espacio para atención de dignatarios y visitantes",
+    "Corazón de la gestión académica y administrativa"
+  ]
+},
+"centro_medico": {
+  "name": "Centro Médico Uninorte",
+  "description": "Moderno centro de atención médica integral ubicado en el Bloque de Salud del campus universitario. Con 640 metros cuadrados adicionales al anterior consultorio, ofrece servicios de salud general y especializada a la comunidad universitaria y sus familias. Funciona como sede del Hospital Universidad del Norte, brindando atención médica completa que va más allá de los primeros auxilios básicos para enfocarse en la salud integral del ser humano.",
+  "images": ["centro_medico_1.jpg", "centro_medico_2.jpg", "centro_medico_3.jpg"],
+  "services": [
+    "Medicina general",
+    "Dermatología",
+    "Cirugía plástica",
+    "Pediatría",
+    "Psiquiatría",
+    "Ginecología y obstetricia",
+    "Cardiología",
+    "Medicina interna",
+    "Medicina alternativa",
+    "Odontología",
+    "Psicología",
+    "Fisioterapia y terapia respiratoria",
+    "Ecografías",
+    "Toma de muestras de laboratorio",
+    "Servicios de enfermería",
+    "Promoción de la salud y prevención",
+    "Rayos X (área equipada)"
+  ],
+  "contact": {
+    "coordinator": "Diego Castresana",
+    "phone": "+57 605 3509509",
+    "website": "https://www.uninorte.edu.co",
+    "location": "Primer piso del Bloque de Salud, Campus Uninorte"
+  },
+  "hours": {
+    "presencial": "Lunes a viernes: 6:30 a.m. - 8:30 p.m.",
+    "sabados": "Sábados: 7:00 a.m. - 3:00 p.m.",
+    "domingos": "Cerrado"
+  },
+  "highlights": [
+    "640 metros cuadrados más que el anterior consultorio médico",
+    "Sede del Hospital Universidad del Norte en el campus",
+    "Atención a estudiantes, profesores, funcionarios y familias",
+    "Consultas especializadas desde $60,000 pesos",
+    "Acepta seguros médicos y planes de medicina prepagada",
+    "Servicios desarrollados según encuestas de necesidades comunitarias",
+    "Consultorio de medicina general y dos especializados",
+    "Área dedicada a promoción de salud y prevención",
+    "Equipamiento moderno para ecografías y rayos X",
+    "Enfoque en salud integral del ser humano",
+    "Horarios extendidos hasta 8:30 p.m. entre semana",
+    "Más de 30 años de tradición en atención médica universitaria",
+    "Atención rápida y eficiente (promedio 15 minutos)",
+    "Respaldo del Hospital Universidad del Norte",
+    "Proyección hacia los próximos 50 años de la universidad"
+  ]
+},
+"cafe_du_nord": {
+  "name": "Café du Nord",
+  "description": "Elegante café universitario especializado en cocina gourmet francesa con un distintivo toque caribeño. Un espacio acogedor que combina la sofisticación de la gastronomía francesa con la calidez del Caribe, ofreciendo desde opciones rápidas para estudiantes con prisa hasta platos elaborados para quienes buscan una experiencia culinaria especial. Con un ambiente relajado que incluye sillas reclinables, es el lugar perfecto para estudiar, socializar o simplemente disfrutar de un buen café.",
+  "images": ["cafe_du_nord_1.jpg", "cafe_du_nord_2.jpg", "cafe_du_nord_3.jpg"],
+  "services": [
+    "Cocina gourmet francesa con toque caribeño",
+    "Variedad de cafés especiales y bebidas",
+    "Platos tradicionales franceses",
+    "Opciones saludables y balanceadas",
+    "Gastronomía internacional",
+    "Desayunos completos y rápidos",
+    "Helados artesanales activadores de felicidad",
+    "Pancakes esponjosos con cereal corn flake",
+    "Bebidas frías como milo",
+    "Área de descanso con sillas reclinables",
+    "Espacio para lectura y estudio",
+    "Televisión para entretenimiento"
+  ],
+  "contact": {
+    "email": "sergiosantana@uninorte.edu.co",
+    "phone": "+57 605 3509509",
+    "extension": "Ext. 4741",
+    "administrative": "correo@uninorte.edu.co",
+    "mobile": "+57 312 3432233",
+    "website": "https://www.uninorte.edu.co/web/dunord/cafe-du-nord",
+    "menu": "https://www.uninorte.edu.co/documents/13542542/0/Menu%CC%81+cafe+du+Nord+2025.pdf/4deefcc0-0d44-4d80-9210-e7c228883f2b?t=1749659589814"
+  },
+  "hours": {
+    "presencial": "Lunes a viernes: 7:00 a.m. - 6:00 p.m.",
+    "sabados": "Sábados: 8:00 a.m. - 2:00 p.m.",
+    "vacaciones": "Horarios especiales durante períodos vacacionales"
+  },
+  "highlights": [
+    "Especialidad en cocina gourmet francesa",
+    "Toque caribeño único en platos franceses",
+    "Croque Monsieur tradicional francés",
+    "Pasta 4 quesos cremosa y deliciosa",
+    "Salmón preparado al estilo gourmet",
+    "Lomo al Brandy, especialidad de la casa",
+    "Café gourmet de calidad premium",
+    "Helados que activan zonas del cerebro asociadas al placer",
+    "12 sillas reclinables para máximo confort",
+    "Espacio ideal para estudiar y relajarse",
+    "Opciones rápidas para estudiantes con clases temprano",
+    "Ambiente elegante y sofisticado",
+    "Variedad gastronómica para todos los gustos",
+    "Combinación perfecta de tradición francesa y calidez caribeña",
+    "Menú actualizado 2025 disponible",
+    "Coordinated by specialized culinary team"
+  ]
+},
+"hospital_universidad_del_norte": {
+  "name": "Hospital Universidad del Norte",
+  "description": "Hospital universitario de alta calidad con vocación académica para los programas de la División Ciencias de la Salud de la Universidad del Norte. Brinda servicios médicos especializados a la comunidad vulnerable del área de influencia en Soledad y el Departamento del Atlántico, destacándose por su excelencia en atención, investigación clínica y formación académica. Reconocido internacionalmente por sus altos estándares de calidad y su compromiso con la seguridad del paciente.",
+  "images": ["hospital_1.png", "hospital_2.jpeg", "hospital_3.jpg"],
+  "services": [
+    "Atención médica especializada y general",
+    "Servicios de urgencias y emergencias",
+    "Atención de accidentes cerebrovasculares (ICTUS)",
+    "Centro de Investigación Clínica (CEI_HUN)",
+    "Ensayos clínicos e investigación médica",
+    "Formación académica para estudiantes de medicina",
+    "Prácticas clínicas y rotaciones médicas",
+    "Seguridad clínica y calidad en atención",
+    "Atención a población vulnerable",
+    "Servicios ambulatorios",
+    "Hospitalización",
+    "Consulta externa especializada",
+    "Programas de prevención en salud",
+    "Vigilancia epidemiológica"
+  ],
+  "contact": {
+    "email": "jefesiau@hospuninorte.org",
+    "phone": "+57 605 3509509",
+    "website": "https://www.uninorte.edu.co/web/hospital",
+    "address": "Calle 30, Soledad, Atlántico, Colombia",
+    "social_media": "@hospUninorte"
+  },
+  "hours": {
+    "presencial": "Lunes a viernes: 7:00 a.m. - 5:00 p.m.",
+    "sabados": "Sábados: 8:00 a.m. - 12:00 p.m.",
+    "urgencias": "Servicios de urgencias disponibles 24/7",
+    "consulta_externa": "Según programación de citas médicas"
+  },
+  "highlights": [
+    "Premio WSO Angels 2024 - Categoría Platino (primera institución en Soledad)",
+    "Incluido en ranking Newsweek como uno de los mejores 50 hospitales de Colombia",
+    "Primera institución de salud de la costa en registro ICTUS de calidad",
+    "Publicación en Journal of Stroke sobre indicadores de calidad",
+    "Centro de Investigación Clínica especializado (CEI_HUN)",
+    "Hospital universitario con vocación académica",
+    "Excelencia en atención de accidentes cerebrovasculares",
+    "Compromiso con la seguridad clínica del paciente",
+    "Atención especializada a población vulnerable",
+    "Integración con programas académicos de Ciencias de la Salud",
+    "Participación activa en ensayos clínicos internacionales",
+    "Reconocimiento internacional por calidad en atención",
+    "Ubicación estratégica en Soledad, Atlántico",
+    "Formación de profesionales de la salud de excelencia",
+    "Cultura de seguridad 'Seguridad Somos Todos'",
+    "Contribución significativa a la salud pública regional"
+  ]
+}
+    }
+
+}
+
+  }
+}
