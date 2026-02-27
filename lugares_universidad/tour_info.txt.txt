@@ -1,0 +1,36 @@
+{
+  "categories": {
+    "academic": {
+      "name": "Instalaciones Académicas",
+      "description": "Espacios dedicados al aprendizaje y la investigación",
+      "places": {
+        "biblioteca": {
+          "name": "Biblioteca Karl C. Parrish Jr.",
+          "description": "Principal centro de recursos académicos de la Universidad del Norte, ofreciendo servicios especializados de consulta y apoyo investigativo.",
+          "images": ["biblioteca_1.jpg", "biblioteca_2.jpg", "biblioteca_3.jpg"],
+          "services": [
+            "Consulta y referencia especializada",
+            "Apoyo en investigación",
+            "Acceso a recursos digitales",
+            "Préstamo de material bibliográfico"
+          ],
+          "contact": {
+            "email": "bkcp@uninorte.edu.co",
+            "phone": "+57 605 3509509 Ext: 4040 - 4180",
+            "website": "https://www.uninorte.edu.co/web/biblioteca"
+          },
+          "hours": {
+            "presencial": "Lunes a viernes: 7:00 a.m. - 5:30 p.m.",
+            "telefono": "Lunes a viernes: 8:00 a.m. - 5:00 p.m.",
+            "chat": "Lunes a viernes: 8:00 a.m. - 12:00 p.m. y 2:00 p.m. - 5:00 p.m."
+          },
+          "highlights": [
+            "Respuesta por correo en menos de 48 horas hábiles",
+            "Atención personalizada con referencistas especializados",
+            "Múltiples canales de consulta disponibles"
+          ]
+        }
+      }
+    }
+  }
+}

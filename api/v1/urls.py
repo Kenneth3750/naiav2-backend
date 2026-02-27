@@ -10,6 +10,7 @@ urlpatterns = [
     path('status/', include('api.v1.status.urls')),
     path('researcher/', include('api.v1.researcher.urls')),
     path('uniguide/', include('api.v1.uniguide.urls')),
+    path('uniguide_assets/', include('api.v1.uniguide_assets.urls')),
     path('skills/', include('api.v1.skills.urls')),
     path('personal/', include('api.v1.personal.urls')),
     path('recepcionist/', include('api.v1.recepcionist.urls')),

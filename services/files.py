@@ -2,6 +2,8 @@ import b2sdk.v2 as b2
 from dotenv import load_dotenv
 import os
 import time
+import json
+from urllib.parse import quote
 
 class B2FileService:
 
@@ -293,49 +295,21 @@ class B2FileService:
         return documents
     
 
-    def download_virtual_tour_json_only(self):
-        """
-        Downloads only the tour_info.json file for virtual tour (optimized for speed)
-        
-        Returns:
-            dict: Dictionary containing only tour information
-        """
-        import tempfile
-        import os
-        import json
-        
-        b2_api = self._get_b2_api()
-        bucket = b2.Bucket(b2_api, self.bucket_id, name=self.bucket_name)
-        prefix = self.uni_places_prefix
-        files = bucket.ls(folder_to_list=prefix, recursive=False)
-        
-        for file_info, file_metadata in files:
-            file_name = file_info.file_name.split('/')[-1]  # Get just the filename
-            
-            if file_name == 'tour_info.json':
-                try:
-                    with tempfile.NamedTemporaryFile(delete=False) as temp_file:
-                        temp_path = temp_file.name
-                    
-                    downloaded_file = b2_api.download_file_by_id(file_info.id_)
-                    downloaded_file.save_to(temp_path)
-                    
-                    # Process JSON file
-                    with open(temp_path, 'r', encoding='utf-8') as f:
-                        tour_data = json.load(f)
-                    
-                    # Clean up temp file
-                    os.unlink(temp_path)
-                    
-                    print(f"Tour info JSON loaded: {file_name}")
-                    return tour_data
-                    
-                except Exception as e:
-                    print(f"Error processing JSON file {file_info.file_name}: {str(e)}")
-                    return None
-        
-        print("tour_info.json not found in bucket")
-        return None
+    def _get_uniguide_local_assets_dir(self):
+        """Return local directory for Uniguide tour assets."""
+        local_dir = os.getenv("uniguide_local_assets_dir")
+        if local_dir:
+            return local_dir
+
+        try:
+            from django.conf import settings
+            return os.path.join(settings.BASE_DIR, "lugares_universidad")
+        except Exception:
+            return os.path.join(os.getcwd(), "lugares_universidad")
+
+    def _get_uniguide_assets_base_url(self):
+        """Return base URL used for locally-hosted Uniguide assets."""
+        return os.getenv("uniguide_assets_base_url", "/api/v1/uniguide_assets")
 
 
     def download_virtual_tour_json_only(self):
@@ -345,41 +319,21 @@ class B2FileService:
         Returns:
             dict: Dictionary containing only tour information
         """
-        import tempfile
         import os
-        import json
-        
-        b2_api = self._get_b2_api()
-        bucket = b2.Bucket(b2_api, self.bucket_id, name=self.bucket_name)
-        prefix = self.uni_places_prefix
-        files = bucket.ls(folder_to_list=prefix, recursive=False)
-        
-        for file_info, file_metadata in files:
-            file_name = file_info.file_name.split('/')[-1]  # Get just the filename
-            
-            if file_name == 'tour_info.json':
-                try:
-                    with tempfile.NamedTemporaryFile(delete=False) as temp_file:
-                        temp_path = temp_file.name
-                    
-                    downloaded_file = b2_api.download_file_by_id(file_info.id_)
-                    downloaded_file.save_to(temp_path)
-                    
-                    # Process JSON file
-                    with open(temp_path, 'r', encoding='utf-8') as f:
-                        tour_data = json.load(f)
-                    
-                    # Clean up temp file
-                    os.unlink(temp_path)
-                    
-                    print(f"Tour info JSON loaded: {file_name}")
-                    return tour_data
-                    
-                except Exception as e:
-                    print(f"Error processing JSON file {file_info.file_name}: {str(e)}")
-                    return None
-        
-        print("tour_info.json not found in bucket")
+
+        # Read only local file hosted on VM
+        local_assets_dir = self._get_uniguide_local_assets_dir()
+        local_tour_file = os.path.join(local_assets_dir, 'tour_info.json')
+        if os.path.exists(local_tour_file):
+            try:
+                with open(local_tour_file, 'r', encoding='utf-8') as f:
+                    tour_data = json.load(f)
+                print(f"Tour info JSON loaded from local VM: {local_tour_file}")
+                return tour_data
+            except Exception as e:
+                print(f"Error loading local tour_info.json ({local_tour_file}): {str(e)}")
+
+        print(f"tour_info.json not found in local directory: {local_assets_dir}")
         return None
 
 
@@ -398,27 +352,26 @@ class B2FileService:
             return {}
         
         try:
-            # Ensure we have the API and download URL
-            self._get_b2_api()
-            
-            # Get the token for places
-            token = self._get_download_token("places")
-            
-            # Generate info for each image in the list (compatible format)
             images_info = {}
+
+            # Resolve images only from local VM folder
+            local_assets_dir = self._get_uniguide_local_assets_dir()
+            local_base_url = self._get_uniguide_assets_base_url().rstrip('/')
+
             for image_filename in image_list:
                 if image_filename:  # Skip empty/None filenames
-                    full_filename = f"{self.uni_places_prefix}{image_filename}"
-                    url = f"{B2FileService._download_url}/file/{self.bucket_name}/{full_filename}?Authorization={token}"
-                    
-                    # Create compatible format with original structure
-                    images_info[image_filename] = {
-                        'file_id': None,  # Not needed for URL generation
-                        'file_name': full_filename,
-                        'size': None,  # Not needed for URL generation
-                        'url': url  # Add direct URL for convenience
-                    }
-            
+                    safe_name = os.path.basename(image_filename)
+                    local_image_path = os.path.join(local_assets_dir, safe_name)
+
+                    if os.path.exists(local_image_path):
+                        local_url = f"{local_base_url}/{quote(safe_name)}"
+                        images_info[safe_name] = {
+                            'file_id': None,
+                            'file_name': safe_name,
+                            'size': None,
+                            'url': local_url
+                        }
+
             print(f"Generated image info for {len(images_info)} images")
             return images_info
                     
