@@ -316,7 +316,13 @@ class B2FileService:
 
     def _get_uniguide_assets_base_url(self):
         """Return base URL used for locally-hosted Uniguide assets."""
-        return os.getenv("uniguide_assets_base_url", "/api/v1/uniguide_assets")
+        configured_base = os.getenv("uniguide_assets_base_url", "/api/v1/uniguide_assets").rstrip('/')
+
+        if configured_base.startswith("http://") or configured_base.startswith("https://"):
+            return configured_base
+
+        public_base_url = os.getenv("public_base_url") or os.getenv("backend_base_url") or "https://naia.uninorte.edu.co"
+        return f"{public_base_url.rstrip('/')}{configured_base}"
 
 
     def download_virtual_tour_json_only(self):
