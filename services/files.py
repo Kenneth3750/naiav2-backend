@@ -303,7 +303,14 @@ class B2FileService:
 
         try:
             from django.conf import settings
-            return os.path.join(settings.BASE_DIR, "lugares_universidad")
+            base_dir = settings.BASE_DIR
+            project_root_candidate = os.path.join(base_dir, "..", "lugares_universidad")
+            app_dir_candidate = os.path.join(base_dir, "lugares_universidad")
+
+            if os.path.exists(project_root_candidate):
+                return os.path.abspath(project_root_candidate)
+
+            return os.path.abspath(app_dir_candidate)
         except Exception:
             return os.path.join(os.getcwd(), "lugares_universidad")
 

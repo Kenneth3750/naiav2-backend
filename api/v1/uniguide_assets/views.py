@@ -10,7 +10,13 @@ from django.urls import reverse
 
 class UniguideAssets(APIView):
     def _assets_dir(self):
-        return os.path.join(settings.BASE_DIR, "lugares_universidad")
+        project_root_candidate = os.path.join(settings.BASE_DIR, "..", "lugares_universidad")
+        app_dir_candidate = os.path.join(settings.BASE_DIR, "lugares_universidad")
+
+        if os.path.exists(project_root_candidate):
+            return os.path.abspath(project_root_candidate)
+
+        return os.path.abspath(app_dir_candidate)
 
     def get(self, request, filename=None):
         if filename:
