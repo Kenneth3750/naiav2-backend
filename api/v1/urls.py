@@ -17,6 +17,7 @@ urlpatterns = [
     path('gov_images/', include('api.v1.gov_images.urls')),
     path('gobernacion/', include('api.v1.gobernacion.urls')),
     path('mompox/', include('api.v1.mompox.urls')),
+    path('mental/', include('api.v1.mental.urls')),
     path('api-auth/', include('rest_framework.urls')),
     path('schema/', SpectacularAPIView.as_view(), name='schema'),
     path('schema/swagger-ui/', SpectacularSwaggerView.as_view(url_name='schema'), name='swagger-ui'),

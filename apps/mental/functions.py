@@ -737,3 +737,662 @@ def get_current_questionnaire_status(user_id: int) -> bool:
     except Exception as e:
         print(f"Error retrieving questionnaire status: {str(e)}")
         return f"Error: {str(e)}"
+
+
+# ==========================================
+# Bienestar Organizacional Functions (role 6 Realtime)
+# ==========================================
+
+ACTIVIDADES_BIENESTAR = [
+    {
+        "name": "Clase de Voleibol",
+        "icon": "🏐",
+        "target": "Colaboradores y cónyuges",
+        "schedule": "Lunes y miércoles, 6:30-8:30 PM",
+        "location": "Colegio Buen Consejo",
+        "image": "https://www.uninorte.edu.co/documents/15936117/32204167/WhatsApp+Image+2024-03-06+at+3.51.39+PM.jpeg/aa07ce6a-7f6e-9920-47b7-7d6c4de8d624",
+        "enroll": "https://forms.office.com/Pages/ResponsePage.aspx?id=ebawul-96E-1Fsa4sxfHglOtSOY5yDNNuoaa4MxUZZpUM1FEV0tFNVZBTkQ4RzJIMzJJRTY2RUtWQi4u",
+    },
+    {
+        "name": "Yoga",
+        "icon": "🧘",
+        "target": "Colaboradores y cónyuges",
+        "schedule": "Lunes y miércoles, 6:00-7:00 PM",
+        "location": "Salón de Danza - Coliseo",
+        "image": "https://www.uninorte.edu.co/documents/15936117/32204167/WhatsApp+Image+2024-03-06+at+3.49.49+PM+%281%29.jpeg/6a16809b-3c71-df91-816c-d9550234467f",
+        "enroll": "https://forms.office.com/Pages/ResponsePage.aspx?id=ebawul-96E-1Fsa4sxfHglOtSOY5yDNNuoaa4MxUZZpUQ0FGT05FN0pTSk1DSUE4VEsxQU1ZR0xXUC4u",
+    },
+    {
+        "name": "Tenis Adulto - Principiante",
+        "icon": "🎾",
+        "target": "Colaboradores y cónyuges",
+        "schedule": "Martes y jueves, 6:00-8:00 PM",
+        "location": "Cancha de tenis interna",
+        "image": "https://www.uninorte.edu.co/documents/15936117/32204167/Tenis-adulto.jpg/7c28badd-ae75-2b9f-f8fa-bc72c88eda2b",
+        "enroll": "https://forms.office.com/Pages/ResponsePage.aspx?id=ebawul-96E-1Fsa4sxfHglOtSOY5yDNNuoaa4MxUZZpUN1JCTFRLSjJTMFpYQTQzMFJBRlROTDlDRS4u",
+    },
+    {
+        "name": "Tenis Adulto - Avanzado",
+        "icon": "🎾",
+        "target": "Colaboradores y cónyuges",
+        "schedule": "Lunes y miércoles, 6:00-8:00 PM",
+        "location": "Cancha de tenis interna",
+        "image": "https://www.uninorte.edu.co/documents/15936117/32204167/Tenis-adulto.jpg/7c28badd-ae75-2b9f-f8fa-bc72c88eda2b",
+        "enroll": "https://forms.office.com/Pages/ResponsePage.aspx?id=ebawul-96E-1Fsa4sxfHglOtSOY5yDNNuoaa4MxUZZpUNE1EWElWVk80SzI4OU9CMlJVVEVGMU85Ry4u",
+    },
+    {
+        "name": "Iniciación al Deporte (3-4 años)",
+        "icon": "👶",
+        "target": "Hijos, sobrinos, nietos, hermanos",
+        "schedule": "Sábados 9:00-10:00 AM",
+        "location": "Cancha de Raqueta",
+        "image": "https://www.uninorte.edu.co/documents/15936117/32204167/WhatsApp+Image+2024-03-06+at+3.45.32+PM+%281%29.jpeg/3b61c3a1-5f8e-6f79-615c-ccd883226f6d",
+        "enroll": "https://forms.office.com/Pages/ResponsePage.aspx?id=ebawul-96E-1Fsa4sxfHglOtSOY5yDNNuoaa4MxUZZpUNUZYQUNMMVJZSUQzUjdXS01EVUpZU08zMC4u",
+    },
+    {
+        "name": "Iniciación al Deporte (2 años)",
+        "icon": "👶",
+        "target": "Hijos, sobrinos, nietos, hermanos",
+        "schedule": "Sábados 8:00-9:00 AM",
+        "location": "Cancha de Raqueta",
+        "image": "https://www.uninorte.edu.co/documents/15936117/32204167/WhatsApp+Image+2024-03-06+at+3.45.32+PM+%281%29.jpeg/3b61c3a1-5f8e-6f79-615c-ccd883226f6d",
+        "enroll": "https://forms.office.com/Pages/ResponsePage.aspx?id=ebawul-96E-1Fsa4sxfHglOtSOY5yDNNuoaa4MxUZZpUOUU1UzE2TkM3MkpBUUw4S00xSE8zSUQ5Ny4u",
+    },
+    {
+        "name": "Percusión Folclórica",
+        "icon": "🥁",
+        "target": "Colaboradores y cónyuges",
+        "schedule": "Viernes, 12:00-2:00 PM",
+        "location": "Salón de Música BO",
+        "image": "https://www.uninorte.edu.co/documents/15936117/32204167/WhatsApp+Image+2024-09-04+at+5.53.59+PM.jpeg/c2aa34ed-e288-ec73-1592-aa97e41e4ec4",
+        "enroll": "https://forms.office.com/Pages/ResponsePage.aspx?id=ebawul-96E-1Fsa4sxfHglOtSOY5yDNNuoaa4MxUZZpUNlkxQTcwVTdNSkRZMURDTVRKN0NNR1c0UC4u",
+    },
+    {
+        "name": "Orquesta",
+        "icon": "🎵",
+        "target": "Colaboradores",
+        "schedule": "Martes y jueves, 12:00-2:00 PM",
+        "location": "Salón de Música BO",
+        "image": "https://www.uninorte.edu.co/documents/15936117/32204167/orquesta.jpg/ec7c6f08-476c-8e7f-995c-68a4d9791dc6",
+        "enroll": "https://forms.office.com/Pages/ResponsePage.aspx?id=ebawul-96E-1Fsa4sxfHglOtSOY5yDNNuoaa4MxUZZpUMVRJRkpTQ1VPSjJKWk1UNzI5RE9WMEpYWC4u",
+    },
+    {
+        "name": "Ritmos Latinos",
+        "icon": "💃",
+        "target": "Colaboradores y cónyuges",
+        "schedule": "Miércoles, 12:00-2:00 PM",
+        "location": "Salón de Música BO",
+        "image": "https://www.uninorte.edu.co/documents/15936117/32204167/Ritmos-latinos.jpg/47cd6418-ea5e-27bf-859c-e43bae6322e3",
+        "enroll": "https://forms.office.com/Pages/ResponsePage.aspx?id=ebawul-96E-1Fsa4sxfHglOtSOY5yDNNuoaa4MxUZZpUOVNJUFhWOVFBSUhDQzhTUzBKUEhJUlhFRy4u",
+    },
+    {
+        "name": "Taekwondo Adultos",
+        "icon": "🥋",
+        "target": "Colaboradores y cónyuges",
+        "schedule": "Martes, 6:00-8:00 PM",
+        "location": "Salón de Danza (Coliseo, Piso 2)",
+        "image": "https://www.uninorte.edu.co/documents/15936117/32204167/WhatsApp+Image+2024-03-06+at+3.50.18+PM.jpeg/c09685b2-650d-24ad-3212-ed405e45b27a",
+        "enroll": "https://forms.office.com/Pages/ResponsePage.aspx?id=ebawul-96E-1Fsa4sxfHglOtSOY5yDNNuoaa4MxUZZpUQzAzTVNKMFA3TVY5OTcwV05aQ0tJTEdRTy4u",
+    },
+    {
+        "name": "Running",
+        "icon": "🏃",
+        "target": "Colaboradores y cónyuges",
+        "schedule": "Jueves, 6:00-8:00 PM",
+        "location": "Cancha Alterna No. 2",
+        "image": "https://www.uninorte.edu.co/documents/15936117/32204167/WhatsApp+Image+2024-03-06+at+3.48.17+PM.jpeg/ad513539-1baa-53df-9423-e9e1a3a32321",
+        "enroll": "https://forms.office.com/Pages/ResponsePage.aspx?id=ebawul-96E-1Fsa4sxfHglOtSOY5yDNNuoaa4MxUZZpUN0UwSVkyU1FUMlQxMzBXSVJVRzBJSjJLNi4u",
+    },
+    {
+        "name": "Patinaje Infantil (+4 años)",
+        "icon": "⛸️",
+        "target": "Hijos y familiares",
+        "schedule": "Mar, Jue, Sáb 4:00-5:00 PM",
+        "location": "Club Mario Durán - Skate Park",
+        "image": "https://www.uninorte.edu.co/documents/15936117/32204167/patinaje.png/3052cf7b-6685-cb88-deec-91ae0b70b511",
+        "enroll": "https://forms.office.com/Pages/ResponsePage.aspx?id=ebawul-96E-1Fsa4sxfHglOtSOY5yDNNuoaa4MxUZZpUQzRJVTFQNVhSRTVDR1JQOVg5MTJRTkFOVS4u",
+    },
+    {
+        "name": "Tenis Infantil (5-9 años)",
+        "icon": "🎾",
+        "target": "Hijos y familiares",
+        "schedule": "Sábados 7:00-8:30 AM",
+        "location": "Cancha de tenis interna",
+        "image": "https://www.uninorte.edu.co/documents/15936117/32204167/tenis-infantil.png/ddc7cf09-11c6-2b9b-c6e5-2ea0e5b76774",
+        "enroll": "https://forms.office.com/Pages/ResponsePage.aspx?id=ebawul-96E-1Fsa4sxfHglOtSOY5yDNNuoaa4MxUZZpUQzNFTEJDT1RSQVZJVzJIMlQ1V0JZTEkzWC4u",
+    },
+    {
+        "name": "Tenis Juvenil (+10 años)",
+        "icon": "🎾",
+        "target": "Hijos y familiares",
+        "schedule": "Sábados 8:30-10:00 AM",
+        "location": "Cancha de tenis interna",
+        "image": "https://www.uninorte.edu.co/documents/15936117/32204167/tenis-infantil.png/ddc7cf09-11c6-2b9b-c6e5-2ea0e5b76774",
+        "enroll": "https://forms.office.com/Pages/ResponsePage.aspx?id=ebawul-96E-1Fsa4sxfHglOtSOY5yDNNuoaa4MxUZZpURVQxNVBMQVZDOFI0VjlTMlNQQlgzR1JFMy4u",
+    },
+    {
+        "name": "Fútbol Infantil (5-9 años)",
+        "icon": "⚽",
+        "target": "Hijos y familiares",
+        "schedule": "Sábados 9:00-10:30 AM",
+        "location": "Cancha sintética",
+        "image": "https://www.uninorte.edu.co/documents/15936117/32204167/WhatsApp+Image+2024-03-06+at+3.47.08+PM.jpeg/e5996c6f-d05f-100d-f5cc-980f40d1d0af",
+        "enroll": "https://forms.office.com/Pages/ResponsePage.aspx?id=ebawul-96E-1Fsa4sxfHglOtSOY5yDNNuoaa4MxUZZpUN1VZTzdEOVNYVzBRSzhLUjNOUEUyVDFVNC4u",
+    },
+    {
+        "name": "Fútbol Juvenil (+10 años)",
+        "icon": "⚽",
+        "target": "Hijos y familiares",
+        "schedule": "Sábados 10:30 AM-12:00 PM",
+        "location": "Cancha sintética",
+        "image": "https://www.uninorte.edu.co/documents/15936117/32204167/WhatsApp+Image+2024-03-06+at+3.47.08+PM.jpeg/e5996c6f-d05f-100d-f5cc-980f40d1d0af",
+        "enroll": "https://forms.office.com/Pages/ResponsePage.aspx?id=ebawul-96E-1Fsa4sxfHglOtSOY5yDNNuoaa4MxUZZpUOEc3NzdOSk5TM0U0MEJTOTRPUEtIUFZHTS4u",
+    },
+    {
+        "name": "Taekwondo Infantil (6-8 años)",
+        "icon": "🥋",
+        "target": "Hijos y familiares",
+        "schedule": "Sábados 8:30-10:00 AM",
+        "location": "Coliseo Piso 2 Lobby Sur",
+        "image": "https://www.uninorte.edu.co/documents/15936117/32204167/WhatsApp+Image+2024-03-06+at+3.52.29+PM.jpeg/3e4ab27e-df96-0a79-6846-2ba4aedc56ec",
+        "enroll": "https://forms.office.com/Pages/ResponsePage.aspx?id=ebawul-96E-1Fsa4sxfHglOtSOY5yDNNuoaa4MxUZZpUNTNCMTYzNk1DVUZKWkpTMzFZSThXR1Y1Uy4u",
+    },
+    {
+        "name": "Taekwondo Junior (9-10 años)",
+        "icon": "🥋",
+        "target": "Hijos y familiares",
+        "schedule": "Sábados 10:00-11:30 AM",
+        "location": "Coliseo Piso 2 Lobby Sur",
+        "image": "https://www.uninorte.edu.co/documents/15936117/32204167/WhatsApp+Image+2024-03-06+at+3.52.29+PM.jpeg/3e4ab27e-df96-0a79-6846-2ba4aedc56ec",
+        "enroll": "https://forms.office.com/Pages/ResponsePage.aspx?id=ebawul-96E-1Fsa4sxfHglOtSOY5yDNNuoaa4MxUZZpUQ0pWTVBJUElSREM0VkczSUNJOUw1TFRPQi4u",
+    },
+    {
+        "name": "Taekwondo Juvenil (+11 años)",
+        "icon": "🥋",
+        "target": "Hijos y familiares",
+        "schedule": "Sábados 11:30 AM-1:00 PM",
+        "location": "Coliseo Piso 2 Lobby Sur",
+        "image": "https://www.uninorte.edu.co/documents/15936117/32204167/WhatsApp+Image+2024-03-06+at+3.52.29+PM.jpeg/3e4ab27e-df96-0a79-6846-2ba4aedc56ec",
+        "enroll": "https://forms.office.com/Pages/ResponsePage.aspx?id=ebawul-96E-1Fsa4sxfHglOtSOY5yDNNuoaa4MxUZZpUNEhFVkY0R1g5MzhVQzFORlpYUk5WUU9YUy4u",
+    },
+    {
+        "name": "Estimulación Musical (6-23 meses)",
+        "icon": "🎶",
+        "target": "Hijos",
+        "schedule": "Sábados 10:00-11:00 AM",
+        "location": "C.C. Villa Country Piso 1",
+        "image": "https://www.uninorte.edu.co/documents/15936117/32204167/estimulaci%C3%B3n.jpg/66e59290-f9d1-2b24-60be-d7fe531cdafb",
+        "enroll": "https://forms.office.com/Pages/ResponsePage.aspx?id=ebawul-96E-1Fsa4sxfHglOtSOY5yDNNuoaa4MxUZZpUM0tZSDE1QjRPN1A3OTVBMkpPQ0pENEk2UC4u",
+    },
+    {
+        "name": "Estimulación Musical (2-4 años)",
+        "icon": "🎶",
+        "target": "Hijos",
+        "schedule": "Sábados 11:00 AM-12:00 PM",
+        "location": "C.C. Villa Country Piso 1",
+        "image": "https://www.uninorte.edu.co/documents/15936117/32204167/estimulaci%C3%B3n.jpg/66e59290-f9d1-2b24-60be-d7fe531cdafb",
+        "enroll": "https://forms.office.com/Pages/ResponsePage.aspx?id=ebawul-96E-1Fsa4sxfHglOtSOY5yDNNuoaa4MxUZZpUNjFRV01ZQjJUS01UUVVMS0FGOElWTldJMC4u",
+    },
+    {
+        "name": "Rumba",
+        "icon": "🕺",
+        "target": "Colaboradores, cónyuges, hijos (+14 años)",
+        "schedule": "Jueves 6:00-7:00 PM / Sábados 7:00-8:00 AM",
+        "location": "Salón de Danza - Coliseo",
+        "image": "https://www.uninorte.edu.co/documents/15936117/32204167/WhatsApp+Image+2024-03-06+at+3.49.27+PM.jpeg/b4b16d35-e322-7b84-b4dc-8bea94d6ec1e",
+        "enroll": "https://forms.office.com/Pages/ResponsePage.aspx?id=ebawul-96E-1Fsa4sxfHglOtSOY5yDNNuoaa4MxUZZpUQVpLMUJZWUNSUUtRTFIyVEdUSU9XVExJNi4u",
+    },
+    {
+        "name": "Fútbol Masculino",
+        "icon": "⚽",
+        "target": "Colaboradores",
+        "schedule": "Martes y jueves, 6:00-8:00 PM",
+        "location": "Cancha sintética",
+        "image": "https://www.uninorte.edu.co/documents/15936117/32204167/WhatsApp+Image+2024-03-06+at+3.47.26+PM.jpeg/530b2e2e-ed7e-c3b1-8757-0a6af0b8e735",
+        "enroll": "https://forms.office.com/Pages/ResponsePage.aspx?id=ebawul-96E-1Fsa4sxfHglOtSOY5yDNNuoaa4MxUZZpURDhFSEczVEY4QVFMWTBQUjlZREdVR0FTTC4u",
+    },
+    {
+        "name": "Natación Adultos",
+        "icon": "🏊",
+        "target": "Colaboradores y cónyuges",
+        "schedule": "Sábados 8:00-10:00 AM (dos sesiones)",
+        "location": "Piscina Uninorte",
+        "image": "https://www.uninorte.edu.co/documents/15936117/32204167/Nataci%C3%B3n1.jpeg.png/17ca814b-5310-d940-e239-43e26ccfa1e4",
+        "enroll": "https://forms.office.com/Pages/ResponsePage.aspx?id=ebawul-96E-1Fsa4sxfHglOtSOY5yDNNuoaa4MxUZZpUNUROMTVNSjZPSTBTUFVPM1FaUVlENDNGMi4u",
+    },
+    {
+        "name": "Natación Infantil (4-12 años)",
+        "icon": "🏊",
+        "target": "Hijos",
+        "schedule": "Sábados 8:00-10:00 AM (dos sesiones)",
+        "location": "Piscina Uninorte",
+        "image": "https://www.uninorte.edu.co/documents/15936117/32204167/Nataci%C3%B3n1.jpeg.png/17ca814b-5310-d940-e239-43e26ccfa1e4",
+        "enroll": "https://forms.office.com/Pages/ResponsePage.aspx?id=ebawul-96E-1Fsa4sxfHglOtSOY5yDNNuoaa4MxUZZpUQU1GVzIyQ0QzUkxWWkIzU1dVR0dPRlo1NS4u",
+    },
+    {
+        "name": "Música Infantil (5-8 años)",
+        "icon": "🎸",
+        "target": "Hijos (+5 años)",
+        "schedule": "Sábados 10:00-11:00 AM",
+        "location": "Salón de Música BO",
+        "image": "https://www.uninorte.edu.co/documents/15936117/32204167/musica-ecuador1.jpg/6af91a56-6b6f-2ba0-4680-7749f6f30673",
+        "enroll": "https://forms.office.com/Pages/ResponsePage.aspx?id=ebawul-96E-1Fsa4sxfHglOtSOY5yDNNuoaa4MxUZZpURDFCRVRZSFZCNTAxN1o1WFNSNDJURUtJUC4u",
+    },
+    {
+        "name": "Música Infantil (9-12 años)",
+        "icon": "🎸",
+        "target": "Hijos (+5 años)",
+        "schedule": "Sábados 11:00 AM-12:00 PM",
+        "location": "Salón de Música BO",
+        "image": "https://www.uninorte.edu.co/documents/15936117/32204167/musica-ecuador1.jpg/6af91a56-6b6f-2ba0-4680-7749f6f30673",
+        "enroll": "https://forms.office.com/Pages/ResponsePage.aspx?id=ebawul-96E-1Fsa4sxfHglOtSOY5yDNNuoaa4MxUZZpURDFCRVRZSFZCNTAxN1o1WFNSNDJURUtJUC4u",
+    },
+    {
+        "name": "Danza Infantil (4-6 años)",
+        "icon": "💃",
+        "target": "Hijos y familiares",
+        "schedule": "Sábados 8:00-9:00 AM",
+        "location": "Salón de Danza",
+        "image": "https://www.uninorte.edu.co/documents/15936117/32204167/WhatsApp+Image+2024-03-06+at+3.48.35+PM.jpeg/2f1a9e9e-ff99-601f-8485-56be1c1ccddd",
+        "enroll": "https://forms.office.com/Pages/ResponsePage.aspx?id=ebawul-96E-1Fsa4sxfHglOtSOY5yDNNuoaa4MxUZZpUM0o4R1NCM0JTNzM3REpOUjQ3Q1ZKMEZaUC4u",
+    },
+    {
+        "name": "Danza Juvenil (7-12 años)",
+        "icon": "💃",
+        "target": "Hijos y familiares",
+        "schedule": "Sábados 9:00-10:00 AM",
+        "location": "Salón de Danza",
+        "image": "https://www.uninorte.edu.co/documents/15936117/32204167/WhatsApp+Image+2024-03-06+at+3.48.35+PM.jpeg/2f1a9e9e-ff99-601f-8485-56be1c1ccddd",
+        "enroll": "https://forms.office.com/Pages/ResponsePage.aspx?id=ebawul-96E-1Fsa4sxfHglOtSOY5yDNNuoaa4MxUZZpUMkhVUVpIUUwwM0FJVkJLOE9ZVkdNS0RKVS4u",
+    },
+    {
+        "name": "Gimnasia Infantil",
+        "icon": "🤸",
+        "target": "Hijos",
+        "schedule": "Sábados 8:00-9:00 AM",
+        "location": "Av. Las Dunas - Parque Comercial Las Dunas Open Local C9-C10",
+        "image": "https://www.uninorte.edu.co/documents/15936117/32204167/viga-equilibrio-gimnasia-infantil-atleta-gimnasta-chica-barra-horizontal-ejercicio-competiciones-gimnasia-entrenador-nino.jpg/0356ee69-3753-3a2b-6e3b-819aebabec03",
+        "enroll": "https://forms.office.com/Pages/ResponsePage.aspx?id=ebawul-96E-1Fsa4sxfHglOtSOY5yDNNuoaa4MxUZZpUOUtONUdKMldUUDRRU1pFM1RHTUZEQkZMWC4u",
+    },
+    {
+        "name": "Fútbol Adolescentes (+12 años)",
+        "icon": "⚽",
+        "target": "Hijos y familiares (+12 años)",
+        "schedule": "Sábados 2:00-4:00 PM",
+        "location": "Cancha sintética",
+        "image": "https://www.uninorte.edu.co/documents/15936117/33989154/cancha+de+futbol.jpg/15dcbb3c-d96f-9cb4-7156-a1a4c4a9b7b2",
+        "enroll": "https://forms.office.com/pages/responsepage.aspx?id=ebawul-96E-1Fsa4sxfHglOtSOY5yDNNuoaa4MxUZZpUQlQ0WlRVWUU1UVRYNEw3VkVSR05XWVg4UC4u",
+    },
+    {
+        "name": "Club de Caminantes",
+        "icon": "🥾",
+        "target": "Colaboradores de planta, docentes y familiares (+6 años)",
+        "schedule": "Domingos según programación",
+        "location": "Varía según ruta",
+        "image": "https://www.uninorte.edu.co/documents/15936117/51497787/imagen-caminatas-ecologicas.jpg/6a1a6e47-76f3-8868-1f9b-60a7bf2b300b",
+        "enroll": "https://forms.office.com/Pages/ResponsePage.aspx?id=ebawul-96E-1Fsa4sxfHglOtSOY5yDNNuoaa4MxUZZpUNFhGTUxPVkY5QVhPQjNXRkVLMVlOR0tXQS4u",
+    },
+    {
+        "name": "Club de Cocina",
+        "icon": "👨‍🍳",
+        "target": "Colaboradores de planta y cónyuges beneficiarios",
+        "schedule": "Sábados según programación",
+        "location": "Varía según sesión",
+        "image": "https://www.uninorte.edu.co/documents/15936117/32204167/cocina.jpg/105730c6-2b0c-9596-5bb6-950ae0c9fb24",
+        "enroll": "https://forms.office.com/r/PBPFXnyAUj",
+    },
+    {
+        "name": "Club de Lectura LitInfan",
+        "icon": "📚",
+        "target": "Hijos y familiares",
+        "schedule": "Una vez al mes, 10:30 AM",
+        "location": "Biblioteca Karl C. Parrish Jr.",
+        "image": "https://www.uninorte.edu.co/documents/15936117/32204167/galeria13956.jpg/4eedf4b0-9799-74f1-c436-47e7450fbc39",
+        "enroll": "https://forms.office.com/r/kbWXpLFm8u",
+    },
+]
+
+
+def get_catalogo_actividades(user_id: int, status: str) -> Dict:
+    """
+    Muestra el catálogo visual completo de todas las alternativas deportivas y artísticas
+    de Bienestar Organizacional con imágenes, horarios, ubicaciones y enlaces de inscripción.
+    """
+    set_status(user_id, status, 6)
+
+    cards_html = ""
+    for act in ACTIVIDADES_BIENESTAR:
+        cards_html += f'''
+        <div style="background: #ffffff; border: 1px solid #e5e7eb; border-radius: 10px; overflow: hidden; box-shadow: 0 2px 8px rgba(0,0,0,0.06);">
+            <div style="width: 100%; height: 160px; overflow: hidden;">
+                <img src="{act['image']}" alt="{act['name']}" style="width: 100%; height: 100%; object-fit: cover;" />
+            </div>
+            <div style="padding: 14px 16px;">
+                <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 8px;">
+                    <span style="font-size: 20px;">{act['icon']}</span>
+                    <h4 style="color: #124072; font-size: 14px; font-weight: 600; margin: 0;">{act['name']}</h4>
+                </div>
+                <div style="display: flex; flex-direction: column; gap: 4px; margin-bottom: 10px;">
+                    <div style="display: flex; align-items: center; gap: 6px;">
+                        <span style="font-size: 12px;">👥</span>
+                        <span style="color: #2d2d2d; font-size: 12px;">{act['target']}</span>
+                    </div>
+                    <div style="display: flex; align-items: center; gap: 6px;">
+                        <span style="font-size: 12px;">📅</span>
+                        <span style="color: #2d2d2d; font-size: 12px;">{act['schedule']}</span>
+                    </div>
+                    <div style="display: flex; align-items: center; gap: 6px;">
+                        <span style="font-size: 12px;">📍</span>
+                        <span style="color: #2d2d2d; font-size: 12px;">{act['location']}</span>
+                    </div>
+                </div>
+                <a href="{act['enroll']}" target="_blank" rel="noopener noreferrer" style="display: block; text-align: center; background: linear-gradient(90deg, #124072 60%, #00aeda 100%); color: white; padding: 8px 12px; border-radius: 6px; font-size: 12px; font-weight: 600; text-decoration: none;">Inscribirme</a>
+            </div>
+        </div>
+        '''
+
+    display_html = f'''
+    <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 100%; margin: 0 auto;">
+
+        <!-- Header -->
+        <div style="background: linear-gradient(135deg, #124072 0%, #00aeda 100%); padding: 18px; border-radius: 12px; margin-bottom: 16px; text-align: center;">
+            <h3 style="color: #ffffff; font-size: 18px; font-weight: 700; margin: 0 0 4px 0;">
+                Alternativas Deportivas y Artísticas
+            </h3>
+            <p style="color: #d4edda; font-size: 13px; margin: 0;">
+                Bienestar Organizacional - {len(ACTIVIDADES_BIENESTAR)} actividades disponibles
+            </p>
+        </div>
+
+        <!-- Activity grid -->
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 14px;">
+            {cards_html}
+        </div>
+
+        <!-- Footer -->
+        <div style="background: #f8f9fa; border-radius: 8px; padding: 12px; margin-top: 16px; text-align: center;">
+            <p style="color: #6b7280; font-size: 12px; margin: 0;">Sin costo. Cupos limitados. Vigencia: febrero a noviembre. Asistencia regular obligatoria.</p>
+            <p style="color: #124072; font-size: 12px; font-weight: 600; margin: 6px 0 0 0;">Contacto: Ext. 4597 | Cel 3114129772 | bienestarorg@uninorte.edu.co</p>
+        </div>
+
+    </div>
+    '''
+
+    activity_names = ", ".join([a["name"] for a in ACTIVIDADES_BIENESTAR[:8]])
+    content_for_answers = [
+        f"Aquí tienes el catálogo completo de {len(ACTIVIDADES_BIENESTAR)} actividades deportivas y artísticas de Bienestar Organizacional. Entre las opciones: {activity_names}, y muchas más. Todas son sin costo, con cupos limitados, disponibles de febrero a noviembre. Puedes inscribirte directamente desde cada tarjeta."
+    ]
+
+    return {
+        "display": display_html,
+        "content_for_answers": content_for_answers
+    }
+
+
+def get_alternativas_deportivas(user_id: int, status: str) -> Dict:
+    """
+    Retorna información visual sobre el beneficio de Alternativas Deportivas y Artísticas
+    de Bienestar Organizacional - Gestión Humana, Universidad del Norte.
+    """
+    set_status(user_id, status, 6)
+
+    html_content = '''
+    <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 100%; margin: 0 auto;">
+
+        <!-- Header -->
+        <div style="background: linear-gradient(135deg, #124072 0%, #00aeda 100%); padding: 20px; border-radius: 12px; margin-bottom: 16px; text-align: center;">
+            <h3 style="color: #ffffff; font-size: 20px; font-weight: 700; margin: 0 0 6px 0;">
+                Alternativas Deportivas y Artísticas
+            </h3>
+            <p style="color: #d4edda; font-size: 14px; margin: 0; font-style: italic;">
+                Bienestar Organizacional - Gestión Humana
+            </p>
+        </div>
+
+        <!-- Info General -->
+        <div style="background: #f8f9fa; border: 1px solid #e2e8f0; border-radius: 12px; padding: 18px; margin-bottom: 12px;">
+            <h4 style="color: #124072; font-size: 15px; margin: 0 0 8px 0;">Información General</h4>
+            <div style="display: flex; flex-direction: column; gap: 6px;">
+                <div style="display: flex; align-items: center; gap: 10px;">
+                    <span style="font-size: 16px;">🏷️</span>
+                    <span style="color: #2d2d2d; font-size: 13px;"><strong>Beneficio:</strong> Alternativas deportivas y artísticas</span>
+                </div>
+                <div style="display: flex; align-items: center; gap: 10px;">
+                    <span style="font-size: 16px;">🏢</span>
+                    <span style="color: #2d2d2d; font-size: 13px;"><strong>Área responsable:</strong> Bienestar Organizacional – Gestión Humana</span>
+                </div>
+                <div style="display: flex; align-items: center; gap: 10px;">
+                    <span style="font-size: 16px;">📂</span>
+                    <span style="color: #2d2d2d; font-size: 13px;"><strong>Categoría:</strong> Actividades Deportivas y Artísticas</span>
+                </div>
+                <div style="display: flex; align-items: center; gap: 10px;">
+                    <span style="font-size: 16px;">🔗</span>
+                    <a href="https://www.uninorte.edu.co/web/direccion-de-gestion-humana/actividades_bienestar" target="_blank" style="color: #00aeda; font-size: 13px; text-decoration: none;">Portal de Gestión Humana - Actividades</a>
+                </div>
+            </div>
+        </div>
+
+        <!-- Descripción -->
+        <div style="background: #f8f9fa; border: 1px solid #e2e8f0; border-radius: 12px; padding: 18px; margin-bottom: 12px;">
+            <h4 style="color: #124072; font-size: 15px; margin: 0 0 8px 0;">¿Qué es?</h4>
+            <p style="color: #2d2d2d; font-size: 13px; line-height: 1.6; margin: 0;">
+                Conjunto de alternativas culturales, deportivas y artísticas orientadas a promover el bienestar integral, la creatividad y el aprovechamiento del tiempo libre de los colaboradores y sus familiares. Incluye clases y espacios formativos que fomentan la expresión artística, el desarrollo de habilidades culturales y la integración familiar.
+            </p>
+        </div>
+
+        <!-- Público -->
+        <div style="background: #f8f9fa; border: 1px solid #e2e8f0; border-radius: 12px; padding: 18px; margin-bottom: 12px;">
+            <h4 style="color: #124072; font-size: 15px; margin: 0 0 8px 0;">¿A quién aplica?</h4>
+            <p style="color: #2d2d2d; font-size: 13px; line-height: 1.6; margin: 0;">
+                Colaboradores(as) de planta, catedráticos y familiares beneficiarios de la Caja de Compensación Combarranquilla.
+            </p>
+        </div>
+
+        <!-- Requisitos -->
+        <div style="background: #f8f9fa; border: 1px solid #e2e8f0; border-radius: 12px; padding: 18px; margin-bottom: 12px;">
+            <h4 style="color: #124072; font-size: 15px; margin: 0 0 8px 0;">Requisitos</h4>
+            <p style="color: #2d2d2d; font-size: 13px; line-height: 1.6; margin: 0;">
+                Tener contrato laboral vigente en Uninorte y estar afiliado a Combarranquilla. Si no está afiliado, puede consultar con el asesor Jeremy Henao (Ext. 3557, Cel/WP 3174278674).
+            </p>
+        </div>
+
+        <!-- Condiciones -->
+        <div style="background: #f8f9fa; border: 1px solid #e2e8f0; border-radius: 12px; padding: 18px; margin-bottom: 12px;">
+            <h4 style="color: #124072; font-size: 15px; margin: 0 0 8px 0;">Condiciones</h4>
+            <div style="display: flex; flex-direction: column; gap: 8px;">
+                <div style="display: flex; align-items: center; gap: 10px;">
+                    <span style="font-size: 16px;">📅</span>
+                    <span style="color: #2d2d2d; font-size: 13px;"><strong>Vigencia:</strong> Febrero a noviembre</span>
+                </div>
+                <div style="display: flex; align-items: center; gap: 10px;">
+                    <span style="font-size: 16px;">⏰</span>
+                    <span style="color: #2d2d2d; font-size: 13px;"><strong>Horarios:</strong> Según cada actividad</span>
+                </div>
+                <div style="display: flex; align-items: center; gap: 10px;">
+                    <span style="font-size: 16px;">🎟️</span>
+                    <span style="color: #2d2d2d; font-size: 13px;"><strong>Cupos:</strong> Limitados</span>
+                </div>
+                <div style="display: flex; align-items: center; gap: 10px;">
+                    <span style="font-size: 16px;">💰</span>
+                    <span style="color: #2d2d2d; font-size: 13px;"><strong>Costo:</strong> Sin costo (asistencia regular obligatoria para mantener cupo)</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Inscripción -->
+        <div style="background: #f8f9fa; border: 1px solid #e2e8f0; border-radius: 12px; padding: 18px; margin-bottom: 12px;">
+            <h4 style="color: #124072; font-size: 15px; margin: 0 0 8px 0;">¿Cómo inscribirse?</h4>
+            <p style="color: #2d2d2d; font-size: 13px; line-height: 1.6; margin: 0;">
+                Ingrese a la página de actividades del portal de Gestión Humana y diligencie el enlace de inscripción. Recibirá un correo de confirmación. Si no hay cupos, quedará en lista de espera. Puede inscribirse en cualquier momento entre febrero y noviembre.
+            </p>
+        </div>
+
+        <!-- FAQs -->
+        <div style="background: #f8f9fa; border: 1px solid #e2e8f0; border-radius: 12px; padding: 18px; margin-bottom: 12px;">
+            <h4 style="color: #124072; font-size: 15px; margin: 0 0 10px 0;">Preguntas Frecuentes</h4>
+            <div style="margin-bottom: 10px;">
+                <p style="color: #124072; font-size: 13px; font-weight: 600; margin: 0 0 4px 0;">¿Puedo inscribir a mi sobrino en las clases?</p>
+                <p style="color: #2d2d2d; font-size: 13px; margin: 0;">La opción de inscribir sobrinos, nietos y hermanos solo aplica para quienes no tengan hijos inscritos en la actividad. En la página de cada actividad se describe a quiénes aplica.</p>
+            </div>
+            <div style="margin-bottom: 10px;">
+                <p style="color: #124072; font-size: 13px; font-weight: 600; margin: 0 0 4px 0;">¿Debo traer algo para las clases deportivas?</p>
+                <p style="color: #2d2d2d; font-size: 13px; margin: 0;">Ropa cómoda, hidratación y la mejor actitud.</p>
+            </div>
+            <div>
+                <p style="color: #124072; font-size: 13px; font-weight: 600; margin: 0 0 4px 0;">¿Puedo inscribirme en varias actividades?</p>
+                <p style="color: #2d2d2d; font-size: 13px; margin: 0;">Sí, los colaboradores pueden inscribirse en todas las actividades que prefieran.</p>
+            </div>
+        </div>
+
+        <!-- Contacto -->
+        <div style="background: linear-gradient(135deg, #124072 0%, #00aeda 100%); border-radius: 12px; padding: 18px; text-align: center;">
+            <h4 style="color: #ffffff; font-size: 15px; margin: 0 0 12px 0;">Contacto - Bienestar Organizacional</h4>
+            <div style="display: flex; flex-wrap: wrap; justify-content: center; gap: 8px;">
+                <span style="background: rgba(255,255,255,0.15); border-radius: 20px; padding: 6px 14px; color: #e2e8f0; font-size: 12px;">Ext. 4597</span>
+                <span style="background: rgba(255,255,255,0.15); border-radius: 20px; padding: 6px 14px; color: #e2e8f0; font-size: 12px;">Cel/WP: 3114129772</span>
+                <span style="background: rgba(255,255,255,0.15); border-radius: 20px; padding: 6px 14px; color: #e2e8f0; font-size: 12px;">bienestarorg@uninorte.edu.co</span>
+            </div>
+        </div>
+
+    </div>
+    '''
+
+    return {
+        "display": html_content,
+        "content_for_answers": [
+            "Alternativas Deportivas y Artísticas es un beneficio de Bienestar Organizacional para colaboradores de planta, catedráticos y familiares afiliados a Combarranquilla. Incluye actividades culturales, deportivas y artísticas sin costo, disponibles de febrero a noviembre. Se requiere contrato vigente y afiliación a Combarranquilla. Inscripción por la página de Gestión Humana. Contacto: Ext. 4597, Cel 3114129772, bienestarorg@uninorte.edu.co."
+        ]
+    }
+
+
+def get_flexibilidad_info(user_id: int, status: str) -> Dict:
+    """
+    Retorna información visual completa sobre las medidas de Flexibilidad Laboral
+    de Bienestar Organizacional - Gestión Humana, Universidad del Norte.
+    Incluye Flexiacademia (docentes), Flexiespacio (administrativos) y Flexitiempo.
+    """
+    set_status(user_id, status, 6)
+
+    html_content = '''
+    <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 100%; margin: 0 auto;">
+
+        <!-- Header -->
+        <div style="background: linear-gradient(135deg, #124072 0%, #00aeda 100%); padding: 20px; border-radius: 12px; margin-bottom: 16px; text-align: center;">
+            <h3 style="color: #ffffff; font-size: 20px; font-weight: 700; margin: 0 0 6px 0;">
+                Medidas de Flexibilidad Laboral
+            </h3>
+            <p style="color: #d4edda; font-size: 14px; margin: 0; font-style: italic;">
+                Bienestar Organizacional - Gestión Humana
+            </p>
+        </div>
+
+        <!-- FLEXIACADEMIA -->
+        <div style="background: #eef6ff; border: 2px solid #124072; border-radius: 12px; padding: 18px; margin-bottom: 16px;">
+            <h4 style="color: #124072; font-size: 17px; margin: 0 0 10px 0; border-bottom: 2px solid #00aeda; padding-bottom: 8px;">📚 FLEXIACADEMIA (Docentes)</h4>
+            <p style="color: #2d2d2d; font-size: 13px; line-height: 1.6; margin: 0 0 10px 0;">
+                Beneficio para docentes con contrato a término indefinido o fijo superior a 3 meses, a partir del tercer mes de vinculación.
+            </p>
+            <div style="background: #ffffff; border-radius: 8px; padding: 14px; margin-bottom: 10px;">
+                <p style="color: #124072; font-size: 13px; font-weight: 600; margin: 0 0 6px 0;">Docentes tiempo completo:</p>
+                <p style="color: #2d2d2d; font-size: 13px; margin: 0;">Máximo 1 día y medio por semana fuera del campus, previa conciliación con el director de departamento. Preferiblemente para producción intelectual.</p>
+            </div>
+            <div style="background: #ffffff; border-radius: 8px; padding: 14px; margin-bottom: 10px;">
+                <p style="color: #124072; font-size: 13px; font-weight: 600; margin: 0 0 6px 0;">Docentes medio tiempo:</p>
+                <p style="color: #2d2d2d; font-size: 13px; margin: 0;">Media jornada (4 horas) fuera del campus durante la semana. Opción de dividir en dos jornadas de 2 horas. Preferiblemente para producción intelectual.</p>
+            </div>
+            <div style="background: #fff3cd; border-radius: 8px; padding: 12px;">
+                <p style="color: #856404; font-size: 12px; margin: 0;">⚠️ No contempla realización de clases virtuales. No debe afectar presencialidad en clases, atención a estudiantes ni reuniones convocadas. Profesores extranjeros: durante intersemestral (junio-julio) pueden trabajar remoto hasta 1 semana desde su país de origen (no aplica para docentes colombianos).</p>
+            </div>
+        </div>
+
+        <!-- FLEXIESPACIO -->
+        <div style="background: #eef6ff; border: 2px solid #124072; border-radius: 12px; padding: 18px; margin-bottom: 16px;">
+            <h4 style="color: #124072; font-size: 17px; margin: 0 0 10px 0; border-bottom: 2px solid #00aeda; padding-bottom: 8px;">🏠 FLEXIESPACIO (Administrativos)</h4>
+            <p style="color: #2d2d2d; font-size: 13px; line-height: 1.6; margin: 0 0 10px 0;">
+                Para colaboradores con contrato a término indefinido o fijo superior a 3 meses, a partir del tercer mes de vinculación. Registro en sistema Agatha.
+            </p>
+            <div style="background: #ffffff; border-radius: 8px; padding: 14px; margin-bottom: 10px;">
+                <p style="color: #124072; font-size: 13px; font-weight: 600; margin: 0 0 6px 0;">4 días al mes:</p>
+                <p style="color: #2d2d2d; font-size: 13px; margin: 0;">Rector, Vicerrector, Decanos, Directores Administrativos, Jefes</p>
+            </div>
+            <div style="background: #ffffff; border-radius: 8px; padding: 14px; margin-bottom: 10px;">
+                <p style="color: #124072; font-size: 13px; font-weight: 600; margin: 0 0 6px 0;">3 días al mes:</p>
+                <p style="color: #2d2d2d; font-size: 13px; margin: 0;">Coordinadores, Asistentes, Analistas, Rol Profesionales</p>
+            </div>
+            <div style="background: #fff3cd; border-radius: 8px; padding: 12px;">
+                <p style="color: #856404; font-size: 12px; margin: 0;">⚠️ Variar los días (no siempre el mismo día). No se permiten 2 días laborales consecutivos. Opción de dividir 1 día en dos medias jornadas. Implica trabajar en la ciudad, no por fuera. No aplica para cargos técnicos, de soporte, estudiantes en práctica ni aprendices. Vigencia: febrero a noviembre.</p>
+            </div>
+        </div>
+
+        <!-- FLEXITIEMPO -->
+        <div style="background: #eef6ff; border: 2px solid #124072; border-radius: 12px; padding: 18px; margin-bottom: 16px;">
+            <h4 style="color: #124072; font-size: 17px; margin: 0 0 10px 0; border-bottom: 2px solid #00aeda; padding-bottom: 8px;">⏰ FLEXITIEMPO (Administrativos)</h4>
+            <p style="color: #2d2d2d; font-size: 13px; line-height: 1.6; margin: 0 0 10px 0;">
+                Alternativas de horario flexible. Registro en sistema Agatha. Vigencia trimestral (cada 3 meses se concilia con el jefe). Disponible de febrero a noviembre.
+            </p>
+
+            <div style="background: #ffffff; border-radius: 8px; padding: 14px; margin-bottom: 8px;">
+                <p style="color: #124072; font-size: 13px; font-weight: 600; margin: 0 0 4px 0;">Jornada L-V:</p>
+                <div style="font-size: 12px; color: #2d2d2d; line-height: 1.8;">
+                    <p style="margin: 2px 0;"><strong>Flexi1:</strong> L-J 7:30am-12:00pm y 1:30pm-5:30pm / V 8:00am-12:30pm y 2:00pm-5:30pm</p>
+                    <p style="margin: 2px 0;"><strong>Flexi2:</strong> L-J 8:00am-12:30pm y 2:00pm-6:00pm / V 8:00am-12:30pm y 1:30pm-5:00pm</p>
+                    <p style="margin: 2px 0;"><strong>Flexi3:</strong> L-J 8:00am-12:00pm y 2:00pm-6:30pm / V 8:00am-12:00pm y 1:30pm-5:30pm</p>
+                    <p style="margin: 2px 0;"><strong>Flexi4:</strong> Bono de Tiempo (medio día libre al mes, mañana o tarde) - Solo cargos técnicos y soporte</p>
+                </div>
+            </div>
+
+            <div style="background: #ffffff; border-radius: 8px; padding: 14px; margin-bottom: 8px;">
+                <p style="color: #124072; font-size: 13px; font-weight: 600; margin: 0 0 4px 0;">Jornada L-S:</p>
+                <div style="font-size: 12px; color: #2d2d2d; line-height: 1.8;">
+                    <p style="margin: 2px 0;"><strong>Flexi4:</strong> Bono de Tiempo (medio día libre al mes)</p>
+                    <p style="margin: 2px 0;"><strong>Flexi5:</strong> L-V 8:00am-12:30pm y 2:00pm-5:30pm / S 8:00am-10:00am</p>
+                </div>
+            </div>
+
+            <div style="background: #fff3cd; border-radius: 8px; padding: 12px;">
+                <p style="color: #856404; font-size: 12px; margin: 0;">⚠️ Flexi1, Flexi2, Flexi3 y Flexi5 son compatibles con Flexiespacio (solo para Rector, Vicerrector, Decanos, Dir. Admin, Jefes, Coordinadores, Asistentes, Analistas y Rol Profesional). Flexi4 (Bono de Tiempo) aplica exclusivamente para cargos técnicos, auxiliares y secretarios(as). No se permite acogerse a dos o más medidas de Flexitiempo simultáneamente. Solicitar con al menos 8 días de anticipación.</p>
+            </div>
+        </div>
+
+        <!-- Roles -->
+        <div style="background: #f8f9fa; border: 1px solid #e2e8f0; border-radius: 12px; padding: 18px; margin-bottom: 12px;">
+            <h4 style="color: #124072; font-size: 15px; margin: 0 0 10px 0;">Roles y Responsabilidades</h4>
+            <div style="margin-bottom: 10px;">
+                <p style="color: #124072; font-size: 13px; font-weight: 600; margin: 0 0 4px 0;">Jefe inmediato(a):</p>
+                <p style="color: #2d2d2d; font-size: 13px; margin: 0;">Conciliar modalidad sin afectar servicio. Establecer acuerdos de desempeño. Aprobar solicitudes en Agatha. Recordar seguridad de la información remota.</p>
+            </div>
+            <div style="margin-bottom: 10px;">
+                <p style="color: #124072; font-size: 13px; font-weight: 600; margin: 0 0 4px 0;">Colaborador(a):</p>
+                <p style="color: #2d2d2d; font-size: 13px; margin: 0;">Conciliar con el equipo. Registrar en Agatha. Garantizar disponibilidad y localización durante flexiespacio (es trabajo, no tiempo libre). Garantizar seguridad de información remota.</p>
+            </div>
+            <div>
+                <p style="color: #124072; font-size: 13px; font-weight: 600; margin: 0 0 4px 0;">Dirección de Gestión Humana:</p>
+                <p style="color: #2d2d2d; font-size: 13px; margin: 0;">Establecer medidas viables operativa y financieramente con aprobación de Alta Dirección.</p>
+            </div>
+        </div>
+
+        <!-- Nota importante -->
+        <div style="background: #fef2f2; border-left: 4px solid #dc2626; border-radius: 0 8px 8px 0; padding: 14px; margin-bottom: 12px;">
+            <p style="color: #991b1b; font-size: 13px; font-weight: 600; margin: 0 0 4px 0;">Importante</p>
+            <p style="color: #2d2d2d; font-size: 12px; margin: 0;">El cumplimiento de responsabilidades siempre prevalece sobre los beneficios de flexibilidad, especialmente en eventos institucionales, reuniones o actividades emergentes. Todas las medidas pueden ser sujetas a cambio por la Institución.</p>
+        </div>
+
+        <!-- Contacto -->
+        <div style="background: linear-gradient(135deg, #124072 0%, #00aeda 100%); border-radius: 12px; padding: 18px; text-align: center;">
+            <h4 style="color: #ffffff; font-size: 15px; margin: 0 0 12px 0;">Contacto - Bienestar Organizacional</h4>
+            <div style="display: flex; flex-wrap: wrap; justify-content: center; gap: 8px;">
+                <span style="background: rgba(255,255,255,0.15); border-radius: 20px; padding: 6px 14px; color: #e2e8f0; font-size: 12px;">Tel. 605-3509509</span>
+                <span style="background: rgba(255,255,255,0.15); border-radius: 20px; padding: 6px 14px; color: #e2e8f0; font-size: 12px;">Ext. 4597 - 3208</span>
+                <span style="background: rgba(255,255,255,0.15); border-radius: 20px; padding: 6px 14px; color: #e2e8f0; font-size: 12px;">Cel: 311 412 9772</span>
+            </div>
+        </div>
+
+    </div>
+    '''
+
+    return {
+        "display": html_content,
+        "content_for_answers": [
+            "Las medidas de flexibilidad laboral de Uninorte incluyen tres modalidades: FLEXIACADEMIA para docentes (hasta 1.5 días fuera del campus para tiempo completo, media jornada para medio tiempo, preferiblemente producción intelectual). FLEXIESPACIO para administrativos (4 días/mes para directivos, 3 días/mes para coordinadores y analistas, trabajo remoto en la ciudad). FLEXITIEMPO con horarios alternativos Flexi1 a Flexi5 y Bono de Tiempo para cargos técnicos. Todas requieren contrato de más de 3 meses, aplican de febrero a noviembre, registro en Agatha y conciliación con jefe inmediato. Contacto: Ext. 4597-3208, Cel 3114129772, Tel 605-3509509."
+        ]
+    }

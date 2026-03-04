@@ -1,6 +1,6 @@
 from apps.researcher.services import ResearcherService, RealtimeResearchService
 from apps.uniguide.services import UniGuideService, RealtimeUniGuideService
-from apps.mental.services import MentalHealthService
+from apps.mental.services import MentalHealthService, RealtimeBienestarService
 from apps.personal.services import PersonalAssistantService, RealtimePersonalAssistantService
 from apps.skills.services import SkillsTrainerService, RealtimeSkillsTrainerService
 from apps.recepcionist.services import RecepcionistService, RealtimeReceptionistService
@@ -54,6 +54,8 @@ class RealtimeRoleService:
             self.role = RealtimeSkillsTrainerService()
         elif role_id == 5:
             self.role = RealtimeReceptionistService()
+        elif role_id == 6 or role_id == "biela":
+            self.role = RealtimeBienestarService()
         elif role_id == "mompox" or role_id == 8:
             self.role = RealtimeMompoxService()
 
