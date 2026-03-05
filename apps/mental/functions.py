@@ -1071,21 +1071,21 @@ def get_catalogo_actividades(user_id: int, status: str) -> Dict:
     for i, act in enumerate(ACTIVIDADES_BIENESTAR):
         slides_html += f'''
                     <div class="carousel-item" style="min-width: 100%; display: flex; flex-direction: column; align-items: center;">
-                        <div style="width: 100%; height: 300px; overflow: hidden; border-radius: 8px;">
+                        <div style="width: 100%; height: 200px; overflow: hidden; border-radius: 8px;">
                             <img src="{act['image']}" alt="{act['name']}" style="width: 100%; height: 100%; object-fit: cover;" />
                         </div>
-                        <div style="width: 100%; padding: 16px 4px 8px 4px; text-align: center;">
-                            <div style="display: flex; align-items: center; justify-content: center; gap: 8px; margin-bottom: 8px;">
-                                <span style="font-size: 22px;">{act['icon']}</span>
-                                <h4 style="color: #124072; font-size: 16px; font-weight: 700; margin: 0;">{act['name']}</h4>
+                        <div style="width: 100%; padding: 10px 4px 6px 4px; text-align: center;">
+                            <div style="display: flex; align-items: center; justify-content: center; gap: 6px; margin-bottom: 4px;">
+                                <span style="font-size: 18px;">{act['icon']}</span>
+                                <h4 style="color: #124072; font-size: 14px; font-weight: 700; margin: 0;">{act['name']}</h4>
                             </div>
-                            <div style="display: flex; flex-direction: column; gap: 4px; margin-bottom: 12px; align-items: center;">
-                                <span style="color: #4b5563; font-size: 13px;">👥 {act['target']}</span>
-                                <span style="color: #4b5563; font-size: 13px;">📅 {act['schedule']}</span>
-                                <span style="color: #4b5563; font-size: 13px;">📍 {act['location']}</span>
+                            <div style="display: flex; flex-direction: column; gap: 2px; margin-bottom: 8px; align-items: center;">
+                                <span style="color: #4b5563; font-size: 11px;">👥 {act['target']}</span>
+                                <span style="color: #4b5563; font-size: 11px;">📅 {act['schedule']}</span>
+                                <span style="color: #4b5563; font-size: 11px;">📍 {act['location']}</span>
                             </div>
                             <a href="{act['enroll']}" target="_blank" rel="noopener noreferrer"
-                               style="display: inline-block; background: linear-gradient(90deg, #124072 60%, #00aeda 100%); color: white; padding: 10px 28px; border-radius: 6px; font-size: 13px; font-weight: 600; text-decoration: none;">
+                               style="display: inline-block; background: linear-gradient(90deg, #124072 60%, #00aeda 100%); color: white; padding: 7px 22px; border-radius: 6px; font-size: 12px; font-weight: 600; text-decoration: none;">
                                 Inscribirme
                             </a>
                         </div>
@@ -1109,7 +1109,7 @@ def get_catalogo_actividades(user_id: int, status: str) -> Dict:
             .carousel-header p {{ color: #d4edda; font-size: 0.8rem; margin: 0; }}
             .carousel {{ position: relative; overflow: hidden; border-radius: 8px; }}
             .carousel-inner {{ display: flex; transition: transform 0.5s ease; }}
-            .carousel-controls {{ position: absolute; top: 40%; left: 0; right: 0; display: flex; justify-content: space-between; padding: 0 10px; pointer-events: none; }}
+            .carousel-controls {{ position: absolute; top: 30%; left: 0; right: 0; display: flex; justify-content: space-between; padding: 0 10px; pointer-events: none; }}
             .carousel-control {{ width: 40px; height: 40px; background: rgba(255,255,255,0.85); border-radius: 50%; display: flex; align-items: center; justify-content: center; cursor: pointer; box-shadow: 0 2px 8px rgba(0,0,0,0.12); pointer-events: auto; transition: all 0.2s; border: none; font-size: 18px; color: #124072; }}
             .carousel-control:hover {{ background: white; box-shadow: 0 4px 12px rgba(0,0,0,0.18); }}
             .carousel-indicators {{ display: flex; justify-content: center; gap: 6px; margin-top: 14px; flex-wrap: wrap; }}
