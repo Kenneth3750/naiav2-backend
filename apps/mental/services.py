@@ -1,5 +1,5 @@
 from apps.mental.functions import mental_health_screening_tool, cae_info_for_user, personalized_wellness_plan, get_current_questionnaire_status
-from apps.mental.functions import get_alternativas_deportivas, get_flexibilidad_info, get_catalogo_actividades, ACTIVIDADES_BIENESTAR
+from apps.mental.functions import get_alternativas_deportivas, get_flexibilidad_info, get_catalogo_actividades, ACTIVIDADES_BIENESTAR, get_virtual_campus_tour, send_email, search_contacts_by_name, create_calendar_event
 import datetime
 from apps.chat.functions import get_last_four_messages
 from datetime import timedelta, timezone
@@ -533,6 +533,126 @@ class RealtimeBienestarService:
                     "required": ["user_id", "status"]
                 }
             },
+            {
+                "type": "function",
+                "name": "get_virtual_campus_tour",
+                "description": "Genera un tour virtual interactivo del campus de la Universidad del Norte con imágenes reales e información detallada de las instalaciones. Usar cuando el usuario pregunte por el campus, las instalaciones, quiera ver lugares de la universidad, pregunte por la biblioteca, el coliseo, la piscina, las canchas, los edificios, o cualquier lugar físico del campus.",
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "area_filter": {
+                            "type": "string",
+                            "description": "Filtrar por categoría: 'academic' para instalaciones académicas, 'recreational' para áreas deportivas y recreación, 'services' para servicios de apoyo. Dejar vacío para mostrar todas las categorías."
+                        },
+                        "place_name": {
+                            "type": "string",
+                            "description": "Nombre del lugar específico para ver en detalle. Ejemplos: 'biblioteca', 'polideportivo', 'cafeteria', 'piscina'. Dejar vacío para ver la vista general por categorías."
+                        },
+                        "language": {
+                            "type": "string",
+                            "description": "Idioma de la interfaz: 'Spanish' o 'English'. Usar el idioma del usuario."
+                        },
+                        "user_id": {
+                            "type": "integer",
+                            "description": "ID del usuario. Obtener del primer prompt de desarrollador"
+                        },
+                        "status": {
+                            "type": "string",
+                            "description": "Descripción concisa de la tarea (ej: 'Generando tour virtual del campus...') en el idioma del usuario"
+                        }
+                    },
+                    "required": ["language", "user_id", "status"]
+                }
+            },
+            {
+                "type": "function",
+                "name": "send_email",
+                "description": "Envía un correo electrónico desde la cuenta oficial de NAIA Uninorte. Puede enviar a cualquier dirección de correo. Si el usuario indica 'mi correo' o 'myself', se envía a su propio correo institucional. Usar cuando el usuario quiera enviar un correo, compartir información por email, o enviarse algo a sí mismo.",
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "to_email": {
+                            "type": "string",
+                            "description": "Dirección de correo del destinatario. Ejemplos: 'juan.perez@uninorte.edu.co', 'mi correo', 'myself'. Si el usuario dice 'mándamelo a mi correo' o similar, usar 'myself'."
+                        },
+                        "subject": {
+                            "type": "string",
+                            "description": "Asunto del correo"
+                        },
+                        "body": {
+                            "type": "string",
+                            "description": "Contenido del correo. Redactar de forma profesional y clara."
+                        },
+                        "user_id": {
+                            "type": "integer",
+                            "description": "ID del usuario. Obtener del primer prompt de desarrollador"
+                        },
+                        "status": {
+                            "type": "string",
+                            "description": "Descripción concisa de la tarea (ej: 'Enviando correo...') en el idioma del usuario"
+                        }
+                    },
+                    "required": ["to_email", "subject", "body", "user_id", "status"]
+                }
+            },
+            {
+                "type": "function",
+                "name": "search_contacts_by_name",
+                "description": "Busca contactos por nombre en el directorio de Microsoft Graph del usuario. Útil para encontrar correos, cargos y departamentos de personas de la universidad. Usar cuando el usuario pregunte por el contacto de alguien, quiera buscar a una persona, o necesite el correo de alguien.",
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "name": {
+                            "type": "string",
+                            "description": "Nombre a buscar. Puede ser parcial, nombre, apellido o nombre completo. Ejemplo: 'Juan', 'Pérez', 'Dr. García'"
+                        },
+                        "user_id": {
+                            "type": "integer",
+                            "description": "ID del usuario. Obtener del primer prompt de desarrollador"
+                        },
+                        "status": {
+                            "type": "string",
+                            "description": "Descripción concisa de la tarea (ej: 'Buscando contacto...') en el idioma del usuario"
+                        }
+                    },
+                    "required": ["name", "user_id", "status"]
+                }
+            },
+            {
+                "type": "function",
+                "name": "create_calendar_event",
+                "description": "Crea un evento o recordatorio en el calendario de Microsoft del usuario. Ideal para agendar reuniones, citas, recordatorios de entregas, sesiones deportivas, etc. Usar cuando el usuario quiera agendar algo, crear un recordatorio, o programar una actividad.",
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "title": {
+                            "type": "string",
+                            "description": "Título del evento. Ejemplos: 'Clase de Yoga', 'Reunión con Gestión Humana', 'Recordatorio: inscripción deportiva'"
+                        },
+                        "start_datetime": {
+                            "type": "string",
+                            "description": "Fecha y hora de inicio en formato YYYY-MM-DDTHH:MM (hora Colombia). Calcular según la solicitud del usuario y la fecha/hora actual del prompt."
+                        },
+                        "end_datetime": {
+                            "type": "string",
+                            "description": "Fecha y hora de fin en formato YYYY-MM-DDTHH:MM (hora Colombia). Si no se especifica, por defecto 1 hora después del inicio."
+                        },
+                        "user_id": {
+                            "type": "integer",
+                            "description": "ID del usuario. Obtener del primer prompt de desarrollador"
+                        },
+                        "description": {
+                            "type": "string",
+                            "description": "Descripción opcional del evento. Puede incluir detalles adicionales, ubicación o notas."
+                        },
+                        "status": {
+                            "type": "string",
+                            "description": "Descripción concisa de la tarea (ej: 'Creando recordatorio...') en el idioma del usuario"
+                        }
+                    },
+                    "required": ["title", "start_datetime", "end_datetime", "user_id", "status"]
+                }
+            },
         ]
 
         gmt_minus_5 = timezone(timedelta(hours=-5))
@@ -640,6 +760,10 @@ Eres NAIA, la asistente virtual de **Bienestar Organizacional - Gestión Humana*
 - **Si preguntan por deportes/actividades/arte de forma general, llamar get_alternativas_deportivas INMEDIATAMENTE.**
 - **Si quieren ver el catálogo, las actividades disponibles, inscribirse, o preguntan por una actividad específica (natación, fútbol, yoga, etc.), llamar get_catalogo_actividades INMEDIATAMENTE.**
 - **Si preguntan por flexibilidad/remoto/horarios/Agatha, llamar get_flexibilidad_info INMEDIATAMENTE.**
+- **Si preguntan por el campus, instalaciones, edificios, biblioteca, coliseo, piscina, canchas, tour virtual, o cualquier lugar físico de la universidad, llamar get_virtual_campus_tour INMEDIATAMENTE.**
+- **Si quieren enviar un correo, compartir info por email, o enviarse algo a sí mismos, llamar send_email INMEDIATAMENTE.**
+- **Si quieren buscar el contacto de alguien, saber el correo de una persona, o encontrar a alguien en el directorio, llamar search_contacts_by_name INMEDIATAMENTE.**
+- **Si quieren agendar una reunión, crear un recordatorio, programar algo en el calendario, llamar create_calendar_event INMEDIATAMENTE.**
 
 **ANTES de cualquier tool call, usar UNA frase variada:**
 
@@ -660,6 +784,28 @@ Eres NAIA, la asistente virtual de **Bienestar Organizacional - Gestión Humana*
 - "Déjame enseñarte las opciones de flexibilidad"
 - "Preparando la información de flexibilidad"
 - "Voy a mostrarte las modalidades de trabajo flexible"
+
+### Tour Virtual del Campus:
+- "Te muestro las instalaciones del campus"
+- "Déjame enseñarte un tour virtual de la universidad"
+- "Preparando el tour virtual del campus"
+- "Voy a mostrarte ese lugar en el campus"
+- "Un momento, te traigo las imágenes de esa instalación"
+
+### Enviar Correo:
+- "Enviando el correo ahora mismo"
+- "Preparando y enviando tu correo"
+- "Un momento, envío eso por correo"
+
+### Buscar Contacto:
+- "Buscando ese contacto en el directorio"
+- "Déjame buscar esa persona"
+- "Consultando el directorio de la universidad"
+
+### Agendar Evento/Recordatorio:
+- "Creando ese evento en tu calendario"
+- "Agendando eso para ti"
+- "Programando el recordatorio ahora mismo"
 
 ## Available Functions
 
@@ -716,6 +862,85 @@ Eres NAIA, la asistente virtual de **Bienestar Organizacional - Gestión Humana*
 - Según su perfil (docente/administrativo), enfocarse en la sección relevante
 - Mencionar que debe registrar en Agatha y conciliar con jefe inmediato
 
+### 4. get_virtual_campus_tour
+**WHEN TO USE:**
+- Usuario pregunta por el campus, instalaciones, edificios de la universidad
+- Menciona un lugar específico: biblioteca, coliseo, piscina, canchas, cafetería, etc.
+- Quiere ver un tour virtual o conocer las instalaciones
+- Pregunta "¿dónde queda...?", "¿cómo es la biblioteca?", "muéstrame el campus"
+- **CUALQUIER pregunta sobre lugares físicos de la Universidad del Norte**
+
+**REQUIRED PARAMETERS:**
+- language: "Spanish" o "English" según el idioma del usuario
+- user_id: {user_id}
+- status: "Generando tour virtual..." o similar
+
+**OPTIONAL PARAMETERS:**
+- area_filter: "academic", "recreational" o "services" para filtrar por categoría
+- place_name: nombre del lugar específico (ej: "biblioteca", "polideportivo")
+
+**RESULT HANDLING:**
+- Si el resultado tiene "display" y "graph", referir al usuario a la información e imágenes en pantalla
+- Si pregunta por un lugar específico, usar place_name para mostrar la vista detallada
+- Si quiere ver todo el campus, dejar area_filter y place_name vacíos
+- Destacar los servicios y horarios del lugar mostrado
+
+### 5. send_email
+**WHEN TO USE:**
+- Usuario quiere enviar un correo electrónico
+- Quiere compartir información por email
+- Quiere enviarse algo a su propio correo ("mándamelo a mi correo")
+- **CUALQUIER solicitud de envío de correo**
+
+**REQUIRED PARAMETERS:**
+- to_email: dirección del destinatario o "myself" si es a sí mismo
+- subject: asunto del correo
+- body: contenido del correo (redactar profesionalmente)
+- user_id: {user_id}
+- status: "Enviando correo..." o similar
+
+**RESULT HANDLING:**
+- Confirmar al usuario que el correo fue enviado exitosamente
+- Si hay error, informar y sugerir alternativas
+
+### 6. search_contacts_by_name
+**WHEN TO USE:**
+- Usuario pregunta por el contacto de alguien
+- Quiere buscar una persona en el directorio
+- Necesita el correo, cargo o departamento de alguien
+- Pregunta "¿cuál es el correo de...?", "búscame a..."
+
+**REQUIRED PARAMETERS:**
+- name: nombre a buscar (parcial o completo)
+- user_id: {user_id}
+- status: "Buscando contacto..." o similar
+
+**RESULT HANDLING:**
+- Mostrar los contactos encontrados con nombre, correo, cargo y departamento
+- Si hay múltiples resultados, presentar las opciones al usuario
+
+### 7. create_calendar_event
+**WHEN TO USE:**
+- Usuario quiere agendar una reunión o cita
+- Quiere crear un recordatorio
+- Quiere programar algo en su calendario
+- Menciona fechas/horas para agendar actividades
+- Pregunta "recuérdame...", "agéndame...", "programa..."
+
+**REQUIRED PARAMETERS:**
+- title: título del evento
+- start_datetime: fecha/hora inicio en YYYY-MM-DDTHH:MM (hora Colombia)
+- end_datetime: fecha/hora fin en YYYY-MM-DDTHH:MM (hora Colombia). Si no especifica, 1 hora después
+- user_id: {user_id}
+- status: "Creando recordatorio..." o similar
+
+**OPTIONAL PARAMETERS:**
+- description: descripción adicional del evento
+
+**RESULT HANDLING:**
+- Confirmar que el evento fue creado exitosamente con fecha y hora
+- Mencionar que se creó un recordatorio 15 minutos antes
+
 # Scope & Limitations
 
 ## PUEDE ayudar con:
@@ -723,15 +948,17 @@ Eres NAIA, la asistente virtual de **Bienestar Organizacional - Gestión Humana*
 - Medidas de flexibilidad laboral (Flexiacademia, Flexiespacio, Flexitiempo)
 - Contacto y canales de Bienestar Organizacional
 - Requisitos, condiciones y procesos de inscripción de estos beneficios
+- Tour virtual del campus de la Universidad del Norte (instalaciones, edificios, servicios)
+- Enviar correos electrónicos desde NAIA
+- Buscar contactos en el directorio de la universidad
+- Agendar reuniones y recordatorios en el calendario
 
 ## NO PUEDE ayudar con:
-- Temas fuera de estos dos beneficios institucionales
-- Otros beneficios de Gestión Humana que no sean estos
 - Asesoría legal, médica o financiera
 - Temas académicos o de admisiones
 
 ## Respuesta fuera de alcance:
-"No puedo ayudarte con eso directamente, pero sí te puedo asistir con información sobre alternativas deportivas y artísticas o medidas de flexibilidad laboral. ¿Te interesa alguno de estos temas?"
+"No puedo ayudarte con eso directamente, pero sí te puedo asistir con información sobre beneficios de bienestar, tour del campus, enviar correos, buscar contactos o agendar eventos. ¿Te interesa alguno de estos?"
 
 # Conversation Flow
 

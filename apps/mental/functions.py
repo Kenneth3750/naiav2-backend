@@ -5,6 +5,9 @@ from apps.status.services import set_status
 from openai import OpenAI
 from serpapi import GoogleSearch
 from apps.chat.repositories import redis_pool
+from apps.uniguide.functions import get_virtual_campus_tour
+from apps.recepcionist.functions import send_email
+from apps.personal.functions import search_contacts_by_name, create_calendar_event
 import redis
 load_dotenv()
 
@@ -1056,75 +1059,157 @@ ACTIVIDADES_BIENESTAR = [
 def get_catalogo_actividades(user_id: int, status: str) -> Dict:
     """
     Muestra el catálogo visual completo de todas las alternativas deportivas y artísticas
-    de Bienestar Organizacional con imágenes, horarios, ubicaciones y enlaces de inscripción.
+    de Bienestar Organizacional en formato carrusel con imágenes, horarios, ubicaciones
+    y enlaces de inscripción.
     """
     set_status(user_id, status, 6)
 
-    cards_html = ""
-    for act in ACTIVIDADES_BIENESTAR:
-        cards_html += f'''
-        <div style="background: #ffffff; border: 1px solid #e5e7eb; border-radius: 10px; overflow: hidden; box-shadow: 0 2px 8px rgba(0,0,0,0.06);">
-            <div style="width: 100%; height: 160px; overflow: hidden;">
-                <img src="{act['image']}" alt="{act['name']}" style="width: 100%; height: 100%; object-fit: cover;" />
-            </div>
-            <div style="padding: 14px 16px;">
-                <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 8px;">
-                    <span style="font-size: 20px;">{act['icon']}</span>
-                    <h4 style="color: #124072; font-size: 14px; font-weight: 600; margin: 0;">{act['name']}</h4>
-                </div>
-                <div style="display: flex; flex-direction: column; gap: 4px; margin-bottom: 10px;">
-                    <div style="display: flex; align-items: center; gap: 6px;">
-                        <span style="font-size: 12px;">👥</span>
-                        <span style="color: #2d2d2d; font-size: 12px;">{act['target']}</span>
+    total = len(ACTIVIDADES_BIENESTAR)
+
+    slides_html = ""
+    indicators_html = ""
+    for i, act in enumerate(ACTIVIDADES_BIENESTAR):
+        slides_html += f'''
+                    <div class="carousel-item" style="min-width: 100%; display: flex; flex-direction: column; align-items: center;">
+                        <div style="width: 100%; height: 300px; overflow: hidden; border-radius: 8px;">
+                            <img src="{act['image']}" alt="{act['name']}" style="width: 100%; height: 100%; object-fit: cover;" />
+                        </div>
+                        <div style="width: 100%; padding: 16px 4px 8px 4px; text-align: center;">
+                            <div style="display: flex; align-items: center; justify-content: center; gap: 8px; margin-bottom: 8px;">
+                                <span style="font-size: 22px;">{act['icon']}</span>
+                                <h4 style="color: #124072; font-size: 16px; font-weight: 700; margin: 0;">{act['name']}</h4>
+                            </div>
+                            <div style="display: flex; flex-direction: column; gap: 4px; margin-bottom: 12px; align-items: center;">
+                                <span style="color: #4b5563; font-size: 13px;">👥 {act['target']}</span>
+                                <span style="color: #4b5563; font-size: 13px;">📅 {act['schedule']}</span>
+                                <span style="color: #4b5563; font-size: 13px;">📍 {act['location']}</span>
+                            </div>
+                            <a href="{act['enroll']}" target="_blank" rel="noopener noreferrer"
+                               style="display: inline-block; background: linear-gradient(90deg, #124072 60%, #00aeda 100%); color: white; padding: 10px 28px; border-radius: 6px; font-size: 13px; font-weight: 600; text-decoration: none;">
+                                Inscribirme
+                            </a>
+                        </div>
                     </div>
-                    <div style="display: flex; align-items: center; gap: 6px;">
-                        <span style="font-size: 12px;">📅</span>
-                        <span style="color: #2d2d2d; font-size: 12px;">{act['schedule']}</span>
-                    </div>
-                    <div style="display: flex; align-items: center; gap: 6px;">
-                        <span style="font-size: 12px;">📍</span>
-                        <span style="color: #2d2d2d; font-size: 12px;">{act['location']}</span>
-                    </div>
-                </div>
-                <a href="{act['enroll']}" target="_blank" rel="noopener noreferrer" style="display: block; text-align: center; background: linear-gradient(90deg, #124072 60%, #00aeda 100%); color: white; padding: 8px 12px; border-radius: 6px; font-size: 12px; font-weight: 600; text-decoration: none;">Inscribirme</a>
-            </div>
-        </div>
         '''
+        active_class = "active" if i == 0 else ""
+        indicators_html += f'<span class="carousel-indicator {active_class}" data-index="{i}" style="width: 8px; height: 8px; border-radius: 50%; background-color: {"#124072" if i == 0 else "#cbd5e1"}; cursor: pointer; transition: background-color 0.3s;"></span>'
 
-    display_html = f'''
-    <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 100%; margin: 0 auto;">
-
-        <!-- Header -->
-        <div style="background: linear-gradient(135deg, #124072 0%, #00aeda 100%); padding: 18px; border-radius: 12px; margin-bottom: 16px; text-align: center;">
-            <h3 style="color: #ffffff; font-size: 18px; font-weight: 700; margin: 0 0 4px 0;">
-                Alternativas Deportivas y Artísticas
-            </h3>
-            <p style="color: #d4edda; font-size: 13px; margin: 0;">
-                Bienestar Organizacional - {len(ACTIVIDADES_BIENESTAR)} actividades disponibles
-            </p>
+    carousel_html = f'''
+    <!DOCTYPE html>
+    <html lang="es">
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <style>
+            * {{ box-sizing: border-box; margin: 0; padding: 0; }}
+            body {{ font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background-color: #f8fafc; }}
+            .carousel-container {{ width: 100%; max-width: 800px; margin: 0 auto; padding: 20px; background: white; border-radius: 12px; box-shadow: 0 2px 10px rgba(0,0,0,0.05); }}
+            .carousel-header {{ background: linear-gradient(135deg, #124072 0%, #00aeda 100%); padding: 16px; border-radius: 10px; text-align: center; margin-bottom: 16px; }}
+            .carousel-header h2 {{ color: #fff; font-size: 1.15rem; font-weight: 700; margin: 0 0 4px 0; }}
+            .carousel-header p {{ color: #d4edda; font-size: 0.8rem; margin: 0; }}
+            .carousel {{ position: relative; overflow: hidden; border-radius: 8px; }}
+            .carousel-inner {{ display: flex; transition: transform 0.5s ease; }}
+            .carousel-controls {{ position: absolute; top: 40%; left: 0; right: 0; display: flex; justify-content: space-between; padding: 0 10px; pointer-events: none; }}
+            .carousel-control {{ width: 40px; height: 40px; background: rgba(255,255,255,0.85); border-radius: 50%; display: flex; align-items: center; justify-content: center; cursor: pointer; box-shadow: 0 2px 8px rgba(0,0,0,0.12); pointer-events: auto; transition: all 0.2s; border: none; font-size: 18px; color: #124072; }}
+            .carousel-control:hover {{ background: white; box-shadow: 0 4px 12px rgba(0,0,0,0.18); }}
+            .carousel-indicators {{ display: flex; justify-content: center; gap: 6px; margin-top: 14px; flex-wrap: wrap; }}
+            .carousel-counter {{ text-align: center; margin-top: 8px; font-size: 0.8rem; color: #64748b; }}
+            .carousel-footer {{ background: #f8f9fa; border-radius: 8px; padding: 10px; margin-top: 14px; text-align: center; }}
+            .carousel-footer p {{ color: #6b7280; font-size: 11px; margin: 0; }}
+            .carousel-footer .contact {{ color: #124072; font-weight: 600; margin-top: 4px; }}
+        </style>
+    </head>
+    <body>
+        <div class="carousel-container">
+            <div class="carousel-header">
+                <h2>Alternativas Deportivas y Artisticas</h2>
+                <p>{total} actividades disponibles</p>
+            </div>
+            <div class="carousel" id="actCarousel">
+                <div class="carousel-inner" id="carouselInner">
+                    {slides_html}
+                </div>
+                <div class="carousel-controls">
+                    <button class="carousel-control" id="prevBtn">&#8249;</button>
+                    <button class="carousel-control" id="nextBtn">&#8250;</button>
+                </div>
+            </div>
+            <div class="carousel-indicators" id="indicators">
+                {indicators_html}
+            </div>
+            <div class="carousel-counter" id="counter">1 / {total}</div>
+            <div class="carousel-footer">
+                <p>Sin costo &middot; Cupos limitados &middot; Febrero a noviembre &middot; Asistencia regular obligatoria</p>
+                <p class="contact">Ext. 4597 | Cel 3114129772 | bienestarorg@uninorte.edu.co</p>
+            </div>
         </div>
+        <script>
+            document.addEventListener('DOMContentLoaded', function() {{
+                const inner = document.getElementById('carouselInner');
+                const indicators = document.querySelectorAll('.carousel-indicator');
+                const counter = document.getElementById('counter');
+                const total = {total};
+                let current = 0;
 
-        <!-- Activity grid -->
-        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 14px;">
-            {cards_html}
-        </div>
+                function update() {{
+                    inner.style.transform = 'translateX(-' + (current * 100) + '%)';
+                    indicators.forEach((ind, i) => {{
+                        ind.style.backgroundColor = i === current ? '#124072' : '#cbd5e1';
+                        ind.style.transform = i === current ? 'scale(1.3)' : 'scale(1)';
+                    }});
+                    counter.textContent = (current + 1) + ' / ' + total;
+                }}
 
-        <!-- Footer -->
-        <div style="background: #f8f9fa; border-radius: 8px; padding: 12px; margin-top: 16px; text-align: center;">
-            <p style="color: #6b7280; font-size: 12px; margin: 0;">Sin costo. Cupos limitados. Vigencia: febrero a noviembre. Asistencia regular obligatoria.</p>
-            <p style="color: #124072; font-size: 12px; font-weight: 600; margin: 6px 0 0 0;">Contacto: Ext. 4597 | Cel 3114129772 | bienestarorg@uninorte.edu.co</p>
-        </div>
+                document.getElementById('nextBtn').addEventListener('click', function() {{
+                    current = (current + 1) % total;
+                    update();
+                }});
 
-    </div>
+                document.getElementById('prevBtn').addEventListener('click', function() {{
+                    current = (current - 1 + total) % total;
+                    update();
+                }});
+
+                indicators.forEach(function(ind) {{
+                    ind.addEventListener('click', function() {{
+                        current = parseInt(this.getAttribute('data-index'));
+                        update();
+                    }});
+                }});
+
+                let autoplay = setInterval(function() {{
+                    current = (current + 1) % total;
+                    update();
+                }}, 5000);
+
+                const container = document.querySelector('.carousel-container');
+                container.addEventListener('mouseenter', function() {{ clearInterval(autoplay); }});
+                container.addEventListener('mouseleave', function() {{
+                    autoplay = setInterval(function() {{
+                        current = (current + 1) % total;
+                        update();
+                    }}, 5000);
+                }});
+
+                document.addEventListener('keydown', function(e) {{
+                    if (e.key === 'ArrowLeft') {{ current = (current - 1 + total) % total; update(); }}
+                    if (e.key === 'ArrowRight') {{ current = (current + 1) % total; update(); }}
+                }});
+
+                update();
+            }});
+        </script>
+    </body>
+    </html>
     '''
 
     activity_names = ", ".join([a["name"] for a in ACTIVIDADES_BIENESTAR[:8]])
     content_for_answers = [
-        f"Aquí tienes el catálogo completo de {len(ACTIVIDADES_BIENESTAR)} actividades deportivas y artísticas de Bienestar Organizacional. Entre las opciones: {activity_names}, y muchas más. Todas son sin costo, con cupos limitados, disponibles de febrero a noviembre. Puedes inscribirte directamente desde cada tarjeta."
+        f"Aqui tienes el catalogo completo de {len(ACTIVIDADES_BIENESTAR)} actividades deportivas y artisticas de Bienestar Organizacional. Entre las opciones: {activity_names}, y muchas mas. Todas son sin costo, con cupos limitados, disponibles de febrero a noviembre. Puedes inscribirte directamente desde cada tarjeta."
     ]
 
     return {
-        "display": display_html,
+        "graph": carousel_html,
         "content_for_answers": content_for_answers
     }
 
