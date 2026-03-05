@@ -2,7 +2,7 @@ from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status
 from rest_framework.decorators import api_view
-from apps.mental.functions import get_alternativas_deportivas, get_flexibilidad_info, get_catalogo_actividades, get_virtual_campus_tour, send_email, search_contacts_by_name, create_calendar_event
+from apps.mental.functions import get_alternativas_deportivas, get_flexibilidad_info, get_catalogo_actividades, get_virtual_campus_tour, send_email, search_contacts_by_name, create_calendar_event, read_calendar_events, read_user_emails
 import time
 import logging
 
@@ -259,6 +259,50 @@ def create_event_view(request):
         return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
+@api_view(['POST'])
+def read_calendar_view(request):
+    """Leer eventos del calendario"""
+    try:
+        start_date = request.data.get('start_date')
+        end_date = request.data.get('end_date')
+        user_id = request.data.get('user_id')
+        status_msg = request.data.get('status')
+
+        if not all([start_date, end_date, user_id, status_msg]):
+            return Response(
+                {'error': 'start_date, end_date, user_id, and status are required'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        result = read_calendar_events(start_date, end_date, user_id, status_msg)
+        return Response(result)
+    except Exception as e:
+        logging.error(f"Error in read_calendar_view: {str(e)}")
+        return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+@api_view(['POST'])
+def read_emails_view(request):
+    """Leer correos del usuario"""
+    try:
+        user_id = request.data.get('user_id')
+        max_emails = request.data.get('max_emails', 10)
+        unread_only = request.data.get('unread_only', False)
+        search_query = request.data.get('search_query', None)
+        read_full_content = request.data.get('read_full_content', False)
+        specific_subject = request.data.get('specific_subject', None)
+        status_msg = request.data.get('status', 'Consultando correos...')
+
+        if not user_id:
+            return Response({'error': 'user_id is required'}, status=status.HTTP_400_BAD_REQUEST)
+
+        result = read_user_emails(user_id, max_emails, unread_only, search_query, read_full_content, specific_subject, status_msg)
+        return Response(result)
+    except Exception as e:
+        logging.error(f"Error in read_emails_view: {str(e)}")
+        return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
 @api_view(['GET'])
 def health_check(request):
     return Response({
@@ -321,6 +365,21 @@ def get_available_functions(request):
             "method": "POST",
             "required_params": ["title", "start_datetime", "end_datetime", "user_id", "status"],
             "optional_params": ["description"]
+        },
+        {
+            "name": "read_calendar_events",
+            "description": "Leer eventos del calendario para un rango de fechas",
+            "endpoint": "/api/v1/mental/read-calendar/",
+            "method": "POST",
+            "required_params": ["start_date", "end_date", "user_id", "status"]
+        },
+        {
+            "name": "read_user_emails",
+            "description": "Leer correos del usuario desde Microsoft Outlook",
+            "endpoint": "/api/v1/mental/read-emails/",
+            "method": "POST",
+            "required_params": ["user_id", "status"],
+            "optional_params": ["max_emails", "unread_only", "search_query", "read_full_content", "specific_subject"]
         },
     ]
 

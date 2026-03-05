@@ -1,5 +1,5 @@
 from apps.mental.functions import mental_health_screening_tool, cae_info_for_user, personalized_wellness_plan, get_current_questionnaire_status
-from apps.mental.functions import get_alternativas_deportivas, get_flexibilidad_info, get_catalogo_actividades, ACTIVIDADES_BIENESTAR, get_virtual_campus_tour, send_email, search_contacts_by_name, create_calendar_event
+from apps.mental.functions import get_alternativas_deportivas, get_flexibilidad_info, get_catalogo_actividades, ACTIVIDADES_BIENESTAR, get_virtual_campus_tour, send_email, search_contacts_by_name, create_calendar_event, read_calendar_events, read_user_emails
 import datetime
 from apps.chat.functions import get_last_four_messages
 from datetime import timedelta, timezone
@@ -653,6 +653,72 @@ class RealtimeBienestarService:
                     "required": ["title", "start_datetime", "end_datetime", "user_id", "status"]
                 }
             },
+            {
+                "type": "function",
+                "name": "read_calendar_events",
+                "description": "Lee y muestra los eventos del calendario de Microsoft del usuario para un rango de fechas. Ideal para consultar la agenda, ver reuniones programadas o planificar. Usar cuando el usuario pregunte qué tiene en su agenda, qué reuniones tiene, qué eventos hay esta semana/hoy/mañana.",
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "start_date": {
+                            "type": "string",
+                            "description": "Fecha de inicio en formato YYYY-MM-DD. Calcular según la solicitud del usuario y la fecha actual de Bogotá del prompt."
+                        },
+                        "end_date": {
+                            "type": "string",
+                            "description": "Fecha de fin en formato YYYY-MM-DD. Calcular según la solicitud del usuario y la fecha actual de Bogotá del prompt."
+                        },
+                        "user_id": {
+                            "type": "integer",
+                            "description": "ID del usuario. Obtener del primer prompt de desarrollador"
+                        },
+                        "status": {
+                            "type": "string",
+                            "description": "Descripción concisa de la tarea (ej: 'Consultando calendario...') en el idioma del usuario"
+                        }
+                    },
+                    "required": ["start_date", "end_date", "user_id", "status"]
+                }
+            },
+            {
+                "type": "function",
+                "name": "read_user_emails",
+                "description": "Lee los correos del usuario desde Microsoft Outlook sin marcarlos como leídos. Puede filtrar por no leídos, buscar por texto, o leer contenido completo de un correo específico. Usar cuando el usuario pregunte por sus correos, emails, bandeja de entrada, si tiene mensajes nuevos, o quiera buscar un correo específico.",
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "user_id": {
+                            "type": "integer",
+                            "description": "ID del usuario. Obtener del primer prompt de desarrollador"
+                        },
+                        "max_emails": {
+                            "type": "integer",
+                            "description": "Número máximo de correos a recuperar (default: 10, max: 50)"
+                        },
+                        "unread_only": {
+                            "type": "boolean",
+                            "description": "Si es true, solo retorna correos no leídos (default: false)"
+                        },
+                        "search_query": {
+                            "type": "string",
+                            "description": "Búsqueda por asunto, remitente o contenido (opcional)"
+                        },
+                        "read_full_content": {
+                            "type": "boolean",
+                            "description": "Si es true, lee el contenido completo del correo. Usar cuando el usuario pregunte por detalles de un correo. Default: false"
+                        },
+                        "specific_subject": {
+                            "type": "string",
+                            "description": "OPTIMIZACIÓN: Usar cuando el usuario pregunte por un correo específico ya mostrado. Poner el asunto exacto o parcial."
+                        },
+                        "status": {
+                            "type": "string",
+                            "description": "Descripción concisa de la tarea (ej: 'Consultando correos...') en el idioma del usuario"
+                        }
+                    },
+                    "required": ["user_id", "status"]
+                }
+            },
         ]
 
         gmt_minus_5 = timezone(timedelta(hours=-5))
@@ -764,6 +830,8 @@ Eres NAIA, la asistente virtual de **Bienestar Organizacional - Gestión Humana*
 - **Si quieren enviar un correo, compartir info por email, o enviarse algo a sí mismos, llamar send_email INMEDIATAMENTE.**
 - **Si quieren buscar el contacto de alguien, saber el correo de una persona, o encontrar a alguien en el directorio, llamar search_contacts_by_name INMEDIATAMENTE.**
 - **Si quieren agendar una reunión, crear un recordatorio, programar algo en el calendario, llamar create_calendar_event INMEDIATAMENTE.**
+- **Si preguntan por su agenda, reuniones, eventos, qué tienen hoy/esta semana, llamar read_calendar_events INMEDIATAMENTE.**
+- **Si preguntan por sus correos, emails, bandeja de entrada, mensajes nuevos, o quieren buscar un correo, llamar read_user_emails INMEDIATAMENTE.**
 
 **ANTES de cualquier tool call, usar UNA frase variada:**
 
@@ -806,6 +874,16 @@ Eres NAIA, la asistente virtual de **Bienestar Organizacional - Gestión Humana*
 - "Creando ese evento en tu calendario"
 - "Agendando eso para ti"
 - "Programando el recordatorio ahora mismo"
+
+### Consultar Calendario:
+- "Revisando tu agenda"
+- "Consultando tus eventos"
+- "Déjame ver qué tienes programado"
+
+### Leer Correos:
+- "Revisando tu bandeja de entrada"
+- "Consultando tus correos"
+- "Déjame ver tus emails"
 
 ## Available Functions
 
@@ -941,6 +1019,46 @@ Eres NAIA, la asistente virtual de **Bienestar Organizacional - Gestión Humana*
 - Confirmar que el evento fue creado exitosamente con fecha y hora
 - Mencionar que se creó un recordatorio 15 minutos antes
 
+### 8. read_calendar_events
+**WHEN TO USE:**
+- Usuario pregunta por su agenda, eventos o reuniones
+- Quiere saber qué tiene hoy, esta semana, mañana, etc.
+- Pregunta "¿qué tengo pendiente?", "¿qué reuniones tengo?"
+
+**REQUIRED PARAMETERS:**
+- start_date: fecha inicio en YYYY-MM-DD (calcular según solicitud y fecha actual)
+- end_date: fecha fin en YYYY-MM-DD
+- user_id: {user_id}
+- status: "Consultando calendario..." o similar
+
+**RESULT HANDLING:**
+- Referir al usuario al display HTML con los eventos
+- Resumir los eventos más importantes
+- Si no hay eventos, informar que la agenda está libre
+
+### 9. read_user_emails
+**WHEN TO USE:**
+- Usuario pregunta por sus correos, emails, bandeja de entrada
+- Quiere ver si tiene mensajes nuevos o no leídos
+- Busca un correo específico por asunto o remitente
+- Pregunta "¿tengo correos nuevos?", "muéstrame mis emails"
+
+**REQUIRED PARAMETERS:**
+- user_id: {user_id}
+- status: "Consultando correos..." o similar
+
+**OPTIONAL PARAMETERS:**
+- max_emails: cantidad máxima (default 10, max 50)
+- unread_only: true para solo no leídos
+- search_query: texto a buscar
+- read_full_content: true para leer contenido completo
+- specific_subject: asunto específico para optimizar búsqueda
+
+**RESULT HANDLING:**
+- Referir al usuario al display HTML con los correos
+- Resumir cantidad de correos y destacar los más recientes/importantes
+- Si pide detalle de uno, usar specific_subject con read_full_content
+
 # Scope & Limitations
 
 ## PUEDE ayudar con:
@@ -952,6 +1070,8 @@ Eres NAIA, la asistente virtual de **Bienestar Organizacional - Gestión Humana*
 - Enviar correos electrónicos desde NAIA
 - Buscar contactos en el directorio de la universidad
 - Agendar reuniones y recordatorios en el calendario
+- Consultar eventos del calendario
+- Leer correos electrónicos del usuario
 
 ## NO PUEDE ayudar con:
 - Asesoría legal, médica o financiera

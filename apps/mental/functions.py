@@ -7,7 +7,7 @@ from serpapi import GoogleSearch
 from apps.chat.repositories import redis_pool
 from apps.uniguide.functions import get_virtual_campus_tour
 from apps.recepcionist.functions import send_email
-from apps.personal.functions import search_contacts_by_name, create_calendar_event
+from apps.personal.functions import search_contacts_by_name, create_calendar_event, read_calendar_events, read_user_emails
 import redis
 load_dotenv()
 

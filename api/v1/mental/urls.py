@@ -8,6 +8,8 @@ from .views import (
     send_email_view,
     search_contacts_view,
     create_event_view,
+    read_calendar_view,
+    read_emails_view,
     health_check,
     get_available_functions
 )
@@ -24,6 +26,8 @@ urlpatterns = [
     path('send-email/', send_email_view, name='biela-send-email'),
     path('search-contacts/', search_contacts_view, name='biela-search-contacts'),
     path('create-event/', create_event_view, name='biela-create-event'),
+    path('read-calendar/', read_calendar_view, name='biela-read-calendar'),
+    path('read-emails/', read_emails_view, name='biela-read-emails'),
 
     # Utility
     path('health/', health_check, name='biela-health'),
